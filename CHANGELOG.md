@@ -5,6 +5,64 @@ All notable changes to the VDK CLI project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.0] - 2025-08-10
+
+### 🔄 Migration System - AI Context Conversion
+
+This release introduces a comprehensive migration system to convert existing AI contexts from various platforms to VDK's universal format.
+
+### ✨ New Features
+- **feat**: add intelligent AI context migration system with multi-platform support
+- **feat**: implement MigrationManager with confidence-based context detection
+- **feat**: add MigrationDetector for automatic AI context discovery
+- **feat**: create MigrationAdapter for VDK blueprint format conversion
+- **feat**: support migration from Claude Code, Cursor, GitHub Copilot, Windsurf, and generic AI formats
+- **feat**: add `vdk migrate` command with dry-run and deployment options
+- **feat**: integrate migration workflow with existing VDK architecture (scanners, adapters, generators)
+
+### 🔍 Migration Detection
+- **feat**: detect CLAUDE.md files and .claude/ directories
+- **feat**: identify .cursorrules and .cursor/ configurations
+- **feat**: find .github/copilot-instructions.md and related GitHub Copilot files
+- **feat**: recognize .windsurf/ rules and configurations
+- **feat**: support generic AI assistant rule formats with pattern matching
+- **feat**: implement confidence scoring system for migration quality assessment
+
+### 🔧 Migration Processing  
+- **feat**: convert AI contexts to VDK blueprint schema v2.1.0 format
+- **feat**: maintain project-specific context awareness during conversion
+- **feat**: add migration metadata tracking (source, confidence, migration date)
+- **feat**: create structured migration output in `vdk-migration/` folder
+- **feat**: optional deployment to configured IDE integrations
+
+### 🛠️ CLI Enhancements
+- **feat**: add `vdk migrate` command for context migration
+- **feat**: add `vdk migrate --dry-run` for migration preview without file creation
+- **feat**: add `vdk migrate --no-deploy` to skip IDE deployment
+- **feat**: enhance `vdk status` to detect existing AI contexts before migration
+- **feat**: integrate migration workflow with existing CLI styling and formatting
+
+### 📦 Architecture Integration
+- **feat**: leverage existing ProjectScanner for file discovery and analysis
+- **feat**: use TechnologyAnalyzer for tech stack detection during migration
+- **feat**: integrate with RuleGenerator for consistent blueprint creation
+- **feat**: utilize IntegrationManager for seamless IDE deployment
+- **feat**: maintain schema compatibility with existing VDK blueprint system
+
+### ✅ Testing & Quality
+- **test**: add comprehensive migration system test suite with 9 new tests
+- **test**: achieve 100% test coverage including migration functionality (320 total tests)
+- **test**: add end-to-end migration testing with realistic AI context scenarios
+- **test**: verify detection, adaptation, and full migration workflow
+- **test**: test confidence calculation and error handling edge cases
+
+### 🐛 Bug Fixes
+- **fix**: resolve format.section function not available error in dry-run results
+- **fix**: fix confidence calculation returning 'none' instead of 'low' for valid contexts
+- **fix**: correct results.generated initialization as array for proper file tracking
+- **fix**: add missing gray-matter import for frontmatter processing
+- **fix**: handle directory context path references in error reporting
+
 ## [2.5.0] - 2025-09-07
 
 ### 🚀 Major Release - Production Ready
@@ -174,6 +232,16 @@ This major release introduces universal compatibility with all AI coding assista
 ---
 
 ## Release Notes
+
+### Version 2.9.0 Highlights
+
+This release introduces comprehensive AI context migration capabilities:
+
+- **🔄 Migration System**: Convert existing AI contexts from Claude Code, Cursor, GitHub Copilot, Windsurf to VDK format
+- **🔍 Smart Detection**: Automatic discovery of AI contexts with confidence-based assessment
+- **📦 Seamless Integration**: Leverages existing VDK architecture (scanners, adapters, generators) 
+- **🛠️ CLI Enhanced**: New `vdk migrate` command with dry-run and deployment options
+- **✅ Fully Tested**: 320 total tests with 100% coverage including migration functionality
 
 ### Version 2.5.0 Highlights
 

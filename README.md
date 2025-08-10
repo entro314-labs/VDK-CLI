@@ -137,6 +137,45 @@ That's it! Your AI assistant now understands your project's patterns and convent
 3. **Rule Generation**: Creates customized MDC files with intelligent guidelines for your tech stack
 4. **AI Integration**: Deploys rules to your preferred AI assistant's configuration directory
 
+## Migration System
+
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="#8B5CF6"/>
+</svg>
+
+VDK CLI includes intelligent migration capabilities to convert your existing AI contexts from various platforms to VDK's universal format:
+
+### Supported Migration Sources
+- **Claude Code** - CLAUDE.md files and .claude/ directories  
+- **Cursor** - .cursorrules and .cursor/ configurations
+- **GitHub Copilot** - .github/copilot-instructions.md and related files
+- **Windsurf** - .windsurf/ rules and configurations
+- **Generic AI** - Various AI assistant rule formats
+
+### Migration Process
+1. **Detection**: Automatically identifies existing AI contexts in your project
+2. **Analysis**: Evaluates confidence levels and categorizes found contexts  
+3. **Conversion**: Transforms contexts to VDK blueprint format with project-specific adaptations
+4. **Organization**: Creates structured migration output in `vdk-migration/` folder
+5. **Integration**: Optionally deploys converted rules to your configured AI assistants
+
+### Migration Commands
+```bash
+# Migrate existing AI contexts
+vdk migrate
+
+# Preview what would be migrated (no files created)  
+vdk migrate --dry-run
+
+# Migrate without deploying to IDE integrations
+vdk migrate --no-deploy
+
+# Check for existing AI contexts before migrating
+vdk status
+```
+
+The migration system leverages VDK's existing architecture (scanners, adapters, generators) to ensure converted rules maintain the same quality and project-awareness as newly generated ones.
+
 ## Supported Technologies
 
 <div align="center">
@@ -217,6 +256,11 @@ That's it! Your AI assistant now understands your project's patterns and convent
 vdk init                         # Initialize with auto-detection
 vdk init --interactive          # Interactive setup with guided choices
 
+# Migration
+vdk migrate                      # Migrate existing AI contexts to VDK format
+vdk migrate --dry-run           # Preview migration without creating files
+vdk migrate --no-deploy         # Skip deployment to IDE integrations
+
 # Analysis and status
 vdk scan                         # Re-analyze project and update rules
 vdk status                       # Check current VDK configuration
@@ -283,6 +327,26 @@ vdk init --interactive
 # Generates optimized rules for selected platforms
 ```
 
+### Migration Example
+
+```bash
+# Project with existing AI contexts
+cd my-existing-project
+
+# Check what AI contexts are detected
+vdk status
+# Found: CLAUDE.md, .cursorrules, .github/copilot-instructions.md
+
+# Preview migration without creating files  
+vdk migrate --dry-run
+# Would migrate: 3 contexts with high confidence
+
+# Perform migration
+vdk migrate
+# Migrated: 3 contexts → 15+ VDK blueprints in vdk-migration/
+# Deployed: Rules to Claude Code, Cursor integrations
+```
+
 ### Advanced Usage
 
 ```bash
@@ -335,8 +399,9 @@ We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md)
 </svg>
 
 - [x] **v2.0** - Enhanced technology detection, improved AI integrations
-- [ ] **v2.1** - VDK Hub integration for cloud-based rule management
-- [ ] **v2.2** - Visual Studio Code extension for seamless IDE integration
+- [x] **v2.9** - AI context migration system with multi-platform support
+- [ ] **v2.2** - VDK Hub integration for cloud-based rule management  
+- [ ] **v2.3** - Visual Studio Code extension for seamless IDE integration
 - [ ] **v3.0** - Team collaboration features and shared rule repositories
 
 ## Requirements

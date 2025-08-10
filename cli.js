@@ -19,6 +19,7 @@ import dotenv from 'dotenv'
 
 import { downloadRule, fetchRuleList } from './src/blueprints-client.js'
 import { runScanner } from './src/scanner/index.js'
+import { MigrationManager } from './src/migration/migration-manager.js'
 import {
   banner,
   boxes,
@@ -190,6 +191,37 @@ program
   })
 
 program
+  .command('migrate')
+  .description('Migrate existing AI contexts to VDK format')
+  .option('-p, --projectPath <path>', 'Path to the project to scan', process.cwd())
+  .option('-o, --outputPath <path>', 'Path where VDK rules should be saved', './.ai/rules')
+  .option('--migrationOutput <path>', 'Path for migration files', './vdk-migration')
+  .option('--dry-run', 'Preview migration without creating files', false)
+  .option('--no-deploy', 'Skip deployment to IDE integrations')
+  .option('-v, --verbose', 'Enable verbose output', false)
+  .action(async (options) => {
+    try {
+      const migrationManager = new MigrationManager({
+        projectPath: options.projectPath,
+        outputPath: options.outputPath,
+        migrationOutputPath: options.migrationOutput,
+        verbose: options.verbose
+      })
+
+      await migrationManager.migrate({
+        dryRun: options.dryRun,
+        deployToIdes: options.deploy !== false
+      })
+    } catch (error) {
+      console.error(boxes.error(`Migration failed:\n${error.message}`))
+      if (options.verbose) {
+        console.error(error.stack)
+      }
+      process.exit(1)
+    }
+  })
+
+program
   .command('status')
   .description('Check the status of your VDK setup')
   .option('-c, --configPath <path>', 'Path to the VDK configuration file', './vdk.config.json')
@@ -214,6 +246,26 @@ program
         status.success('Found'),
         `${format.keyValue('Project', config.project.name)}\n${format.keyValue('IDE', config.ide)}`,
       ])
+      
+      // Check for existing AI contexts that could be migrated
+      try {
+        const { MigrationManager } = await import('./src/migration/migration-manager.js')
+        const migrationManager = new MigrationManager({ projectPath: process.cwd() })
+        const projectScanner = migrationManager.projectScanner
+        const projectData = await projectScanner.scanProject(process.cwd())
+        const migrationDetector = migrationManager.migrationDetector
+        const contexts = await migrationDetector.detectAIContexts(projectData)
+        
+        if (contexts.length > 0) {
+          statusTable.push([
+            'Existing AI Contexts',
+            status.warning('Found'),
+            `${format.count(contexts.length)} contexts available for migration\nRun ${colors.primary('vdk migrate')} to convert them`,
+          ])
+        }
+      } catch (error) {
+        // Migration detection failed, skip silently
+      }
       isConfigured = true
     } catch (_error) {
       statusTable.push([
@@ -267,7 +319,7 @@ program
     if (!isConfigured) {
       console.log(
         `\n${boxes.info(
-          `Get started by running:\n${colors.primary('vdk init')}\n\nThis will scan your project and create project-aware AI rules.`,
+          `Get started by running:\n${colors.primary('vdk init')}\n\nThis will scan your project and create project-aware AI rules.\n\nIf you have existing AI contexts, try:\n${colors.primary('vdk migrate')} to convert them to VDK format`,
           'Quick Start'
         )}`
       )
