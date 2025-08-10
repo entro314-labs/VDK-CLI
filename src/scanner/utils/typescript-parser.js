@@ -3,8 +3,8 @@
  * Provides TypeScript parsing functionality for code analysis
  */
 
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises'
+import path from 'node:path'
 
 /**
  * Parses TypeScript files for analysis
@@ -17,8 +17,8 @@ export class TypeScriptParser {
    * @returns {boolean} - True if file is TypeScript
    */
   static isTypeScriptFile(filePath) {
-    const ext = path.extname(filePath).toLowerCase();
-    return ext === '.ts' || ext === '.tsx' || ext === '.d.ts';
+    const ext = path.extname(filePath).toLowerCase()
+    return ext === '.ts' || ext === '.tsx' || ext === '.d.ts'
   }
 
   /**
@@ -31,10 +31,10 @@ export class TypeScriptParser {
     try {
       // For now, we just read the file, but don't try to parse the syntax
       // In a real implementation, we'd use the TypeScript compiler API
-      const content = await fs.readFile(filePath, 'utf8');
-      return { content, success: true, error: null };
+      const content = await fs.readFile(filePath, 'utf8')
+      return { content, success: true, error: null }
     } catch (error) {
-      return { content: '', success: false, error };
+      return { content: '', success: false, error }
     }
   }
 
@@ -47,15 +47,15 @@ export class TypeScriptParser {
   static extractImports(content) {
     // Simple regex to extract imports - this is a simplification
     // A real implementation would use the TypeScript AST
-    const importRegex = /import\s+(?:{[^}]*}|\*\s+as\s+\w+|\w+)\s+from\s+['"]([^'"]+)['"]/g;
-    const imports = [];
-    let match;
+    const importRegex = /import\s+(?:{[^}]*}|\*\s+as\s+\w+|\w+)\s+from\s+['"]([^'"]+)['"]/g
+    const imports = []
+    let match
 
     while ((match = importRegex.exec(content)) !== null) {
-      imports.push(match[1]);
+      imports.push(match[1])
     }
 
-    return imports;
+    return imports
   }
 
   /**
@@ -66,14 +66,14 @@ export class TypeScriptParser {
    */
   static extractExports(content) {
     // Simple regex to extract exports - this is a simplification
-    const exportRegex = /export\s+(const|let|var|function|class|interface|type|enum)\s+(\w+)/g;
-    const exports = [];
-    let match;
+    const exportRegex = /export\s+(const|let|var|function|class|interface|type|enum)\s+(\w+)/g
+    const exports = []
+    let match
 
     while ((match = exportRegex.exec(content)) !== null) {
-      exports.push(match[2]);
+      exports.push(match[2])
     }
 
-    return exports;
+    return exports
   }
 }

@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
@@ -7,6 +7,8 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
     setupFiles: ['./tests/setup.js'],
+    // Alternative to deprecated 'basic' reporter
+    reporters: [['default', { summary: true }]],
     exclude: [
       '**/node_modules/**',
       '**/tests/legacy/**', // Exclude legacy tests from main test run
@@ -33,4 +35,4 @@ export default defineConfig({
       },
     },
   },
-});
+})

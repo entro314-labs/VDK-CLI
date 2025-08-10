@@ -1,0 +1,158 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to create release for (e.g., v2.0.4)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as prerelease'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch full history for changelog
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Set tag from input or ref
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+
+      - name: Get package info
+        id: package-info
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          DESCRIPTION=$(node -p "require('./package.json').description")
+          echo "name=$NAME" >> $GITHUB_OUTPUT
+          echo "description=$DESCRIPTION" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the previous tag
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "No previous tag found, using full commit history"
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            echo "Generating changelog from $PREVIOUS_TAG to ${{ steps.tag.outputs.tag }}"
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges $PREVIOUS_TAG..${{ steps.tag.outputs.tag }})
+          fi
+          
+          # Save changelog to file for multiline output
+          echo "$CHANGELOG" > changelog.txt
+          
+          # Set output
+          {
+            echo "changelog<<EOF"
+            cat changelog.txt
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+      - name: Check if tag exists
+        id: check-tag
+        run: |
+          if git rev-parse "${{ steps.tag.outputs.tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create tag (if from workflow_dispatch and doesn't exist)
+        if: ${{ github.event_name == 'workflow_dispatch' && steps.check-tag.outputs.exists == 'false' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.tag.outputs.tag }}" -m "Release ${{ steps.tag.outputs.tag }}"
+          git push origin "${{ steps.tag.outputs.tag }}"
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          release_name: ${{ steps.package-info.outputs.name }} ${{ steps.tag.outputs.tag }}
+          body: |
+            ## ${{ steps.package-info.outputs.name }} ${{ steps.tag.outputs.tag }}
+            
+            ${{ steps.package-info.outputs.description }}
+            
+            ### Installation
+            
+            ```bash
+            npm install -g ${{ steps.package-info.outputs.name }}@${{ steps.tag.outputs.version }}
+            ```
+            
+            Or with pnpm:
+            ```bash
+            pnpm add -g ${{ steps.package-info.outputs.name }}@${{ steps.tag.outputs.version }}
+            ```
+            
+            ### Changes in this release
+            
+            ${{ steps.changelog.outputs.changelog }}
+            
+            ### Links
+            
+            - [📦 npm package](https://www.npmjs.com/package/${{ steps.package-info.outputs.name }})
+            - [🐙 Repository](https://github.com/${{ github.repository }})
+            - [📋 Full Changelog](https://github.com/${{ github.repository }}/compare/v${{ steps.tag.outputs.version }}...HEAD)
+            
+            ---
+            
+            🤖 This release was created automatically by GitHub Actions
+          draft: false
+          prerelease: ${{ github.event.inputs.prerelease || false }}
+
+      - name: Update package.json version (if needed)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          NEW_VERSION="${{ steps.tag.outputs.version }}"
+          
+          if [ "$CURRENT_VERSION" != "$NEW_VERSION" ]; then
+            echo "Updating package.json version from $CURRENT_VERSION to $NEW_VERSION"
+            pnpm version $NEW_VERSION --no-git-tag-version
+            
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add package.json
+            git commit -m "chore: bump version to $NEW_VERSION"
+            git push origin main
+          fi

@@ -11,7 +11,7 @@ export const TEMPLATES = {
   PROJECT_CONTEXT_ENHANCED: 'project-context-enhanced.hbs',
   COMMON_ERRORS: 'common-errors.hbs',
   MCP_CONFIGURATION: 'mcp-configuration.hbs',
-};
+}
 
 // Output rule file names
 export const RULES = {
@@ -19,14 +19,14 @@ export const RULES = {
   PROJECT_CONTEXT: '01-project-context.mdc',
   COMMON_ERRORS: '02-common-errors.mdc',
   MCP_CONFIGURATION: '03-mcp-configuration.mdc',
-};
+}
 
 // Output directories
 export const DIRECTORIES = {
   LANGUAGES: 'languages',
   TECHNOLOGIES: 'technologies',
   PATTERNS: 'patterns',
-};
+}
 
 // Language rule mapping
 export const LANGUAGE_RULE_MAP = {
@@ -42,7 +42,7 @@ export const LANGUAGE_RULE_MAP = {
   csharp: 'CSharp-Modern.mdc',
   dart: 'Dart-Modern.mdc',
   cpp: 'CPP20.mdc',
-};
+}
 
 // Framework rule mapping
 export const FRAMEWORK_RULE_MAP = {
@@ -89,7 +89,7 @@ export const FRAMEWORK_RULE_MAP = {
 
   // Stacks
   'Supabase-Next.js Stack': 'Supabase-NextJS-Stack.mdc',
-};
+}
 
 // Integration rules mapping
 export const INTEGRATION_RULES = {
@@ -102,17 +102,17 @@ export const INTEGRATION_RULES = {
   Supabase: {
     'Next.js': 'Supabase-NextJS-Integration.mdc',
   },
-};
+}
 
 // Architecture pattern rule mapping
 export const PATTERN_RULE_MAP = {
   MVC: 'MVC.mdc',
   MVVM: 'MVVM.mdc',
   Microservices: 'Microservices.mdc',
-};
+}
 
 // Default values
 export const DEFAULTS = {
   OUTPUT_PATH: './.ai/rules',
   PROJECT_NAME: 'Your Project',
-};
+}

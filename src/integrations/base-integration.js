@@ -6,10 +6,10 @@
  * configuration, and management.
  */
 
-import { execSync } from 'child_process';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import { execSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 
 /**
  * Base class for all VDK integrations
@@ -17,15 +17,15 @@ import path from 'path';
  */
 export class BaseIntegration {
   constructor(name, projectPath = process.cwd()) {
-    this.name = name;
-    this.projectPath = projectPath;
-    this.configPath = null;
-    this.globalConfigPath = null;
+    this.name = name
+    this.projectPath = projectPath
+    this.configPath = null
+    this.globalConfigPath = null
 
     // Detection result cache
-    this._detectionCache = null;
-    this._detectionCacheTime = null;
-    this._cacheValidityMs = 30000; // 30 seconds
+    this._detectionCache = null
+    this._detectionCacheTime = null
+    this._cacheValidityMs = 30000 // 30 seconds
   }
 
   /**
@@ -34,7 +34,7 @@ export class BaseIntegration {
    * @returns {Object} Detection result with isUsed, confidence, indicators, recommendations
    */
   detectUsage() {
-    throw new Error(`detectUsage() must be implemented by ${this.name} integration`);
+    throw new Error(`detectUsage() must be implemented by ${this.name} integration`)
   }
 
   /**
@@ -43,7 +43,7 @@ export class BaseIntegration {
    * @returns {Object} Configuration paths relevant to this integration
    */
   getConfigPaths() {
-    throw new Error(`getConfigPaths() must be implemented by ${this.name} integration`);
+    throw new Error(`getConfigPaths() must be implemented by ${this.name} integration`)
   }
 
   /**
@@ -52,8 +52,8 @@ export class BaseIntegration {
    * @param {Object} options - Configuration options
    * @returns {boolean} Success status
    */
-  async initialize(options = {}) {
-    throw new Error(`initialize() must be implemented by ${this.name} integration`);
+  async initialize(_options = {}) {
+    throw new Error(`initialize() must be implemented by ${this.name} integration`)
   }
 
   /**
@@ -62,16 +62,16 @@ export class BaseIntegration {
    * @returns {Object} Detection result
    */
   getCachedDetection(force = false) {
-    const now = Date.now();
+    const now = Date.now()
     const cacheExpired =
-      !this._detectionCacheTime || now - this._detectionCacheTime > this._cacheValidityMs;
+      !this._detectionCacheTime || now - this._detectionCacheTime > this._cacheValidityMs
 
     if (force || !this._detectionCache || cacheExpired) {
-      this._detectionCache = this.detectUsage();
-      this._detectionCacheTime = now;
+      this._detectionCache = this.detectUsage()
+      this._detectionCacheTime = now
     }
 
-    return this._detectionCache;
+    return this._detectionCache
   }
 
   /**
@@ -79,8 +79,8 @@ export class BaseIntegration {
    * @returns {boolean} True if integration is active
    */
   isActive() {
-    const detection = this.getCachedDetection();
-    return detection.isUsed && detection.confidence !== 'none';
+    const detection = this.getCachedDetection()
+    return detection.isUsed && detection.confidence !== 'none'
   }
 
   /**
@@ -88,8 +88,8 @@ export class BaseIntegration {
    * @returns {string} Confidence level: none, low, medium, high
    */
   getConfidence() {
-    const detection = this.getCachedDetection();
-    return detection.confidence;
+    const detection = this.getCachedDetection()
+    return detection.confidence
   }
 
   /**
@@ -97,8 +97,8 @@ export class BaseIntegration {
    * @returns {Array<string>} List of recommendations
    */
   getRecommendations() {
-    const detection = this.getCachedDetection();
-    return detection.recommendations || [];
+    const detection = this.getCachedDetection()
+    return detection.recommendations || []
   }
 
   /**
@@ -106,8 +106,8 @@ export class BaseIntegration {
    * @returns {Array<string>} List of indicators found
    */
   getIndicators() {
-    const detection = this.getCachedDetection();
-    return detection.indicators || [];
+    const detection = this.getCachedDetection()
+    return detection.indicators || []
   }
 
   /**
@@ -117,9 +117,9 @@ export class BaseIntegration {
    */
   directoryExists(dirPath) {
     try {
-      return fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory();
-    } catch (error) {
-      return false;
+      return fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()
+    } catch {
+      return false
     }
   }
 
@@ -130,10 +130,10 @@ export class BaseIntegration {
    */
   async directoryExistsAsync(dirPath) {
     try {
-      const stats = await fs.promises.stat(dirPath);
-      return stats.isDirectory();
-    } catch (error) {
-      return false;
+      const stats = await fs.promises.stat(dirPath)
+      return stats.isDirectory()
+    } catch {
+      return false
     }
   }
 
@@ -144,9 +144,9 @@ export class BaseIntegration {
    */
   fileExists(filePath) {
     try {
-      return fs.existsSync(filePath) && fs.statSync(filePath).isFile();
-    } catch (error) {
-      return false;
+      return fs.existsSync(filePath) && fs.statSync(filePath).isFile()
+    } catch {
+      return false
     }
   }
 
@@ -157,10 +157,10 @@ export class BaseIntegration {
    */
   async fileExistsAsync(filePath) {
     try {
-      const stats = await fs.promises.stat(filePath);
-      return stats.isFile();
-    } catch (error) {
-      return false;
+      const stats = await fs.promises.stat(filePath)
+      return stats.isFile()
+    } catch {
+      return false
     }
   }
 
@@ -171,10 +171,10 @@ export class BaseIntegration {
    */
   commandExists(command) {
     try {
-      execSync(`which ${command}`, { stdio: 'ignore' });
-      return true;
-    } catch (error) {
-      return false;
+      execSync(`which ${command}`, { stdio: 'ignore' })
+      return true
+    } catch {
+      return false
     }
   }
 
@@ -189,10 +189,10 @@ export class BaseIntegration {
       const output = execSync(`${command} ${versionFlag}`, {
         encoding: 'utf8',
         stdio: 'pipe',
-      });
-      return output.trim();
-    } catch (error) {
-      return null;
+      })
+      return output.trim()
+    } catch {
+      return null
     }
   }
 
@@ -204,24 +204,24 @@ export class BaseIntegration {
    */
   getRecentActivity(dirPath, daysBack = 7) {
     if (!this.directoryExists(dirPath)) {
-      return [];
+      return []
     }
 
     try {
-      const files = fs.readdirSync(dirPath);
-      const cutoffTime = Date.now() - daysBack * 24 * 60 * 60 * 1000;
+      const files = fs.readdirSync(dirPath)
+      const cutoffTime = Date.now() - daysBack * 24 * 60 * 60 * 1000
 
       return files.filter((file) => {
-        const filePath = path.join(dirPath, file);
+        const filePath = path.join(dirPath, file)
         try {
-          const stats = fs.statSync(filePath);
-          return stats.mtime.getTime() > cutoffTime;
-        } catch (error) {
-          return false;
+          const stats = fs.statSync(filePath)
+          return stats.mtime.getTime() > cutoffTime
+        } catch {
+          return false
         }
-      });
-    } catch (error) {
-      return [];
+      })
+    } catch {
+      return []
     }
   }
 
@@ -233,11 +233,11 @@ export class BaseIntegration {
   async ensureDirectory(dirPath) {
     try {
       if (!fs.existsSync(dirPath)) {
-        await fs.promises.mkdir(dirPath, { recursive: true });
+        await fs.promises.mkdir(dirPath, { recursive: true })
       }
-      return true;
-    } catch (error) {
-      return false;
+      return true
+    } catch {
+      return false
     }
   }
 
@@ -248,10 +248,10 @@ export class BaseIntegration {
    */
   readJsonFile(filePath) {
     try {
-      const content = fs.readFileSync(filePath, 'utf8');
-      return JSON.parse(content);
-    } catch (error) {
-      return null;
+      const content = fs.readFileSync(filePath, 'utf8')
+      return JSON.parse(content)
+    } catch {
+      return null
     }
   }
 
@@ -263,10 +263,10 @@ export class BaseIntegration {
    */
   async writeJsonFile(filePath, data) {
     try {
-      await fs.promises.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
-      return true;
-    } catch (error) {
-      return false;
+      await fs.promises.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8')
+      return true
+    } catch {
+      return false
     }
   }
 
@@ -275,8 +275,8 @@ export class BaseIntegration {
    * @returns {Object} Object containing common platform paths
    */
   getPlatformPaths() {
-    const home = os.homedir();
-    const platform = os.platform();
+    const home = os.homedir()
+    const platform = os.platform()
 
     return {
       home,
@@ -301,7 +301,7 @@ export class BaseIntegration {
           : platform === 'darwin'
             ? path.join(home, 'Library', 'Caches')
             : path.join(home, '.cache'),
-    };
+    }
   }
 
   /**
@@ -310,16 +310,16 @@ export class BaseIntegration {
    * @returns {Array<string>} Found patterns in gitignore
    */
   checkGitignore(patterns) {
-    const gitignorePath = path.join(this.projectPath, '.gitignore');
+    const gitignorePath = path.join(this.projectPath, '.gitignore')
     if (!this.fileExists(gitignorePath)) {
-      return [];
+      return []
     }
 
     try {
-      const content = fs.readFileSync(gitignorePath, 'utf8');
-      return patterns.filter((pattern) => content.includes(pattern));
-    } catch (error) {
-      return [];
+      const content = fs.readFileSync(gitignorePath, 'utf8')
+      return patterns.filter((pattern) => content.includes(pattern))
+    } catch {
+      return []
     }
   }
 
@@ -329,25 +329,25 @@ export class BaseIntegration {
    * @returns {Promise<boolean>} True if successful
    */
   async ensureGitignoreEntry(entry) {
-    const gitignorePath = path.join(this.projectPath, '.gitignore');
+    const gitignorePath = path.join(this.projectPath, '.gitignore')
 
     try {
-      let content = '';
+      let content = ''
       if (this.fileExists(gitignorePath)) {
-        content = await fs.promises.readFile(gitignorePath, 'utf8');
+        content = await fs.promises.readFile(gitignorePath, 'utf8')
       }
 
       // Check if entry already exists
       if (content.includes(entry)) {
-        return true;
+        return true
       }
 
       // Add entry with proper spacing
-      const newContent = content + (content && !content.endsWith('\n') ? '\n' : '') + entry + '\n';
-      await fs.promises.writeFile(gitignorePath, newContent, 'utf8');
-      return true;
-    } catch (error) {
-      return false;
+      const newContent = `${content + (content && !content.endsWith('\n') ? '\n' : '') + entry}\n`
+      await fs.promises.writeFile(gitignorePath, newContent, 'utf8')
+      return true
+    } catch {
+      return false
     }
   }
 
@@ -356,7 +356,7 @@ export class BaseIntegration {
    * @returns {Object} Summary of integration status
    */
   getSummary() {
-    const detection = this.getCachedDetection();
+    const _detection = this.getCachedDetection()
     return {
       name: this.name,
       isActive: this.isActive(),
@@ -366,6 +366,6 @@ export class BaseIntegration {
       lastChecked: this._detectionCacheTime
         ? new Date(this._detectionCacheTime).toISOString()
         : null,
-    };
+    }
   }
 }

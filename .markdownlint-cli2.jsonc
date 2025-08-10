@@ -2,8 +2,8 @@
   "config": {
     "MD013": { "line_length": 120 },
     "MD033": false,
-    "MD041": false,
+    "MD041": false
   },
   "globs": ["**/*.md"],
-  "ignores": ["node_modules/**", "test-output/**", ".ai/**", ".vdk/**", "templates/**"],
+  "ignores": ["node_modules/**", "test-output/**", ".ai/**", ".vdk/**", "templates/**"]
 }

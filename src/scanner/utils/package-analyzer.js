@@ -3,8 +3,8 @@
  * Analyzes package.json files to detect technologies, frameworks, and tools used in the project
  */
 
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises'
+import path from 'node:path'
 
 /**
  * Maps of package names to technology categories and specific technologies
@@ -564,7 +564,7 @@ const TECH_MAPPINGS = {
     ajv: 'AJV',
     '@hookform/resolvers': 'React Hook Form',
   },
-};
+}
 
 /**
  * Analyzes package.json files to identify technology stack
@@ -578,28 +578,28 @@ export class PackageAnalyzer {
    */
   static async analyzeDependencies(projectPath) {
     try {
-      const packageJsonPath = path.join(projectPath, 'package.json');
+      const packageJsonPath = path.join(projectPath, 'package.json')
 
       // Check if package.json exists
       try {
-        await fs.access(packageJsonPath);
-      } catch (error) {
+        await fs.access(packageJsonPath)
+      } catch {
         // package.json doesn't exist
-        return { detected: false };
+        return { detected: false }
       }
 
       // Read and parse the package.json file
-      const content = await fs.readFile(packageJsonPath, 'utf8');
-      const packageJson = JSON.parse(content);
+      const content = await fs.readFile(packageJsonPath, 'utf8')
+      const packageJson = JSON.parse(content)
 
       // Extract dependencies
       const allDependencies = {
         ...(packageJson.dependencies || {}),
         ...(packageJson.devDependencies || {}),
-      };
+      }
 
       // Detect technologies based on dependencies
-      const detectedTech = this.detectTechnologies(allDependencies);
+      const detectedTech = PackageAnalyzer.detectTechnologies(allDependencies)
 
       // Extract project metadata
       const projectInfo = {
@@ -612,17 +612,17 @@ export class PackageAnalyzer {
         engines: packageJson.engines || {},
         hasScripts: Object.keys(packageJson.scripts || {}).length > 0,
         scripts: packageJson.scripts || {},
-      };
+      }
 
       return {
         detected: true,
         technologies: detectedTech,
         projectInfo,
         dependencyCount: Object.keys(allDependencies).length,
-      };
+      }
     } catch (error) {
-      console.warn(`Warning: Error analyzing package.json: ${error.message}`);
-      return { detected: false };
+      console.warn(`Warning: Error analyzing package.json: ${error.message}`)
+      return { detected: false }
     }
   }
 
@@ -633,43 +633,43 @@ export class PackageAnalyzer {
    * @returns {Object} - Object containing detected technologies by category
    */
   static detectTechnologies(dependencies) {
-    const result = {};
-    const depNames = Object.keys(dependencies);
+    const result = {}
+    const depNames = Object.keys(dependencies)
 
     // For each technology category
     for (const [category, techMap] of Object.entries(TECH_MAPPINGS)) {
-      const detectedInCategory = [];
+      const detectedInCategory = []
 
       // Check each dependency against the technology map for this category
       for (const dep of depNames) {
         // Handle scope packages like @angular/core
-        const basePackageName = dep.split('/')[0];
+        const _basePackageName = dep.split('/')[0]
 
         // First try exact match
         if (techMap[dep]) {
-          detectedInCategory.push(techMap[dep]);
+          detectedInCategory.push(techMap[dep])
         }
         // Then try matching by prefix (for scoped packages)
         else {
           const scopedMatches = Object.keys(techMap).filter((key) => {
             // Only match if the dependency starts with the key (for scoped packages like @angular/core)
             // Avoid reverse matching that would make 'react' match 'react-native'
-            return dep.startsWith(key + '/') || (key.startsWith('@') && dep === key);
-          });
+            return dep.startsWith(`${key}/`) || (key.startsWith('@') && dep === key)
+          })
 
           for (const match of scopedMatches) {
-            detectedInCategory.push(techMap[match]);
+            detectedInCategory.push(techMap[match])
           }
         }
       }
 
       // Add unique detected technologies to the result
       if (detectedInCategory.length > 0) {
-        result[category] = [...new Set(detectedInCategory)];
+        result[category] = [...new Set(detectedInCategory)]
       }
     }
 
-    return result;
+    return result
   }
 
   /**
@@ -679,7 +679,9 @@ export class PackageAnalyzer {
    * @returns {string|null} - Primary framework name or null if not detected
    */
   static determinePrimaryFramework(technologies) {
-    if (!technologies.frontend) return null;
+    if (!technologies.frontend) {
+      return null
+    }
 
     // Framework priority order (more specific frameworks first)
     const frameworkPriority = [
@@ -691,15 +693,15 @@ export class PackageAnalyzer {
       'React',
       'Vue.js',
       'Svelte',
-    ];
+    ]
 
     // Find the first framework that exists in detected technologies
     for (const framework of frameworkPriority) {
       if (technologies.frontend.includes(framework)) {
-        return framework;
+        return framework
       }
     }
 
-    return technologies.frontend[0] || null;
+    return technologies.frontend[0] || null
   }
 }

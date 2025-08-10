@@ -5,8 +5,8 @@
  * between project-scanner and CLI tools.
  */
 
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs'
+import path from 'node:path'
 
 /**
  * IDE configuration mapping
@@ -123,7 +123,7 @@ export const IDE_CONFIGURATIONS = [
     configFiles: ['.ai/config.json'],
     description: 'Works with most AI coding assistants and is the VDK standard.',
   },
-];
+]
 
 /**
  * Get IDE configuration by ID
@@ -131,7 +131,7 @@ export const IDE_CONFIGURATIONS = [
  * @returns {Object} IDE configuration object or null if not found
  */
 export function getIDEConfigById(id) {
-  return IDE_CONFIGURATIONS.find((ide) => ide.id === id) || null;
+  return IDE_CONFIGURATIONS.find((ide) => ide.id === id) || null
 }
 
 /**
@@ -141,12 +141,12 @@ export function getIDEConfigById(id) {
  * @returns {Object} Configuration paths or default paths if IDE not found
  */
 export function getIDEConfigPaths(id, projectPath) {
-  const config = getIDEConfigById(id) || IDE_CONFIGURATIONS.find((ide) => ide.id === 'generic');
+  const config = getIDEConfigById(id) || IDE_CONFIGURATIONS.find((ide) => ide.id === 'generic')
 
   return {
     configPath: path.join(projectPath, config.configFolder),
     rulePath: path.join(projectPath, config.rulesFolder),
-  };
+  }
 }
 
 /**
@@ -155,27 +155,27 @@ export function getIDEConfigPaths(id, projectPath) {
  * @returns {Array} List of detected IDE configurations
  */
 export function detectIDEs(projectPath) {
-  const detectedIDEs = [];
+  const detectedIDEs = []
 
   for (const ide of IDE_CONFIGURATIONS) {
-    const configPath = path.join(projectPath, ide.configFolder);
+    const configPath = path.join(projectPath, ide.configFolder)
     if (fs.existsSync(configPath)) {
-      detectedIDEs.push(ide);
-      continue;
+      detectedIDEs.push(ide)
+      continue
     }
 
     // If config folder doesn't exist, check specific config files
     if (ide.configFiles && ide.configFiles.length > 0) {
       const configFileExists = ide.configFiles.some((filePath) =>
         fs.existsSync(path.join(projectPath, filePath))
-      );
+      )
       if (configFileExists) {
-        detectedIDEs.push(ide);
+        detectedIDEs.push(ide)
       }
     }
   }
 
-  return detectedIDEs;
+  return detectedIDEs
 }
 
 /**
@@ -185,14 +185,14 @@ export function detectIDEs(projectPath) {
  * @returns {string} Path to rule directory
  */
 export function ensureRuleDirectory(id, projectPath) {
-  const config = getIDEConfigById(id) || IDE_CONFIGURATIONS.find((ide) => ide.id === 'generic');
+  const config = getIDEConfigById(id) || IDE_CONFIGURATIONS.find((ide) => ide.id === 'generic')
 
-  const rulePath = path.join(projectPath, config.rulesFolder);
+  const rulePath = path.join(projectPath, config.rulesFolder)
   if (!fs.existsSync(rulePath)) {
-    fs.mkdirSync(rulePath, { recursive: true });
+    fs.mkdirSync(rulePath, { recursive: true })
   }
 
-  return rulePath;
+  return rulePath
 }
 
 export default {
@@ -201,4 +201,4 @@ export default {
   getIDEConfigPaths,
   detectIDEs,
   ensureRuleDirectory,
-};
+}

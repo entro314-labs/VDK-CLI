@@ -5,25 +5,20 @@
  * Handles VS Code, Cursor, Windsurf, JetBrains, and other editors.
  */
 
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs'
+import path from 'node:path'
 
-import {
-  detectIDEs,
-  ensureRuleDirectory,
-  getIDEConfigById,
-  IDE_CONFIGURATIONS,
-} from '../shared/ide-configuration.js';
-import { BaseIntegration } from './base-integration.js';
+import { detectIDEs, ensureRuleDirectory, IDE_CONFIGURATIONS } from '../shared/ide-configuration.js'
+import { BaseIntegration } from './base-integration.js'
 
 /**
  * Generic IDE integration that detects and manages multiple IDEs
  */
 export class GenericIDEIntegration extends BaseIntegration {
   constructor(projectPath = process.cwd()) {
-    super('Generic IDE', projectPath);
-    this.detectedIDEs = [];
-    this.ideConfigurations = IDE_CONFIGURATIONS;
+    super('Generic IDE', projectPath)
+    this.detectedIDEs = []
+    this.ideConfigurations = IDE_CONFIGURATIONS
   }
 
   /**
@@ -37,55 +32,51 @@ export class GenericIDEIntegration extends BaseIntegration {
       indicators: [],
       recommendations: [],
       detectedIDEs: [],
-    };
+    }
 
     try {
       // Use the modernized detectIDEs function
-      const detectedIDEConfigs = await detectIDEs(this.projectPath);
+      const detectedIDEConfigs = await detectIDEs(this.projectPath)
 
       for (const ideConfig of detectedIDEConfigs) {
-        const ideDetection = await this.detectSpecificIDE(ideConfig);
+        const ideDetection = await this.detectSpecificIDE(ideConfig)
         if (ideDetection.isUsed) {
-          detection.detectedIDEs.push(ideDetection);
-          detection.isUsed = true;
-          detection.indicators.push(...ideDetection.indicators);
+          detection.detectedIDEs.push(ideDetection)
+          detection.isUsed = true
+          detection.indicators.push(...ideDetection.indicators)
 
           // Upgrade confidence based on strongest detection
           if (ideDetection.confidence === 'high' && detection.confidence !== 'high') {
-            detection.confidence = 'high';
+            detection.confidence = 'high'
           } else if (ideDetection.confidence === 'medium' && detection.confidence === 'none') {
-            detection.confidence = 'medium';
+            detection.confidence = 'medium'
           } else if (ideDetection.confidence === 'low' && detection.confidence === 'none') {
-            detection.confidence = 'low';
+            detection.confidence = 'low'
           }
         }
       }
     } catch (error) {
-      console.warn(`IDE detection error: ${error.message}`);
+      console.warn(`IDE detection error: ${error.message}`)
     }
 
     // Generate recommendations
     if (detection.detectedIDEs.length === 0) {
       detection.recommendations.push(
         'No IDE configurations detected. VDK works with VS Code, Cursor, Windsurf, and other editors'
-      );
-      detection.recommendations.push('Run: vdk init to set up rules for your preferred IDE');
+      )
+      detection.recommendations.push('Run: vdk init to set up rules for your preferred IDE')
     } else if (detection.confidence === 'low') {
-      detection.recommendations.push('IDE configurations detected but not fully configured');
-      detection.recommendations.push('Run: vdk init --ide-integration to set up IDE rules');
+      detection.recommendations.push('IDE configurations detected but not fully configured')
+      detection.recommendations.push('Run: vdk init --ide-integration to set up IDE rules')
     } else if (detection.confidence === 'medium') {
-      detection.recommendations.push('IDE configurations found - consider optimizing rule setup');
-      detection.recommendations.push(
-        'Review generated rules in your IDE for optimal AI assistance'
-      );
+      detection.recommendations.push('IDE configurations found - consider optimizing rule setup')
+      detection.recommendations.push('Review generated rules in your IDE for optimal AI assistance')
     } else {
-      detection.recommendations.push('IDE integrations are well configured');
-      detection.recommendations.push(
-        'Consider updating rules periodically as your project evolves'
-      );
+      detection.recommendations.push('IDE integrations are well configured')
+      detection.recommendations.push('Consider updating rules periodically as your project evolves')
     }
 
-    return detection;
+    return detection
   }
 
   /**
@@ -102,15 +93,15 @@ export class GenericIDEIntegration extends BaseIntegration {
       indicators: [],
       configPath: null,
       rulesPath: null,
-    };
+    }
 
     // Check for config folder
-    const configPath = path.join(this.projectPath, ide.configFolder);
+    const configPath = path.join(this.projectPath, ide.configFolder)
     if (await this.directoryExistsAsync(configPath)) {
-      detection.indicators.push(`${ide.name} config directory found`);
-      detection.configPath = configPath;
-      detection.isUsed = true;
-      detection.confidence = 'medium';
+      detection.indicators.push(`${ide.name} config directory found`)
+      detection.configPath = configPath
+      detection.isUsed = true
+      detection.confidence = 'medium'
     }
 
     // Check for specific config files
@@ -118,49 +109,49 @@ export class GenericIDEIntegration extends BaseIntegration {
       for (const configFile of ide.configFiles) {
         const fullPath = configFile.startsWith('~')
           ? this.expandPath(configFile)
-          : path.join(this.projectPath, configFile);
+          : path.join(this.projectPath, configFile)
 
         if (await this.fileExistsAsync(fullPath)) {
-          detection.indicators.push(`${ide.name} config file: ${configFile}`);
-          detection.isUsed = true;
+          detection.indicators.push(`${ide.name} config file: ${configFile}`)
+          detection.isUsed = true
           if (detection.confidence === 'none') {
-            detection.confidence = 'low';
+            detection.confidence = 'low'
           }
         }
       }
     }
 
     // Check for rules directory
-    const rulesPath = path.join(this.projectPath, ide.rulesFolder);
+    const rulesPath = path.join(this.projectPath, ide.rulesFolder)
     if (await this.directoryExistsAsync(rulesPath)) {
-      detection.indicators.push(`${ide.name} rules directory found`);
-      detection.rulesPath = rulesPath;
-      detection.confidence = 'high';
+      detection.indicators.push(`${ide.name} rules directory found`)
+      detection.rulesPath = rulesPath
+      detection.confidence = 'high'
 
       // Check if rules directory has content
       try {
-        const ruleFiles = await fs.promises.readdir(rulesPath);
-        const mdFiles = ruleFiles.filter((f) => f.endsWith('.md'));
+        const ruleFiles = await fs.promises.readdir(rulesPath)
+        const mdFiles = ruleFiles.filter((f) => f.endsWith('.md'))
         if (mdFiles.length > 0) {
-          detection.indicators.push(`${ide.name} has ${mdFiles.length} rule files`);
+          detection.indicators.push(`${ide.name} has ${mdFiles.length} rule files`)
         }
-      } catch (error) {
+      } catch {
         // Ignore read errors
       }
     }
 
     // Check for IDE-specific ignore files
     if (ide.ignoreFile) {
-      const ignorePath = path.join(this.projectPath, ide.ignoreFile);
+      const ignorePath = path.join(this.projectPath, ide.ignoreFile)
       if (await this.fileExistsAsync(ignorePath)) {
-        detection.indicators.push(`${ide.name} ignore file found`);
+        detection.indicators.push(`${ide.name} ignore file found`)
         if (detection.confidence === 'none') {
-          detection.confidence = 'low';
+          detection.confidence = 'low'
         }
       }
     }
 
-    return detection;
+    return detection
   }
 
   /**
@@ -168,12 +159,12 @@ export class GenericIDEIntegration extends BaseIntegration {
    * @returns {Object} Configuration paths grouped by IDE
    */
   getConfigPaths() {
-    const paths = {};
-    const detectionResult = this.getCachedDetection();
+    const paths = {}
+    const detectionResult = this.getCachedDetection()
 
     if (detectionResult.detectedIDEs) {
       for (const ideDetection of detectionResult.detectedIDEs) {
-        const ide = this.ideConfigurations.find((i) => i.id === ideDetection.id);
+        const ide = this.ideConfigurations.find((i) => i.id === ideDetection.id)
         if (ide) {
           paths[ide.id] = {
             name: ide.name,
@@ -183,12 +174,12 @@ export class GenericIDEIntegration extends BaseIntegration {
               ide.configFiles?.map((f) =>
                 f.startsWith('~') ? this.expandPath(f) : path.join(this.projectPath, f)
               ) || [],
-          };
+          }
         }
       }
     }
 
-    return paths;
+    return paths
   }
 
   /**
@@ -197,45 +188,45 @@ export class GenericIDEIntegration extends BaseIntegration {
    * @returns {boolean} Success status
    */
   async initialize(options = {}) {
-    const { verbose = false } = options;
-    const detectionResult = this.getCachedDetection();
+    const { verbose = false } = options
+    const detectionResult = this.getCachedDetection()
 
     if (!detectionResult.isUsed) {
       if (verbose) {
-        console.log('No IDEs detected - setting up generic configuration');
+        console.log('No IDEs detected - setting up generic configuration')
       }
       // Set up generic .ai/rules configuration
-      await this.setupGenericConfiguration(options);
-      return true;
+      await this.setupGenericConfiguration(options)
+      return true
     }
 
-    let success = true;
-    const paths = this.getConfigPaths();
+    let success = true
+    const paths = this.getConfigPaths()
 
     for (const [ideId, idePaths] of Object.entries(paths)) {
       try {
         if (verbose) {
-          console.log(`Setting up ${idePaths.name} integration...`);
+          console.log(`Setting up ${idePaths.name} integration...`)
         }
 
         // Ensure rules directory exists using modernized method
-        await ensureRuleDirectory(ideId, this.projectPath);
+        await ensureRuleDirectory(ideId, this.projectPath)
 
         // Create initial rule structure if needed
-        await this.createInitialRules(idePaths.rulesFolder, ideId);
+        await this.createInitialRules(idePaths.rulesFolder, ideId)
 
         if (verbose) {
-          console.log(`✅ ${idePaths.name} integration configured`);
+          console.log(`✅ ${idePaths.name} integration configured`)
         }
       } catch (error) {
         if (verbose) {
-          console.log(`❌ Failed to configure ${idePaths.name}: ${error.message}`);
+          console.log(`❌ Failed to configure ${idePaths.name}: ${error.message}`)
         }
-        success = false;
+        success = false
       }
     }
 
-    return success;
+    return success
   }
 
   /**
@@ -243,9 +234,9 @@ export class GenericIDEIntegration extends BaseIntegration {
    * @param {Object} options - Configuration options
    */
   async setupGenericConfiguration(options = {}) {
-    const genericRulesPath = path.join(this.projectPath, '.ai', 'rules');
-    await this.ensureDirectory(genericRulesPath);
-    await this.createInitialRules(genericRulesPath, 'generic', options);
+    const genericRulesPath = path.join(this.projectPath, '.ai', 'rules')
+    await this.ensureDirectory(genericRulesPath)
+    await this.createInitialRules(genericRulesPath, 'generic', options)
   }
 
   /**
@@ -256,7 +247,7 @@ export class GenericIDEIntegration extends BaseIntegration {
    */
   async createInitialRules(rulesPath, ideId) {
     // Creates basic rules structure as needed
-    const vdkConfigPath = path.join(rulesPath, '.vdk-config.json');
+    const vdkConfigPath = path.join(rulesPath, '.vdk-config.json')
 
     if (!this.fileExists(vdkConfigPath)) {
       const config = {
@@ -264,9 +255,9 @@ export class GenericIDEIntegration extends BaseIntegration {
         rulesFormat: 'md',
         lastUpdated: new Date().toISOString(),
         vdkVersion: '1.0.0',
-      };
+      }
 
-      await this.writeJsonFile(vdkConfigPath, config);
+      await this.writeJsonFile(vdkConfigPath, config)
     }
   }
 
@@ -275,8 +266,8 @@ export class GenericIDEIntegration extends BaseIntegration {
    * @returns {Array} Array of detected IDE objects
    */
   getDetectedIDEs() {
-    const detection = this.getCachedDetection();
-    return detection.detectedIDEs || [];
+    const detection = this.getCachedDetection()
+    return detection.detectedIDEs || []
   }
 
   /**
@@ -285,8 +276,8 @@ export class GenericIDEIntegration extends BaseIntegration {
    * @returns {boolean} True if IDE is detected
    */
   isIDEDetected(ideId) {
-    const detectedIDEs = this.getDetectedIDEs();
-    return detectedIDEs.some((ide) => ide.id === ideId);
+    const detectedIDEs = this.getDetectedIDEs()
+    return detectedIDEs.some((ide) => ide.id === ideId)
   }
 
   /**
@@ -294,16 +285,18 @@ export class GenericIDEIntegration extends BaseIntegration {
    * @returns {Object|null} Primary IDE detection or null
    */
   getPrimaryIDE() {
-    const detectedIDEs = this.getDetectedIDEs();
-    if (detectedIDEs.length === 0) return null;
+    const detectedIDEs = this.getDetectedIDEs()
+    if (detectedIDEs.length === 0) {
+      return null
+    }
 
     // Sort by confidence and return the highest
     const sorted = [...detectedIDEs].sort((a, b) => {
-      const confidenceOrder = { high: 3, medium: 2, low: 1, none: 0 };
-      return confidenceOrder[b.confidence] - confidenceOrder[a.confidence];
-    });
+      const confidenceOrder = { high: 3, medium: 2, low: 1, none: 0 }
+      return confidenceOrder[b.confidence] - confidenceOrder[a.confidence]
+    })
 
-    return sorted[0];
+    return sorted[0]
   }
 
   /**
@@ -313,9 +306,9 @@ export class GenericIDEIntegration extends BaseIntegration {
    */
   expandPath(filePath) {
     if (filePath.startsWith('~')) {
-      const platformPaths = this.getPlatformPaths();
-      return path.join(platformPaths.home, filePath.substring(1));
+      const platformPaths = this.getPlatformPaths()
+      return path.join(platformPaths.home, filePath.substring(1))
     }
-    return filePath;
+    return filePath
   }
 }

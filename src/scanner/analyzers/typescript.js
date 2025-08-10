@@ -5,8 +5,8 @@
  * patterns, interfaces, types, and commonly used libraries or frameworks.
  */
 
-import { TypeScriptParser } from '../utils/typescript-parser.js';
-import { analyzeJavaScript } from './javascript.js';
+import { TypeScriptParser } from '../utils/typescript-parser.js'
+import { analyzeJavaScript } from './javascript.js'
 
 /**
  * Analyzes TypeScript code to detect naming conventions and patterns
@@ -17,11 +17,11 @@ import { analyzeJavaScript } from './javascript.js';
 export async function analyzeTypeScript(content, filePath) {
   try {
     // First check if this is definitely a TypeScript file
-    const isTypeScriptFile = TypeScriptParser.isTypeScriptFile(filePath);
+    const isTypeScriptFile = TypeScriptParser.isTypeScriptFile(filePath)
 
     if (!isTypeScriptFile) {
       // If it's not a TypeScript file, just use the JavaScript analyzer
-      return await analyzeJavaScript(content, filePath);
+      return await analyzeJavaScript(content, filePath)
     }
 
     // For TypeScript files, use regex-based parsing instead of AST parsing
@@ -32,39 +32,39 @@ export async function analyzeTypeScript(content, filePath) {
       classes: [],
       components: [],
       patterns: [],
-    };
+    }
 
     // Use regex patterns to extract TypeScript constructs safely
     try {
       // Extract variable declarations
-      const varPattern = /(?:const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)/g;
-      let match;
+      const varPattern = /(?:const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)/g
+      let match
       while ((match = varPattern.exec(content)) !== null) {
         if (match[1]) {
-          jsAnalysis.variables.push(match[1]);
+          jsAnalysis.variables.push(match[1])
         }
       }
 
       // Extract function declarations
       const funcPattern =
-        /(?:function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)|(?:const|let)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*(?:async\s+)?(?:\([^)]*\)\s*=>|\([^)]*\)\s*:\s*[^=]*\s*=>))/g;
+        /(?:function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)|(?:const|let)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*(?:async\s+)?(?:\([^)]*\)\s*=>|\([^)]*\)\s*:\s*[^=]*\s*=>))/g
       while ((match = funcPattern.exec(content)) !== null) {
-        const funcName = match[1] || match[2];
+        const funcName = match[1] || match[2]
         if (funcName) {
-          jsAnalysis.functions.push(funcName);
+          jsAnalysis.functions.push(funcName)
         }
       }
 
       // Extract class declarations
-      const classPattern = /class\s+([a-zA-Z_$][a-zA-Z0-9_$]*)/g;
+      const classPattern = /class\s+([a-zA-Z_$][a-zA-Z0-9_$]*)/g
       while ((match = classPattern.exec(content)) !== null) {
         if (match[1]) {
-          jsAnalysis.classes.push(match[1]);
+          jsAnalysis.classes.push(match[1])
         }
       }
 
       // Extract React components (functional components)
-      const componentPattern = /(?:const|let|var|function)\s+([A-Z][a-zA-Z0-9_$]*)/g;
+      const componentPattern = /(?:const|let|var|function)\s+([A-Z][a-zA-Z0-9_$]*)/g
       while ((match = componentPattern.exec(content)) !== null) {
         if (
           match[1] &&
@@ -72,20 +72,20 @@ export async function analyzeTypeScript(content, filePath) {
             content.includes('React.FC') ||
             content.includes('</'))
         ) {
-          jsAnalysis.components.push(match[1]);
+          jsAnalysis.components.push(match[1])
         }
       }
 
       // Detect common patterns
       if (content.includes('useState') || content.includes('useEffect')) {
-        jsAnalysis.patterns.push('React Hooks');
+        jsAnalysis.patterns.push('React Hooks')
       }
       if (content.includes('async/await') || content.includes('async ')) {
-        jsAnalysis.patterns.push('Async/Await');
+        jsAnalysis.patterns.push('Async/Await')
       }
     } catch (regexError) {
       // If regex parsing fails, just continue with empty analysis
-      console.warn(`Warning: Regex parsing failed for ${filePath}: ${regexError.message}`);
+      console.warn(`Warning: Regex parsing failed for ${filePath}: ${regexError.message}`)
     }
 
     // Extend with TypeScript-specific analysis
@@ -95,26 +95,26 @@ export async function analyzeTypeScript(content, filePath) {
       types: [],
       // Additional TypeScript patterns
       patterns: [...(jsAnalysis.patterns || [])],
-    };
+    }
 
     // Simple regex-based detection for TypeScript features
     // This is a simplified approach - a proper TS parser would be better
     // but would increase complexity significantly
 
     // Detect interfaces
-    const interfacePattern = /interface\s+([A-Za-z0-9_]+)/g;
-    let match;
+    const interfacePattern = /interface\s+([A-Za-z0-9_]+)/g
+    let match
     while ((match = interfacePattern.exec(content)) !== null) {
       if (match[1]) {
-        tsAnalysis.interfaces.push(match[1]);
+        tsAnalysis.interfaces.push(match[1])
       }
     }
 
     // Detect type aliases
-    const typePattern = /type\s+([A-Za-z0-9_]+)/g;
+    const typePattern = /type\s+([A-Za-z0-9_]+)/g
     while ((match = typePattern.exec(content)) !== null) {
       if (match[1]) {
-        tsAnalysis.types.push(match[1]);
+        tsAnalysis.types.push(match[1])
       }
     }
 
@@ -124,7 +124,7 @@ export async function analyzeTypeScript(content, filePath) {
       content.includes('@NgModule') ||
       content.includes('@Injectable')
     ) {
-      tsAnalysis.patterns.push('Angular Decorators');
+      tsAnalysis.patterns.push('Angular Decorators')
     }
 
     // Detect NestJS patterns
@@ -133,7 +133,7 @@ export async function analyzeTypeScript(content, filePath) {
       content.includes('@Injectable') ||
       content.includes('@Module')
     ) {
-      tsAnalysis.patterns.push('NestJS Decorators');
+      tsAnalysis.patterns.push('NestJS Decorators')
     }
 
     // Detect TypeORM patterns
@@ -142,19 +142,19 @@ export async function analyzeTypeScript(content, filePath) {
       content.includes('@Column') ||
       content.includes('@Repository')
     ) {
-      tsAnalysis.patterns.push('TypeORM');
+      tsAnalysis.patterns.push('TypeORM')
     }
 
     // Detect functional patterns
-    const genericPattern = /<[^>]+>/g;
-    const genericMatches = content.match(genericPattern) || [];
+    const genericPattern = /<[^>]+>/g
+    const genericMatches = content.match(genericPattern) || []
     if (genericMatches.length > 5) {
-      tsAnalysis.patterns.push('Heavy Generic Usage');
+      tsAnalysis.patterns.push('Heavy Generic Usage')
     }
 
     // Check for type guards
     if (content.includes(' is ') && content.includes('function') && content.includes(': boolean')) {
-      tsAnalysis.patterns.push('Type Guards');
+      tsAnalysis.patterns.push('Type Guards')
     }
 
     // Look for utility types
@@ -165,7 +165,7 @@ export async function analyzeTypeScript(content, filePath) {
       content.includes('Pick<') ||
       content.includes('Omit<')
     ) {
-      tsAnalysis.patterns.push('Utility Types');
+      tsAnalysis.patterns.push('Utility Types')
     }
 
     // Look for React with TypeScript patterns
@@ -173,23 +173,23 @@ export async function analyzeTypeScript(content, filePath) {
       (content.includes('React.FC') || content.includes('FC<') || content.includes(': React.FC')) &&
       (content.includes('interface') || content.includes('type'))
     ) {
-      tsAnalysis.patterns.push('React with TypeScript');
+      tsAnalysis.patterns.push('React with TypeScript')
     }
 
     // Check for mapped types
     if (content.includes('keyof') || content.includes('in keyof')) {
-      tsAnalysis.patterns.push('Mapped Types');
+      tsAnalysis.patterns.push('Mapped Types')
     }
 
     // Deduplicate patterns and names
-    tsAnalysis.patterns = [...new Set(tsAnalysis.patterns)];
-    tsAnalysis.interfaces = [...new Set(tsAnalysis.interfaces)];
-    tsAnalysis.types = [...new Set(tsAnalysis.types)];
+    tsAnalysis.patterns = [...new Set(tsAnalysis.patterns)]
+    tsAnalysis.interfaces = [...new Set(tsAnalysis.interfaces)]
+    tsAnalysis.types = [...new Set(tsAnalysis.types)]
 
-    return tsAnalysis;
+    return tsAnalysis
   } catch (error) {
-    console.error(`Error analyzing TypeScript file: ${filePath}`);
-    console.error(error.message);
+    console.error(`Error analyzing TypeScript file: ${filePath}`)
+    console.error(error.message)
     return {
       variables: [],
       functions: [],
@@ -198,6 +198,6 @@ export async function analyzeTypeScript(content, filePath) {
       interfaces: [],
       types: [],
       patterns: [],
-    };
+    }
   }
 }

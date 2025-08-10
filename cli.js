@@ -9,33 +9,43 @@
  * Repository: https://github.com/entro314-labs/VDK-CLI
  */
 
-import chalk from 'chalk';
-import { Command } from 'commander';
-import dotenv from 'dotenv';
-import fs from 'fs/promises';
-import { createRequire } from 'module';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'node:fs/promises'
+import { createRequire } from 'node:module'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-import { downloadRule, fetchRuleList } from './src/blueprints-client.js';
-import { runScanner } from './src/scanner/index.js';
+import { Command } from 'commander'
+import dotenv from 'dotenv'
+
+import { downloadRule, fetchRuleList } from './src/blueprints-client.js'
+import { runScanner } from './src/scanner/index.js'
+import {
+  banner,
+  boxes,
+  colors,
+  format,
+  headers,
+  spinners,
+  status,
+  tables,
+} from './src/utils/cli-styles.js'
 
 // Get the directory where cli.js is located (VDK CLI directory)
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // Try loading .env.local first from CLI directory, then fall back to .env
-dotenv.config({ path: path.join(__dirname, '.env.local') });
-dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config({ path: path.join(__dirname, '.env.local') })
+dotenv.config({ path: path.join(__dirname, '.env') })
 
-const require = createRequire(import.meta.url);
-const pkg = require('./package.json');
+const require = createRequire(import.meta.url)
+const pkg = require('./package.json')
 
-const program = new Command();
+const program = new Command()
 
 program
   .name('vdk')
   .description("VDK CLI: The world's first Vibe Development Kit - One Context, All AI Assistants")
-  .version(pkg.version);
+  .version(pkg.version)
 
 program
   .command('init')
@@ -70,10 +80,10 @@ program
   .option('--interactive', 'Enable interactive category selection', false)
   .action(async (options) => {
     try {
-      const results = await runScanner(options);
+      const results = await runScanner(options)
 
       // Create the VDK configuration file
-      const configPath = path.join(options.projectPath, 'vdk.config.json');
+      const configPath = path.join(options.projectPath, 'vdk.config.json')
       const config = {
         project: {
           name: results.projectName,
@@ -81,93 +91,103 @@ program
         ide: results.initializedIDEs[0] || 'generic',
         rulesPath: options.outputPath,
         lastUpdated: new Date().toISOString(),
-      };
+      }
 
-      await fs.writeFile(configPath, JSON.stringify(config, null, 2));
-      console.log(chalk.green(`\n✅ VDK configuration created at ${chalk.cyan(configPath)}`));
+      await fs.writeFile(configPath, JSON.stringify(config, null, 2))
+      console.log(status.success(`VDK configuration created at ${format.path(configPath)}`))
 
       // Handle watch mode
       if (options.watch && results.ideIntegration) {
-        console.log(chalk.blue('\nWatch mode enabled. Press Ctrl+C to exit.'));
+        console.log(status.info('Watch mode enabled. Press Ctrl+C to exit.'))
         process.on('SIGINT', () => {
-          results.ideIntegration.shutdown();
-          process.exit(0);
-        });
+          results.ideIntegration.shutdown()
+          process.exit(0)
+        })
         // Keep the process running in watch mode
-        await new Promise(() => {});
+        await new Promise(() => {})
       }
-    } catch (error) {
+    } catch (_error) {
       // The scanner engine already logs errors, so we just exit to prevent double logging
-      process.exit(1);
+      process.exit(1)
     }
-  });
+  })
 
 program
   .command('deploy')
   .description('Deploy project-aware rules (Under Development)')
   .action(() => {
-    console.log(chalk.yellow('⚠️ This command is under development.'));
-    console.log('The `deploy` command will be used to send your VDK rules to the VDK Hub.');
-  });
+    console.log(
+      boxes.warning(
+        'This command is under development.\nThe `deploy` command will be used to send your VDK rules to the VDK Hub.',
+        'Coming Soon'
+      )
+    )
+  })
 
 program
   .command('update')
   .description('Update VDK blueprints from the VDK-Blueprints repository')
   .option('-o, --outputPath <path>', 'Path to the rules directory', './.ai/rules')
   .action(async (options) => {
-    const rulesDir = path.resolve(options.outputPath);
-    console.log(chalk.blue(`Checking for updates in VDK-Blueprints repository...`));
+    const rulesDir = path.resolve(options.outputPath)
+
+    console.log(headers.section('VDK Blueprint Update'))
+    const spinner = spinners.updating('Checking for updates in VDK-Blueprints repository...')
+    spinner.start()
 
     try {
       // Ensure local rules directory exists
-      await fs.mkdir(rulesDir, { recursive: true });
+      await fs.mkdir(rulesDir, { recursive: true })
 
-      const remoteRules = await fetchRuleList();
+      const remoteRules = await fetchRuleList()
       if (remoteRules.length === 0) {
-        console.log(
-          chalk.yellow('No blueprints found in the VDK-Blueprints repository or failed to connect.')
-        );
-        return;
+        spinner.fail('No blueprints found in the VDK-Blueprints repository or failed to connect.')
+        return
       }
 
-      const localRules = await fs.readdir(rulesDir).catch(() => []);
-      let updatedCount = 0;
-      let newCount = 0;
+      const localRules = await fs.readdir(rulesDir).catch(() => [])
+      let updatedCount = 0
+      let newCount = 0
 
-      console.log(
-        chalk.blue(
-          `Found ${remoteRules.length} blueprints in the repository. Comparing with local rules...`
-        )
-      );
+      spinner.text = `Found ${format.count(remoteRules.length)} blueprints. Comparing with local rules...`
 
       for (const remoteRule of remoteRules) {
-        const localPath = path.join(rulesDir, remoteRule.name);
-        const ruleContent = await downloadRule(remoteRule.download_url);
+        spinner.text = `Processing ${remoteRule.name}...`
+        const localPath = path.join(rulesDir, remoteRule.name)
+        const ruleContent = await downloadRule(remoteRule.download_url)
 
         if (ruleContent) {
           if (localRules.includes(remoteRule.name)) {
-            await fs.writeFile(localPath, ruleContent);
-            updatedCount++;
+            await fs.writeFile(localPath, ruleContent)
+            updatedCount++
           } else {
-            await fs.writeFile(localPath, ruleContent);
-            newCount++;
+            await fs.writeFile(localPath, ruleContent)
+            newCount++
           }
         }
       }
 
+      spinner.stop()
+
       if (newCount > 0 || updatedCount > 0) {
-        console.log(chalk.green(`✅ Update complete!`));
-        if (newCount > 0) console.log(chalk.green(`   - Added ${newCount} new rule(s).`));
-        if (updatedCount > 0)
-          console.log(chalk.green(`   - Updated ${updatedCount} existing rule(s).`));
+        console.log(status.success('Update complete!'))
+        if (newCount > 0) {
+          console.log(status.progress(`Added ${format.count(newCount)} new rule(s)`))
+        }
+        if (updatedCount > 0) {
+          console.log(status.progress(`Updated ${format.count(updatedCount)} existing rule(s)`))
+        }
       } else {
-        console.log(chalk.green('✅ Your rules are already up to date.'));
+        console.log(status.success('Your rules are already up to date'))
       }
     } catch (error) {
-      console.error(chalk.red(`An error occurred during the update: ${error.message}`));
-      process.exit(1);
+      if (spinner.isSpinning) {
+        spinner.fail('Update failed')
+      }
+      console.log(boxes.error(`An error occurred during the update:\n${error.message}`))
+      process.exit(1)
     }
-  });
+  })
 
 program
   .command('status')
@@ -175,57 +195,92 @@ program
   .option('-c, --configPath <path>', 'Path to the VDK configuration file', './vdk.config.json')
   .option('-o, --outputPath <path>', 'Path to the rules directory', './.ai/rules')
   .action(async (options) => {
-    console.log(chalk.blue('Checking VDK status...\n'));
-    const configPath = path.resolve(options.configPath);
-    const rulesDir = path.resolve(options.outputPath);
-    let isConfigured = false;
+    console.log(headers.section('VDK Status Check'))
+
+    const configPath = path.resolve(options.configPath)
+    const rulesDir = path.resolve(options.outputPath)
+    const spinner = spinners.scanning('Checking VDK status...')
+    spinner.start()
+
+    const statusTable = tables.status()
+    let isConfigured = false
 
     // 1. Check for VDK configuration file
     try {
-      await fs.access(configPath);
-      const config = JSON.parse(await fs.readFile(configPath, 'utf8'));
-      console.log(chalk.green('✅ VDK Configuration: Found and valid.'));
-      console.log(`   - Project: ${chalk.cyan(config.project.name)}`);
-      console.log(`   - IDE: ${chalk.cyan(config.ide)}`);
-      isConfigured = true;
-    } catch (error) {
-      console.log(chalk.yellow('⚠️ VDK Configuration: Not found or invalid.'));
-      console.log(`   - Run ${chalk.cyan('vdk init')} to get started.`);
+      await fs.access(configPath)
+      const config = JSON.parse(await fs.readFile(configPath, 'utf8'))
+      statusTable.push([
+        'VDK Configuration',
+        status.success('Found'),
+        `${format.keyValue('Project', config.project.name)}\n${format.keyValue('IDE', config.ide)}`,
+      ])
+      isConfigured = true
+    } catch (_error) {
+      statusTable.push([
+        'VDK Configuration',
+        status.warning('Missing'),
+        `Run ${colors.primary('vdk init')} to get started`,
+      ])
     }
 
     // 2. Check local and remote rules
     try {
-      const localRules = await fs.readdir(rulesDir).catch(() => []);
-      console.log(
-        `\n${chalk.green('✅ Local Rules:')} Found ${chalk.cyan(localRules.length)} rule(s) in ${chalk.dim(rulesDir)}`
-      );
+      const localRules = await fs.readdir(rulesDir).catch(() => [])
+      statusTable.push([
+        'Local Rules',
+        status.success('Found'),
+        `${format.count(localRules.length)} rules in ${format.path(rulesDir)}`,
+      ])
 
-      const remoteRules = await fetchRuleList();
+      const remoteRules = await fetchRuleList()
       if (remoteRules.length > 0) {
-        const remoteRuleNames = remoteRules.map((r) => r.name);
-        const newRules = remoteRuleNames.filter((r) => !localRules.includes(r));
+        const remoteRuleNames = remoteRules.map((r) => r.name)
+        const newRules = remoteRuleNames.filter((r) => !localRules.includes(r))
 
-        console.log(
-          `\n${chalk.green('✅ VDK Hub Status:')} Hub contains ${chalk.cyan(remoteRules.length)} total rules.`
-        );
         if (newRules.length > 0) {
-          console.log(
-            chalk.yellow(
-              `   - Updates available: ${chalk.cyan(newRules.length)} new or updated rule(s).`
-            )
-          );
-          console.log(`   - Run ${chalk.cyan('vdk update')} to get the latest rules.`);
+          statusTable.push([
+            'VDK Hub',
+            status.warning('Updates Available'),
+            `${format.count(newRules.length)} new rules available\nRun ${colors.primary('vdk update')} to sync`,
+          ])
         } else {
-          console.log(chalk.green('   - Your local rules are up to date.'));
+          statusTable.push([
+            'VDK Hub',
+            status.success('Up to Date'),
+            `${format.count(remoteRules.length)} total rules in sync`,
+          ])
         }
+      } else {
+        statusTable.push([
+          'VDK Hub',
+          status.error('Unreachable'),
+          'Could not connect to VDK-Blueprints repository',
+        ])
       }
     } catch (error) {
-      console.log(chalk.red(`\n❌ Could not check rule status: ${error.message}`));
+      statusTable.push(['Rule Status', status.error('Error'), error.message])
     }
-  });
 
-program.parse(process.argv);
+    spinner.stop()
+    console.log(statusTable.toString())
 
-if (!process.argv.slice(2).length) {
-  program.outputHelp();
+    if (!isConfigured) {
+      console.log(
+        `\n${boxes.info(
+          `Get started by running:\n${colors.primary('vdk init')}\n\nThis will scan your project and create project-aware AI rules.`,
+          'Quick Start'
+        )}`
+      )
+    }
+  })
+
+// Show banner when no arguments provided
+if (process.argv.slice(2).length === 0) {
+  console.log(banner())
+}
+
+program.parse(process.argv)
+
+if (process.argv.slice(2).length === 0) {
+  program.outputHelp()
 }

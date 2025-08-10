@@ -6,18 +6,18 @@
  * Part of Phase 3 implementation for the Project-Specific Rule Generator.
  */
 
-import chalk from 'chalk';
-import { spawn } from 'child_process';
-import fs from 'fs';
-import path from 'path';
+import { spawn } from 'node:child_process'
+import fs from 'node:fs'
+import path from 'node:path'
+
+import chalk from 'chalk'
 
 import {
   detectIDEs as detectIDEConfigs,
-  ensureRuleDirectory,
   getIDEConfigById,
   getIDEConfigPaths,
   IDE_CONFIGURATIONS,
-} from '../../shared/ide-configuration.js';
+} from '../../shared/ide-configuration.js'
 
 /**
  * IDE Integration Manager class
@@ -27,15 +27,15 @@ class IDEIntegrationManager {
   constructor(options = {}) {
     this.options = {
       supportedIDEs: options.supportedIDEs || IDE_CONFIGURATIONS.map((ide) => ide.id),
-      watchMode: options.watchMode || false,
+      watchMode: options.watchMode,
       pollingInterval: options.pollingInterval || 5000, // 5 seconds default
-      verbose: options.verbose || false,
-    };
+      verbose: options.verbose,
+    }
 
-    this.integrations = {};
-    this.watchers = {};
-    this.lastScanTimestamp = Date.now();
-    this.changeBuffer = {};
+    this.integrations = {}
+    this.watchers = {}
+    this.lastScanTimestamp = Date.now()
+    this.changeBuffer = {}
   }
 
   /**
@@ -44,27 +44,27 @@ class IDEIntegrationManager {
    * @returns {Array} - List of initialized integrations
    */
   async initialize(projectPath) {
-    console.log(chalk.blue('\nInitializing IDE integrations...'));
+    console.log(chalk.blue('\nInitializing IDE integrations...'))
 
-    const detectedIDEs = await this.detectIDEs(projectPath);
+    const detectedIDEs = await this.detectIDEs(projectPath)
 
     if (detectedIDEs.length === 0) {
       console.log(
         chalk.yellow('No supported IDE configurations detected. Using generic integration.')
-      );
-      detectedIDEs.push('generic');
+      )
+      detectedIDEs.push('generic')
     }
 
     // Initialize each detected integration
     for (const ideId of detectedIDEs) {
-      await this.initializeIntegration(ideId, projectPath);
+      await this.initializeIntegration(ideId, projectPath)
     }
 
     console.log(
       chalk.green(`IDE integrations initialized: ${Object.keys(this.integrations).join(', ')}`)
-    );
+    )
 
-    return Object.keys(this.integrations);
+    return Object.keys(this.integrations)
   }
 
   /**
@@ -74,12 +74,12 @@ class IDEIntegrationManager {
    */
   async detectIDEs(projectPath) {
     // Use the centralized detection function
-    const detectedConfigs = detectIDEConfigs(projectPath);
+    const detectedConfigs = detectIDEConfigs(projectPath)
 
     // Filter by supported IDEs and return IDs only
     return detectedConfigs
       .filter((config) => this.options.supportedIDEs.includes(config.id))
-      .map((config) => config.id);
+      .map((config) => config.id)
   }
 
   /**
@@ -89,8 +89,8 @@ class IDEIntegrationManager {
    */
   async initializeIntegration(ideId, projectPath) {
     // Get configuration paths from centralized module
-    const paths = getIDEConfigPaths(ideId, projectPath);
-    const ideConfig = getIDEConfigById(ideId);
+    const paths = getIDEConfigPaths(ideId, projectPath)
+    const ideConfig = getIDEConfigById(ideId)
 
     // Create the integration object
     this.integrations[ideId] = {
@@ -99,26 +99,26 @@ class IDEIntegrationManager {
       configPath: paths.configPath,
       rulePath: paths.rulePath,
       handlers: this.getHandlers(ideId),
-    };
+    }
 
     // Create rule directories if they don't exist
-    const rulePath = this.integrations[ideId].rulePath;
+    const rulePath = this.integrations[ideId].rulePath
     if (!fs.existsSync(rulePath)) {
-      fs.mkdirSync(rulePath, { recursive: true });
+      fs.mkdirSync(rulePath, { recursive: true })
       console.log(
         chalk.green(`Created rule directory for ${this.integrations[ideId].name}: ${rulePath}`)
-      );
+      )
     }
 
     // If in watch mode, start file watchers for IDE config changes
     if (this.options.watchMode) {
-      await this.startWatcher(ideId, projectPath);
+      await this.startWatcher(ideId, projectPath)
     }
 
     if (this.options.verbose) {
       console.log(
         chalk.gray(`Initialized ${this.integrations[ideId].name} integration at ${rulePath}`)
-      );
+      )
     }
   }
 
@@ -129,8 +129,8 @@ class IDEIntegrationManager {
    * @returns {string} - Path to the IDE configuration
    */
   getConfigPath(ideId, projectPath) {
-    const paths = getIDEConfigPaths(ideId, projectPath);
-    return paths.configPath;
+    const paths = getIDEConfigPaths(ideId, projectPath)
+    return paths.configPath
   }
 
   /**
@@ -140,8 +140,8 @@ class IDEIntegrationManager {
    * @returns {string} - Path to the IDE rules
    */
   getRulePath(ideId, projectPath) {
-    const paths = getIDEConfigPaths(ideId, projectPath);
-    return paths.rulePath;
+    const paths = getIDEConfigPaths(ideId, projectPath)
+    return paths.rulePath
   }
 
   /**
@@ -152,44 +152,44 @@ class IDEIntegrationManager {
   getHandlers(ide) {
     // Define handlers for different IDE events
     return {
-      onConfigChange: async (configPath) => {
-        console.log(chalk.yellow(`${ide} configuration changed, updating rules...`));
-        await this.regenerateRules(ide);
+      onConfigChange: async (_configPath) => {
+        console.log(chalk.yellow(`${ide} configuration changed, updating rules...`))
+        await this.regenerateRules(ide)
       },
       onRuleUpdate: async (rulePath) => {
-        console.log(chalk.green(`Rules updated for ${ide}`));
+        console.log(chalk.green(`Rules updated for ${ide}`))
         // Notify the IDE about rule changes if supported
         switch (ide) {
           case 'vscode':
           case 'vscode-insiders':
-            this.notifyVSCode(rulePath, ide);
-            break;
+            this.notifyVSCode(rulePath, ide)
+            break
           case 'cursor':
-            this.notifyCursor(rulePath);
-            break;
+            this.notifyCursor(rulePath)
+            break
           case 'windsurf':
           case 'windsurf-next':
-            this.notifyWindsurf(rulePath, ide);
-            break;
+            this.notifyWindsurf(rulePath, ide)
+            break
           case 'github-copilot':
-            this.notifyGitHubCopilot(rulePath);
-            break;
+            this.notifyGitHubCopilot(rulePath)
+            break
           case 'claude':
           case 'claude-desktop':
-            this.notifyClaude(rulePath, ide);
-            break;
+            this.notifyClaude(rulePath, ide)
+            break
           case 'zed':
-            this.notifyZed(rulePath);
-            break;
+            this.notifyZed(rulePath)
+            break
           case 'jetbrains':
-            this.notifyJetBrains(rulePath);
-            break;
+            this.notifyJetBrains(rulePath)
+            break
           default:
-            console.log(chalk.gray(`[${ide} notification] Rules updated at ${rulePath}`));
-            break;
+            console.log(chalk.gray(`[${ide} notification] Rules updated at ${rulePath}`))
+            break
         }
       },
-    };
+    }
   }
 
   /**
@@ -198,22 +198,22 @@ class IDEIntegrationManager {
    * @param {string} projectPath - Path to the project
    */
   async startWatcher(ide, projectPath) {
-    const configPath = this.getConfigPath(ide, projectPath);
+    const configPath = this.getConfigPath(ide, projectPath)
 
     if (!fs.existsSync(configPath)) {
-      return;
+      return
     }
 
-    console.log(chalk.blue(`Starting watcher for ${ide} configuration...`));
+    console.log(chalk.blue(`Starting watcher for ${ide} configuration...`))
 
     // Simple polling-based file watcher
     this.watchers[ide] = setInterval(() => {
-      const stats = fs.statSync(configPath);
+      const stats = fs.statSync(configPath)
 
       if (stats.mtime.getTime() > this.lastScanTimestamp) {
-        this.bufferChange(ide, configPath);
+        this.bufferChange(ide, configPath)
       }
-    }, this.options.pollingInterval);
+    }, this.options.pollingInterval)
   }
 
   /**
@@ -228,13 +228,13 @@ class IDEIntegrationManager {
         path: configPath,
         timer: setTimeout(() => {
           // Process the change after a delay
-          if (this.integrations[ide] && this.integrations[ide].handlers.onConfigChange) {
-            this.integrations[ide].handlers.onConfigChange(configPath);
+          if (this.integrations[ide]?.handlers.onConfigChange) {
+            this.integrations[ide].handlers.onConfigChange(configPath)
           }
-          delete this.changeBuffer[ide];
-          this.lastScanTimestamp = Date.now();
+          delete this.changeBuffer[ide]
+          this.lastScanTimestamp = Date.now()
         }, 2000), // 2 second debounce
-      };
+      }
     }
   }
 
@@ -244,13 +244,13 @@ class IDEIntegrationManager {
    */
   async regenerateRules(ide) {
     if (!this.integrations[ide]) {
-      return;
+      return
     }
 
-    const rulePath = this.integrations[ide].rulePath;
-    const projectPath = path.dirname(path.dirname(rulePath));
+    const rulePath = this.integrations[ide].rulePath
+    const projectPath = path.dirname(path.dirname(rulePath))
 
-    console.log(chalk.blue(`Regenerating rules for ${ide}...`));
+    console.log(chalk.blue(`Regenerating rules for ${ide}...`))
 
     // Launch the scanner process as a background task
     const scanner = spawn(
@@ -267,12 +267,12 @@ class IDEIntegrationManager {
         detached: true,
         stdio: 'ignore',
       }
-    );
+    )
 
     // Don't wait for the process to complete, let it run in background
-    scanner.unref();
+    scanner.unref()
 
-    console.log(chalk.green(`Rule regeneration initiated for ${ide}`));
+    console.log(chalk.green(`Rule regeneration initiated for ${ide}`))
   }
 
   /**
@@ -286,7 +286,7 @@ class IDEIntegrationManager {
       chalk.gray(
         `[${variant === 'vscode-insiders' ? 'VS Code Insiders' : 'VS Code'} notification] Rules updated at ${rulePath}`
       )
-    );
+    )
   }
 
   /**
@@ -295,7 +295,7 @@ class IDEIntegrationManager {
    */
   notifyCursor(rulePath) {
     // This would use Cursor-specific mechanisms when implemented
-    console.log(chalk.gray(`[Cursor notification] Rules updated at ${rulePath}`));
+    console.log(chalk.gray(`[Cursor notification] Rules updated at ${rulePath}`))
   }
 
   /**
@@ -305,8 +305,8 @@ class IDEIntegrationManager {
    */
   notifyWindsurf(rulePath, variant = 'windsurf') {
     // This would use Windsurf-specific mechanisms when implemented
-    const variantName = variant === 'windsurf-next' ? 'Windsurf Next' : 'Windsurf';
-    console.log(chalk.gray(`[${variantName} notification] Rules updated at ${rulePath}`));
+    const variantName = variant === 'windsurf-next' ? 'Windsurf Next' : 'Windsurf'
+    console.log(chalk.gray(`[${variantName} notification] Rules updated at ${rulePath}`))
   }
 
   /**
@@ -315,7 +315,7 @@ class IDEIntegrationManager {
    */
   notifyGitHubCopilot(rulePath) {
     // This would use GitHub Copilot-specific mechanisms when implemented
-    console.log(chalk.gray(`[GitHub Copilot notification] Rules updated at ${rulePath}`));
+    console.log(chalk.gray(`[GitHub Copilot notification] Rules updated at ${rulePath}`))
   }
 
   /**
@@ -325,8 +325,8 @@ class IDEIntegrationManager {
    */
   notifyClaude(rulePath, variant = 'claude') {
     // This would use Claude-specific mechanisms when implemented
-    const variantName = variant === 'claude-desktop' ? 'Claude Desktop' : 'Claude Code';
-    console.log(chalk.gray(`[${variantName} notification] Rules updated at ${rulePath}`));
+    const variantName = variant === 'claude-desktop' ? 'Claude Desktop' : 'Claude Code'
+    console.log(chalk.gray(`[${variantName} notification] Rules updated at ${rulePath}`))
   }
 
   /**
@@ -335,7 +335,7 @@ class IDEIntegrationManager {
    */
   notifyZed(rulePath) {
     // This would use Zed-specific mechanisms when implemented
-    console.log(chalk.gray(`[Zed Editor notification] Rules updated at ${rulePath}`));
+    console.log(chalk.gray(`[Zed Editor notification] Rules updated at ${rulePath}`))
   }
 
   /**
@@ -344,7 +344,7 @@ class IDEIntegrationManager {
    */
   notifyJetBrains(rulePath) {
     // This would use JetBrains-specific mechanisms when implemented
-    console.log(chalk.gray(`[JetBrains notification] Rules updated at ${rulePath}`));
+    console.log(chalk.gray(`[JetBrains notification] Rules updated at ${rulePath}`))
   }
 
   /**
@@ -353,18 +353,18 @@ class IDEIntegrationManager {
   shutdown() {
     // Clear all watchers
     for (const ide in this.watchers) {
-      clearInterval(this.watchers[ide]);
+      clearInterval(this.watchers[ide])
     }
 
     // Clear any pending change timers
     for (const ide in this.changeBuffer) {
       if (this.changeBuffer[ide].timer) {
-        clearTimeout(this.changeBuffer[ide].timer);
+        clearTimeout(this.changeBuffer[ide].timer)
       }
     }
 
-    console.log(chalk.blue('IDE integrations shut down'));
+    console.log(chalk.blue('IDE integrations shut down'))
   }
 }
 
-export { IDEIntegrationManager };
+export { IDEIntegrationManager }

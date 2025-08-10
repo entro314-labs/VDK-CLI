@@ -2,10 +2,10 @@
  * CLI Test Helper
  * Shared utilities for testing CLI functionality
  */
-import { spawn } from 'child_process';
-import path from 'path';
+import { spawn } from 'node:child_process'
+import path from 'node:path'
 
-const cliPath = path.join(global.TEST_ROOT, 'cli.js');
+const cliPath = path.join(global.TEST_ROOT, 'cli.js')
 
 /**
  * Execute CLI command with arguments
@@ -17,18 +17,18 @@ export function runCLI(args, options = {}) {
       stdio: 'pipe',
       timeout: options.timeout || 30000,
       env: { ...process.env, ...options.env },
-    });
+    })
 
-    let stdout = '';
-    let stderr = '';
+    let stdout = ''
+    let stderr = ''
 
     child.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
+      stdout += data.toString()
+    })
 
     child.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
+      stderr += data.toString()
+    })
 
     child.on('close', (code) => {
       resolve({
@@ -36,27 +36,27 @@ export function runCLI(args, options = {}) {
         stdout,
         stderr,
         success: code === 0,
-      });
-    });
+      })
+    })
 
     child.on('error', (error) => {
-      reject(error);
-    });
-  });
+      reject(error)
+    })
+  })
 }
 
 /**
  * Create temporary test directory
  */
 export async function createTempDir(name = 'test-temp') {
-  const fs = await import('fs/promises');
-  const tempPath = path.join(global.TEST_ROOT, name);
+  const fs = await import('node:fs/promises')
+  const tempPath = path.join(global.TEST_ROOT, name)
 
   try {
-    await fs.mkdir(tempPath, { recursive: true });
-    return tempPath;
+    await fs.mkdir(tempPath, { recursive: true })
+    return tempPath
   } catch (error) {
-    throw new Error(`Failed to create temp directory: ${error.message}`);
+    throw new Error(`Failed to create temp directory: ${error.message}`)
   }
 }
 
@@ -64,10 +64,10 @@ export async function createTempDir(name = 'test-temp') {
  * Clean up temporary directory
  */
 export async function cleanupTempDir(dirPath) {
-  const fs = await import('fs/promises');
+  const fs = await import('node:fs/promises')
 
   try {
-    await fs.rm(dirPath, { recursive: true, force: true });
+    await fs.rm(dirPath, { recursive: true, force: true })
   } catch (_error) {
     // Ignore cleanup errors
   }

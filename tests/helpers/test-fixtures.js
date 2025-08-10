@@ -18,7 +18,7 @@ export const mockProjectStructure = {
     src: { files: ['index.js', 'utils.js'] },
     tests: { files: [] },
   },
-};
+}
 
 export const mockPatterns = {
   namingConventions: {
@@ -31,7 +31,7 @@ export const mockPatterns = {
     namingConsistency: 0.85,
     structureConsistency: 0.9,
   },
-};
+}
 
 export const mockDependencyAnalysis = {
   dependencyGraph: new Map(),
@@ -42,7 +42,7 @@ export const mockDependencyAnalysis = {
   layeredStructure: [['index.js'], ['utils.js']],
   cyclesDetected: false,
   architecturalHints: ['Clean Architecture'],
-};
+}
 
 export const validCommand = {
   id: 'test-command',
@@ -52,7 +52,7 @@ export const validCommand = {
   commandType: 'slash',
   version: '1.0.0',
   scope: 'project',
-};
+}
 
 export const validBlueprint = {
   id: 'test-blueprint',
@@ -65,7 +65,7 @@ export const validBlueprint = {
       compatible: true,
     },
   },
-};
+}
 
 export const malformedCodeSamples = [
   '}{invalid javascript syntax!@#$%',
@@ -74,11 +74,11 @@ export const malformedCodeSamples = [
   'require("fs").readFileSync("/etc/passwd")',
   ''.repeat(1000), // Long string
   '\x00\x01\x02\x03', // Binary data
-];
+]
 
 export const dangerousFilePaths = [
   '/etc/passwd',
   '../../../etc/passwd',
   '/dev/null',
   'nonexistent-directory-12345',
-];
+]

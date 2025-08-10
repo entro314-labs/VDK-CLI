@@ -5,20 +5,20 @@
  * including Codeium AI features, Windsurf-specific configurations, and optimized workflows.
  */
 
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 
-import { BaseIntegration } from './base-integration.js';
+import { BaseIntegration } from './base-integration.js'
 
 /**
  * Windsurf AI Editor configuration and integration utilities
  */
 export class WindsurfIntegration extends BaseIntegration {
   constructor(projectPath = process.cwd()) {
-    super('Windsurf', projectPath);
-    this.windsurfConfigPath = path.join(projectPath, '.windsurf');
-    this.globalWindsurfConfigPath = path.join(os.homedir(), '.codeium', 'windsurf');
+    super('Windsurf', projectPath)
+    this.windsurfConfigPath = path.join(projectPath, '.windsurf')
+    this.globalWindsurfConfigPath = path.join(os.homedir(), '.codeium', 'windsurf')
   }
 
   /**
@@ -49,7 +49,7 @@ export class WindsurfIntegration extends BaseIntegration {
       globalMcp: path.join(this.globalWindsurfConfigPath, 'mcp_config.json'),
       projectMcp: path.join(this.windsurfConfigPath, 'mcp_config.json'),
       codeiumConfig: path.join(os.homedir(), '.codeium', 'config'),
-    };
+    }
   }
 
   /**
@@ -62,13 +62,13 @@ export class WindsurfIntegration extends BaseIntegration {
       confidence: 'none', // none, low, medium, high
       indicators: [],
       recommendations: [],
-    };
+    }
 
     // 1. Check for .windsurf directory structure
     if (this.directoryExists(this.windsurfConfigPath)) {
-      detection.indicators.push('Project has .windsurf directory');
-      detection.confidence = 'high';
-      detection.isUsed = true;
+      detection.indicators.push('Project has .windsurf directory')
+      detection.confidence = 'high'
+      detection.isUsed = true
 
       // Check for specific Windsurf files
       const windsurfFiles = [
@@ -77,101 +77,101 @@ export class WindsurfIntegration extends BaseIntegration {
         'workspace.json',
         'mcp_config.json',
         'ai_settings.json',
-      ];
+      ]
 
       windsurfFiles.forEach((file) => {
-        const filePath = path.join(this.windsurfConfigPath, file);
+        const filePath = path.join(this.windsurfConfigPath, file)
         if (this.fileExists(filePath)) {
-          detection.indicators.push(`Found .windsurf/${file}`);
+          detection.indicators.push(`Found .windsurf/${file}`)
           if (file === 'config.json' || file === 'ai_settings.json') {
-            detection.confidence = 'high';
+            detection.confidence = 'high'
           }
         }
-      });
+      })
 
       // Check for rules directory and memories system
-      const rulesPath = path.join(this.windsurfConfigPath, 'rules');
+      const rulesPath = path.join(this.windsurfConfigPath, 'rules')
       if (this.directoryExists(rulesPath)) {
-        detection.indicators.push('Found .windsurf/rules directory');
-        detection.confidence = 'high';
+        detection.indicators.push('Found .windsurf/rules directory')
+        detection.confidence = 'high'
       }
 
       // Check for native memories system
-      const memoriesPath = path.join(os.homedir(), '.codeium', 'windsurf', 'memories');
+      const memoriesPath = path.join(os.homedir(), '.codeium', 'windsurf', 'memories')
       if (this.directoryExists(memoriesPath)) {
-        detection.indicators.push('Found Windsurf native memories directory');
-        detection.confidence = 'high';
+        detection.indicators.push('Found Windsurf native memories directory')
+        detection.confidence = 'high'
       }
     }
 
     // 2. Check for global Codeium/Windsurf installation
-    const platformPaths = this.getPlatformPaths();
+    const platformPaths = this.getPlatformPaths()
     const windsurfPaths = [
       platformPaths.applications ? path.join(platformPaths.applications, 'Windsurf.app') : null,
       platformPaths.applications ? path.join(platformPaths.applications, 'Codeium.app') : null,
       platformPaths.home ? path.join(platformPaths.home, '.codeium') : null,
       platformPaths.appData ? path.join(platformPaths.appData, 'Codeium') : null,
       platformPaths.appData ? path.join(platformPaths.appData, 'Windsurf') : null,
-    ].filter(Boolean);
+    ].filter(Boolean)
 
     windsurfPaths.forEach((windsurfPath) => {
       if (this.directoryExists(windsurfPath)) {
-        detection.indicators.push(`Windsurf/Codeium installation found at ${windsurfPath}`);
+        detection.indicators.push(`Windsurf/Codeium installation found at ${windsurfPath}`)
         if (detection.confidence === 'none') {
-          detection.confidence = 'low';
+          detection.confidence = 'low'
         }
       }
-    });
+    })
 
     // 3. Check for Windsurf command availability
-    const commands = ['windsurf', 'codeium'];
+    const commands = ['windsurf', 'codeium']
     commands.forEach((command) => {
       if (this.commandExists(command)) {
-        detection.indicators.push(`${command} CLI command is available`);
+        detection.indicators.push(`${command} CLI command is available`)
         if (detection.confidence === 'none') {
-          detection.confidence = 'medium';
+          detection.confidence = 'medium'
         }
 
-        const version = this.getCommandVersion(command, '--version');
+        const version = this.getCommandVersion(command, '--version')
         if (version) {
-          detection.indicators.push(`${command} version: ${version}`);
+          detection.indicators.push(`${command} version: ${version}`)
         }
       }
-    });
+    })
 
     // 4. Check for Windsurf-specific workspace indicators
-    const workspaceIndicators = ['.windsurf/', '.windsurf/rules/', '.codeium/'];
+    const workspaceIndicators = ['.windsurf/', '.windsurf/rules/', '.codeium/']
 
     workspaceIndicators.forEach((indicator) => {
-      const indicatorPath = path.join(this.projectPath, indicator);
+      const indicatorPath = path.join(this.projectPath, indicator)
       if (this.directoryExists(indicatorPath)) {
-        detection.indicators.push(`Workspace has ${indicator}`);
-        detection.isUsed = true;
+        detection.indicators.push(`Workspace has ${indicator}`)
+        detection.isUsed = true
         if (detection.confidence === 'none' || detection.confidence === 'low') {
-          detection.confidence = 'medium';
+          detection.confidence = 'medium'
         }
       }
-    });
+    })
 
     // 5. Check for Codeium API configuration
     try {
-      const codeiumConfigPath = path.join(os.homedir(), '.codeium', 'config');
+      const codeiumConfigPath = path.join(os.homedir(), '.codeium', 'config')
       if (this.fileExists(codeiumConfigPath)) {
-        detection.indicators.push('Codeium API configuration found');
+        detection.indicators.push('Codeium API configuration found')
         if (detection.confidence === 'none') {
-          detection.confidence = 'low';
+          detection.confidence = 'low'
         }
       }
-    } catch (error) {
+    } catch {
       // Skip if homedir is not available
     }
 
     // 6. Check .gitignore for Windsurf patterns
-    const gitignorePatterns = this.checkGitignore(['.windsurf', '.codeium']);
+    const gitignorePatterns = this.checkGitignore(['.windsurf', '.codeium'])
     if (gitignorePatterns.length > 0) {
       detection.indicators.push(
         `Windsurf paths found in .gitignore: ${gitignorePatterns.join(', ')}`
-      );
+      )
     }
 
     // 7. Check for recent Windsurf activity
@@ -179,40 +179,40 @@ export class WindsurfIntegration extends BaseIntegration {
       platformPaths.logs ? path.join(platformPaths.logs, 'Windsurf') : null,
       platformPaths.logs ? path.join(platformPaths.logs, 'Codeium') : null,
       platformPaths.home ? path.join(platformPaths.home, '.codeium', 'logs') : null,
-    ].filter(Boolean);
+    ].filter(Boolean)
 
     windsurfLogPaths.forEach((logPath) => {
-      const recentLogs = this.getRecentActivity(logPath, 7);
+      const recentLogs = this.getRecentActivity(logPath, 7)
       if (recentLogs.length > 0) {
-        detection.indicators.push(`Recent Windsurf activity (${recentLogs.length} log files)`);
-        detection.isUsed = true;
-        detection.confidence = 'high';
+        detection.indicators.push(`Recent Windsurf activity (${recentLogs.length} log files)`)
+        detection.isUsed = true
+        detection.confidence = 'high'
       }
-    });
+    })
 
     // 8. Generate recommendations based on detection
     if (detection.confidence === 'none') {
       detection.recommendations.push(
         'Windsurf not detected. Install from: https://codeium.com/windsurf'
-      );
+      )
     } else if (detection.confidence === 'low') {
       detection.recommendations.push(
         'Windsurf may be installed but not configured for this project'
-      );
+      )
       detection.recommendations.push(
         'Run: vdk init --ide-integration to configure Windsurf integration'
-      );
+      )
     } else if (detection.confidence === 'medium') {
-      detection.recommendations.push('Windsurf appears to be configured');
-      detection.recommendations.push('Consider optimizing AI rules for better Codeium assistance');
+      detection.recommendations.push('Windsurf appears to be configured')
+      detection.recommendations.push('Consider optimizing AI rules for better Codeium assistance')
     } else if (detection.confidence === 'high') {
-      detection.recommendations.push('Windsurf is actively configured and being used');
+      detection.recommendations.push('Windsurf is actively configured and being used')
       detection.recommendations.push(
         'Consider leveraging Codeium supercomplete features with custom rules'
-      );
+      )
     }
 
-    return detection;
+    return detection
   }
 
   /**
@@ -221,12 +221,12 @@ export class WindsurfIntegration extends BaseIntegration {
    * @returns {boolean} Success status
    */
   async initialize(options = {}) {
-    const paths = this.getConfigPaths();
+    const paths = this.getConfigPaths()
 
     try {
       // Create .windsurf directory structure
-      await this.ensureDirectory(this.windsurfConfigPath);
-      await this.ensureDirectory(paths.rulesDirectory);
+      await this.ensureDirectory(this.windsurfConfigPath)
+      await this.ensureDirectory(paths.rulesDirectory)
 
       // Create project-specific Windsurf configuration
       if (!this.fileExists(paths.projectConfig)) {
@@ -260,27 +260,27 @@ export class WindsurfIntegration extends BaseIntegration {
             formatOnSave: true,
             linting: true,
           },
-        };
+        }
 
-        await this.writeJsonFile(paths.projectConfig, windsurfConfig);
+        await this.writeJsonFile(paths.projectConfig, windsurfConfig)
       }
 
       // Create AI-specific settings
-      await this.createWindsurfAISettings(options);
+      await this.createWindsurfAISettings(options)
 
       // Create MCP configuration for Windsurf
-      await this.createWindsurfMCPConfig(options);
+      await this.createWindsurfMCPConfig(options)
 
       // Create Windsurf-specific AI rules
-      await this.createWindsurfAIRules(options);
+      await this.createWindsurfAIRules(options)
 
       // Create workspace configuration
-      await this.createWindsurfWorkspaceConfig(options);
+      await this.createWindsurfWorkspaceConfig(options)
 
-      return true;
+      return true
     } catch (error) {
-      console.error('Failed to initialize Windsurf configuration:', error.message);
-      return false;
+      console.error('Failed to initialize Windsurf configuration:', error.message)
+      return false
     }
   }
 
@@ -288,11 +288,11 @@ export class WindsurfIntegration extends BaseIntegration {
    * Create Windsurf AI settings configuration
    * @param {Object} options - Configuration options
    */
-  async createWindsurfAISettings(options = {}) {
-    const paths = this.getConfigPaths();
+  async createWindsurfAISettings(_options = {}) {
+    const paths = this.getConfigPaths()
 
     if (this.fileExists(paths.aiConfig)) {
-      return; // Don't overwrite existing AI config
+      return // Don't overwrite existing AI config
     }
 
     const aiSettings = {
@@ -320,9 +320,9 @@ export class WindsurfIntegration extends BaseIntegration {
         includeFiles: ['README.md', 'package.json', '*.config.*', '.ai/rules/**'],
         excludePatterns: ['node_modules/**', 'dist/**', '*.log', '.git/**'],
       },
-    };
+    }
 
-    await this.writeJsonFile(paths.aiConfig, aiSettings);
+    await this.writeJsonFile(paths.aiConfig, aiSettings)
   }
 
   /**
@@ -330,10 +330,10 @@ export class WindsurfIntegration extends BaseIntegration {
    * @param {Object} options - Configuration options
    */
   async createWindsurfMCPConfig(options = {}) {
-    const paths = this.getConfigPaths();
+    const paths = this.getConfigPaths()
 
     if (this.fileExists(paths.projectMcp)) {
-      return; // Don't overwrite existing MCP config
+      return // Don't overwrite existing MCP config
     }
 
     const mcpConfig = {
@@ -362,9 +362,9 @@ export class WindsurfIntegration extends BaseIntegration {
         rulesPath: '.windsurf/rules',
         integration: 'windsurf',
       },
-    };
+    }
 
-    await this.writeJsonFile(paths.projectMcp, mcpConfig);
+    await this.writeJsonFile(paths.projectMcp, mcpConfig)
   }
 
   /**
@@ -372,10 +372,10 @@ export class WindsurfIntegration extends BaseIntegration {
    * @param {Object} options - Configuration options
    */
   async createWindsurfWorkspaceConfig(options = {}) {
-    const paths = this.getConfigPaths();
+    const paths = this.getConfigPaths()
 
     if (this.fileExists(paths.workspaceConfig)) {
-      return; // Don't overwrite existing workspace config
+      return // Don't overwrite existing workspace config
     }
 
     const workspaceConfig = {
@@ -403,9 +403,9 @@ export class WindsurfIntegration extends BaseIntegration {
         rulesDirectory: '.windsurf/rules',
         lastUpdated: new Date().toISOString(),
       },
-    };
+    }
 
-    await this.writeJsonFile(paths.workspaceConfig, workspaceConfig);
+    await this.writeJsonFile(paths.workspaceConfig, workspaceConfig)
   }
 
   /**
@@ -413,17 +413,17 @@ export class WindsurfIntegration extends BaseIntegration {
    * @param {Object} options - Configuration options
    */
   async createWindsurfAIRules(options = {}) {
-    const paths = this.getConfigPaths();
-    const rulesPath = paths.rulesDirectory;
+    const paths = this.getConfigPaths()
+    const rulesPath = paths.rulesDirectory
 
     // Create global rules file (proper Windsurf format)
-    await this.createGlobalRules(options);
+    await this.createGlobalRules(options)
 
     // Create workspace rules (following 6K character limit)
-    const windsurfRulePath = path.join(rulesPath, 'vdk-integration.md');
+    const windsurfRulePath = path.join(rulesPath, 'vdk-integration.md')
 
     if (this.fileExists(windsurfRulePath)) {
-      return; // Don't overwrite existing rules
+      return // Don't overwrite existing rules
     }
 
     // Create workspace rule following Windsurf format (under 6K chars)
@@ -466,23 +466,23 @@ export class WindsurfIntegration extends BaseIntegration {
 - Performance considerations
 </quality-standards>
 
-*Generated by VDK CLI - Keep under 6K characters*`;
+*Generated by VDK CLI - Keep under 6K characters*`
 
-    await fs.promises.writeFile(windsurfRulePath, windsurfRuleContent, 'utf8');
+    await fs.promises.writeFile(windsurfRulePath, windsurfRuleContent, 'utf8')
   }
 
   /**
    * Create global Windsurf rules following native memories format
    * @param {Object} options - Configuration options
    */
-  async createGlobalRules(options = {}) {
-    const paths = this.getConfigPaths();
+  async createGlobalRules(_options = {}) {
+    const paths = this.getConfigPaths()
 
     // Ensure the global memories directory exists
-    await this.ensureDirectory(paths.globalMemories);
+    await this.ensureDirectory(paths.globalMemories)
 
     if (this.fileExists(paths.globalRulesFile)) {
-      return; // Don't overwrite existing global rules
+      return // Don't overwrite existing global rules
     }
 
     const globalRulesContent = `# Global Windsurf Rules - VDK Enhanced
@@ -520,9 +520,9 @@ export class WindsurfIntegration extends BaseIntegration {
 - Memory management for project context
 </vdk-integration>
 
-*Organization-wide standards - Applied across all Windsurf workspaces*`;
+*Organization-wide standards - Applied across all Windsurf workspaces*`
 
-    await fs.promises.writeFile(paths.globalRulesFile, globalRulesContent, 'utf8');
+    await fs.promises.writeFile(paths.globalRulesFile, globalRulesContent, 'utf8')
   }
 
   /**
@@ -530,7 +530,7 @@ export class WindsurfIntegration extends BaseIntegration {
    * @returns {Promise<Object>} Feature availability status
    */
   async getWindsurfFeatures() {
-    const paths = this.getConfigPaths();
+    const paths = this.getConfigPaths()
     const features = {
       codeiumEnabled: false,
       supercompleteEnabled: false,
@@ -539,25 +539,25 @@ export class WindsurfIntegration extends BaseIntegration {
       mcpConfigured: false,
       rulesConfigured: false,
       workspaceConfigured: false,
-    };
+    }
 
     try {
       if (this.fileExists(paths.projectConfig)) {
-        const config = await this.readJsonFile(paths.projectConfig);
-        features.codeiumEnabled = config?.codeium?.enabled || false;
-        features.supercompleteEnabled = config?.codeium?.supercomplete || false;
-        features.chatEnabled = config?.codeium?.chat || false;
-        features.searchEnabled = config?.codeium?.search || false;
+        const config = await this.readJsonFile(paths.projectConfig)
+        features.codeiumEnabled = config?.codeium?.enabled
+        features.supercompleteEnabled = config?.codeium?.supercomplete
+        features.chatEnabled = config?.codeium?.chat
+        features.searchEnabled = config?.codeium?.search
       }
 
-      features.mcpConfigured = this.fileExists(paths.projectMcp);
-      features.rulesConfigured = await this.directoryExistsAsync(paths.rulesDirectory);
-      features.workspaceConfigured = this.fileExists(paths.workspaceConfig);
-    } catch (error) {
+      features.mcpConfigured = this.fileExists(paths.projectMcp)
+      features.rulesConfigured = await this.directoryExistsAsync(paths.rulesDirectory)
+      features.workspaceConfigured = this.fileExists(paths.workspaceConfig)
+    } catch {
       // Features remain false if we can't read config
     }
 
-    return features;
+    return features
   }
 
   /**
@@ -565,9 +565,9 @@ export class WindsurfIntegration extends BaseIntegration {
    * @returns {Promise<Object>} Status summary object
    */
   async getStatusSummary() {
-    const detection = this.getCachedDetection();
-    const features = await this.getWindsurfFeatures();
-    const paths = this.getConfigPaths();
+    const detection = this.getCachedDetection()
+    const features = await this.getWindsurfFeatures()
+    const paths = this.getConfigPaths()
 
     return {
       isConfigured: detection.isUsed,
@@ -575,6 +575,6 @@ export class WindsurfIntegration extends BaseIntegration {
       features,
       configPaths: paths,
       recommendations: detection.recommendations,
-    };
+    }
   }
 }

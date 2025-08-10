@@ -5,15 +5,15 @@
  * Each IDE gets rules in the format that makes the most sense for that platform.
  */
 
-import chalk from 'chalk';
-import fs from 'fs/promises';
-import os from 'os';
-import path from 'path';
+import os from 'node:os'
+import path from 'node:path'
+
+import chalk from 'chalk'
 
 export class RuleAdapter {
   constructor(options = {}) {
-    this.verbose = options.verbose || false;
-    this.projectPath = options.projectPath || process.cwd();
+    this.verbose = options.verbose
+    this.projectPath = options.projectPath || process.cwd()
 
     // Centralized character limits for each IDE
     this.characterLimits = {
@@ -27,14 +27,14 @@ export class RuleAdapter {
         maxGuidelines: 6,
       },
       cursor: {
-        perFile: Infinity, // No specific limit
-        total: Infinity,
+        perFile: Number.POSITIVE_INFINITY, // No specific limit
+        total: Number.POSITIVE_INFINITY,
       },
       claude: {
-        perFile: Infinity, // No specific limit
+        perFile: Number.POSITIVE_INFINITY, // No specific limit
         perCommand: 10000, // Reasonable limit for commands
       },
-    };
+    }
   }
 
   /**
@@ -46,26 +46,26 @@ export class RuleAdapter {
    */
   async adaptRules(rules, targetIDE, projectContext = {}) {
     if (this.verbose) {
-      console.log(chalk.gray(`Adapting ${rules.length} rules for ${targetIDE}...`));
+      console.log(chalk.gray(`Adapting ${rules.length} rules for ${targetIDE}...`))
     }
 
     switch (targetIDE.toLowerCase()) {
       case 'claude':
       case 'claude-code':
-        return await this.adaptForClaude(rules, projectContext);
+        return await this.adaptForClaude(rules, projectContext)
 
       case 'cursor':
       case 'cursor-ai':
-        return await this.adaptForCursor(rules, projectContext);
+        return await this.adaptForCursor(rules, projectContext)
 
       case 'windsurf':
-        return await this.adaptForWindsurf(rules, projectContext);
+        return await this.adaptForWindsurf(rules, projectContext)
 
       case 'github-copilot':
-        return await this.adaptForGitHubCopilot(rules, projectContext);
+        return await this.adaptForGitHubCopilot(rules, projectContext)
 
       default:
-        throw new Error(`Unknown IDE: ${targetIDE}`);
+        throw new Error(`Unknown IDE: ${targetIDE}`)
     }
   }
 
@@ -77,28 +77,28 @@ export class RuleAdapter {
    * @returns {Object} Result with content and truncation info
    */
   enforceCharacterLimits(content, ideType, limitType = 'perFile') {
-    const limits = this.characterLimits[ideType.toLowerCase()];
+    const limits = this.characterLimits[ideType.toLowerCase()]
     if (!limits) {
-      return { content, truncated: false, originalLength: content.length };
+      return { content, truncated: false, originalLength: content.length }
     }
 
-    const limit = limits[limitType];
-    if (limit === Infinity || content.length <= limit) {
-      return { content, truncated: false, originalLength: content.length };
+    const limit = limits[limitType]
+    if (limit === Number.POSITIVE_INFINITY || content.length <= limit) {
+      return { content, truncated: false, originalLength: content.length }
     }
 
     // Smart truncation at sentence boundaries
-    const truncationPoint = this.findSmartTruncationPoint(content, limit);
+    const truncationPoint = this.findSmartTruncationPoint(content, limit)
     const truncatedContent =
       content.substring(0, truncationPoint) +
-      (truncationPoint < content.length ? '\n\n*Truncated due to character limit*' : '');
+      (truncationPoint < content.length ? '\n\n*Truncated due to character limit*' : '')
 
     if (this.verbose) {
       console.warn(
         chalk.yellow(
           `Content truncated for ${ideType} (${content.length} → ${truncatedContent.length} chars)`
         )
-      );
+      )
     }
 
     return {
@@ -106,7 +106,7 @@ export class RuleAdapter {
       truncated: true,
       originalLength: content.length,
       truncatedLength: truncatedContent.length,
-    };
+    }
   }
 
   /**
@@ -116,11 +116,11 @@ export class RuleAdapter {
    * @returns {number} Truncation point
    */
   findSmartTruncationPoint(content, limit) {
-    const buffer = Math.max(50, limit * 0.05); // 5% buffer or minimum 50 chars
-    const targetLength = limit - buffer;
+    const buffer = Math.max(50, limit * 0.05) // 5% buffer or minimum 50 chars
+    const targetLength = limit - buffer
 
     if (content.length <= targetLength) {
-      return content.length;
+      return content.length
     }
 
     // Try to find good truncation points in order of preference
@@ -130,16 +130,16 @@ export class RuleAdapter {
       content.lastIndexOf('. ', targetLength), // Sentence boundary
       content.lastIndexOf('\n', targetLength), // Line boundary
       targetLength, // Hard truncation
-    ];
+    ]
 
     for (const point of truncationPoints) {
       if (point > targetLength * 0.7) {
         // Keep at least 70% of content
-        return point;
+        return point
       }
     }
 
-    return targetLength; // Fallback to hard truncation
+    return targetLength // Fallback to hard truncation
   }
 
   /**
@@ -149,26 +149,26 @@ export class RuleAdapter {
    * @returns {Object} Claude-native memory files and commands
    */
   async adaptForClaude(rules, projectContext) {
-    const adaptedFiles = [];
-    const projectName = path.basename(this.projectPath);
-    const globalDir = path.join(os.homedir(), '.claude');
-    const commandsDir = path.join(this.projectPath, '.claude', 'commands');
-    const userCommandsDir = path.join(os.homedir(), '.claude', 'commands');
+    const adaptedFiles = []
+    const _projectName = path.basename(this.projectPath)
+    const globalDir = path.join(os.homedir(), '.claude')
+    const commandsDir = path.join(this.projectPath, '.claude', 'commands')
+    const userCommandsDir = path.join(os.homedir(), '.claude', 'commands')
 
     // 1. Global memory (cross-project preferences) - Deploy to ~/.claude/CLAUDE.md
     const globalRules = rules.filter(
       (rule) => rule.frontmatter?.category === 'core' && rule.frontmatter?.alwaysApply === true
-    );
+    )
 
     if (globalRules.length > 0) {
-      const globalContent = this.generateClaudeGlobalMemory(globalRules);
+      const globalContent = this.generateClaudeGlobalMemory(globalRules)
       adaptedFiles.push({
         path: path.join(globalDir, 'CLAUDE.md'),
         content: globalContent,
         type: 'memory',
         scope: 'global',
         hierarchyLevel: 'global',
-      });
+      })
     }
 
     // 2. Main project memory (team-shared conventions) - Deploy to ./CLAUDE.md
@@ -176,17 +176,17 @@ export class RuleAdapter {
       (rule) =>
         rule.frontmatter?.category === 'core' ||
         (rule.frontmatter?.alwaysApply === true && rule.frontmatter?.category !== 'core')
-    );
+    )
 
     if (coreRules.length > 0) {
-      const claudeMainContent = this.generateClaudeMainMemory(coreRules, projectContext);
+      const claudeMainContent = this.generateClaudeMainMemory(coreRules, projectContext)
       adaptedFiles.push({
         path: path.join(this.projectPath, 'CLAUDE.md'),
         content: claudeMainContent,
         type: 'memory',
         scope: 'project',
         hierarchyLevel: 'project',
-      });
+      })
     }
 
     // 3. Technology-specific memory files with import structure
@@ -195,35 +195,35 @@ export class RuleAdapter {
         rule.frontmatter?.category === 'technology' ||
         rule.frontmatter?.category === 'framework' ||
         rule.frontmatter?.category === 'language'
-    );
+    )
 
     if (techRules.length > 0) {
-      const claudeTechContent = this.generateClaudeTechMemory(techRules, projectContext);
+      const claudeTechContent = this.generateClaudeTechMemory(techRules, projectContext)
       adaptedFiles.push({
         path: path.join(this.projectPath, 'CLAUDE-patterns.md'),
         content: claudeTechContent,
         type: 'memory',
         scope: 'project',
         hierarchyLevel: 'technology',
-      });
+      })
     }
 
     // 4. Personal preferences import file
-    const personalPrefsContent = this.generateClaudePersonalPrefsImport();
+    const personalPrefsContent = this.generateClaudePersonalPrefsImport()
     adaptedFiles.push({
       path: path.join(this.projectPath, 'CLAUDE-personal.md'),
       content: personalPrefsContent,
       type: 'memory',
       scope: 'import',
       hierarchyLevel: 'personal',
-    });
+    })
 
     // 5. Project commands (namespace: /project:)
-    const taskRules = rules.filter((rule) => rule.frontmatter?.category === 'task');
+    const taskRules = rules.filter((rule) => rule.frontmatter?.category === 'task')
 
     for (const rule of taskRules) {
-      const commandContent = this.generateClaudeSlashCommand(rule, projectContext);
-      const commandName = this.getCommandName(rule.frontmatter?.description);
+      const commandContent = this.generateClaudeSlashCommand(rule, projectContext)
+      const commandName = this.getCommandName(rule.frontmatter?.description)
 
       adaptedFiles.push({
         path: path.join(commandsDir, `${commandName}.md`),
@@ -231,19 +231,19 @@ export class RuleAdapter {
         type: 'command',
         scope: 'project',
         namespace: 'project',
-        commandName: commandName,
-      });
+        commandName,
+      })
     }
 
     // 6. User commands (namespace: /user:) - Deploy to ~/.claude/commands/
     const personalRules = rules.filter(
       (rule) =>
         rule.frontmatter?.category === 'assistant' || rule.frontmatter?.category === 'workflow'
-    );
+    )
 
     for (const rule of personalRules) {
-      const commandContent = this.generateClaudeSlashCommand(rule, projectContext);
-      const commandName = this.getCommandName(rule.frontmatter?.description);
+      const commandContent = this.generateClaudeSlashCommand(rule, projectContext)
+      const commandName = this.getCommandName(rule.frontmatter?.description)
 
       adaptedFiles.push({
         path: path.join(userCommandsDir, `${commandName}.md`),
@@ -251,8 +251,8 @@ export class RuleAdapter {
         type: 'command',
         scope: 'user',
         namespace: 'user',
-        commandName: commandName,
-      });
+        commandName,
+      })
     }
 
     return {
@@ -262,7 +262,7 @@ export class RuleAdapter {
         commands: adaptedFiles.filter((f) => f.type === 'command').length,
         totalSize: adaptedFiles.reduce((size, file) => size + file.content.length, 0),
       },
-    };
+    }
   }
 
   /**
@@ -272,16 +272,16 @@ export class RuleAdapter {
    * @returns {Object} Cursor-native MDC files
    */
   async adaptForCursor(rules, projectContext) {
-    const adaptedFiles = [];
-    const rulesDir = path.join(this.projectPath, '.cursor', 'rules');
+    const adaptedFiles = []
+    const rulesDir = path.join(this.projectPath, '.cursor', 'rules')
 
     // Group rules by activation type for better organization
-    const rulesByActivation = this.groupCursorRulesByActivation(rules);
+    const rulesByActivation = this.groupCursorRulesByActivation(rules)
 
     // 1. Always rules - Always included in context
     for (const rule of rulesByActivation.always) {
-      const mdcContent = this.generateCursorMDC(rule, projectContext);
-      const fileName = this.getCursorFileName(rule);
+      const mdcContent = this.generateCursorMDC(rule, projectContext)
+      const fileName = this.getCursorFileName(rule)
 
       adaptedFiles.push({
         path: path.join(rulesDir, `always-${fileName}`),
@@ -290,13 +290,13 @@ export class RuleAdapter {
         activation: 'always',
         scope: 'project',
         priority: 'high',
-      });
+      })
     }
 
     // 2. Auto-attached rules - When files matching globs are referenced
     for (const rule of rulesByActivation.autoAttached) {
-      const mdcContent = this.generateCursorMDC(rule, projectContext);
-      const fileName = this.getCursorFileName(rule);
+      const mdcContent = this.generateCursorMDC(rule, projectContext)
+      const fileName = this.getCursorFileName(rule)
 
       adaptedFiles.push({
         path: path.join(rulesDir, `auto-${fileName}`),
@@ -306,13 +306,13 @@ export class RuleAdapter {
         scope: 'project',
         globs: rule.frontmatter?.globs || [],
         priority: 'medium',
-      });
+      })
     }
 
     // 3. Agent-requested rules - AI decides whether to include
     for (const rule of rulesByActivation.agentRequested) {
-      const mdcContent = this.generateCursorMDC(rule, projectContext);
-      const fileName = this.getCursorFileName(rule);
+      const mdcContent = this.generateCursorMDC(rule, projectContext)
+      const fileName = this.getCursorFileName(rule)
 
       adaptedFiles.push({
         path: path.join(rulesDir, `agent-${fileName}`),
@@ -322,14 +322,14 @@ export class RuleAdapter {
         scope: 'project',
         description: rule.frontmatter?.description,
         priority: 'medium',
-      });
+      })
     }
 
     // 4. Manual rules - Only when explicitly mentioned using @ruleName
     for (const rule of rulesByActivation.manual) {
-      const mdcContent = this.generateCursorMDC(rule, projectContext);
-      const fileName = this.getCursorFileName(rule);
-      const ruleName = this.getCursorRuleName(rule);
+      const mdcContent = this.generateCursorMDC(rule, projectContext)
+      const fileName = this.getCursorFileName(rule)
+      const ruleName = this.getCursorRuleName(rule)
 
       adaptedFiles.push({
         path: path.join(rulesDir, `manual-${fileName}`),
@@ -337,9 +337,9 @@ export class RuleAdapter {
         type: 'rule',
         activation: 'manual',
         scope: 'project',
-        ruleName: ruleName,
+        ruleName,
         priority: 'low',
-      });
+      })
     }
 
     return {
@@ -351,7 +351,7 @@ export class RuleAdapter {
         manual: rulesByActivation.manual.length,
         totalFiles: adaptedFiles.length,
       },
-    };
+    }
   }
 
   /**
@@ -360,20 +360,20 @@ export class RuleAdapter {
    * @param {Object} projectContext - Project context
    * @returns {string} MDC formatted content
    */
-  generateCursorMDC(rule, projectContext) {
-    const activationType = this.getCursorActivationType(rule);
-    const globs = rule.frontmatter?.globs || [];
-    const description = rule.frontmatter?.description || '';
-    const cleanContent = this.stripFrontmatter(rule.content);
+  generateCursorMDC(rule, _projectContext) {
+    const activationType = this.getCursorActivationType(rule)
+    const globs = rule.frontmatter?.globs || []
+    const description = rule.frontmatter?.description || ''
+    const cleanContent = this.stripFrontmatter(rule.content)
 
     return `---
 type: ${activationType}
 ${globs.length > 0 ? `globs: ${JSON.stringify(globs)}` : ''}
 ${activationType === 'agent-requested' ? `description: "${description}"` : ''}
-alwaysApply: ${rule.frontmatter?.alwaysApply || false}
+alwaysApply: ${rule.frontmatter?.alwaysApply}
 ---
 
-${cleanContent}`;
+${cleanContent}`
   }
 
   /**
@@ -382,10 +382,16 @@ ${cleanContent}`;
    * @returns {string} Activation type
    */
   getCursorActivationType(rule) {
-    if (rule.frontmatter?.alwaysApply) return 'always';
-    if (rule.frontmatter?.globs && rule.frontmatter?.globs.length > 0) return 'auto-attached';
-    if (rule.frontmatter?.description) return 'agent-requested';
-    return 'manual';
+    if (rule.frontmatter?.alwaysApply) {
+      return 'always'
+    }
+    if (rule.frontmatter?.globs && rule.frontmatter?.globs.length > 0) {
+      return 'auto-attached'
+    }
+    if (rule.frontmatter?.description) {
+      return 'agent-requested'
+    }
+    return 'manual'
   }
 
   /**
@@ -394,19 +400,19 @@ ${cleanContent}`;
    * @returns {string} File name
    */
   getCursorFileName(rule) {
-    const category = rule.frontmatter?.category || 'general';
-    const framework = rule.frontmatter?.framework || '';
-    const description = rule.frontmatter?.description || '';
+    const category = rule.frontmatter?.category || 'general'
+    const framework = rule.frontmatter?.framework || ''
+    const description = rule.frontmatter?.description || ''
 
-    let baseName = framework || category;
+    let baseName = framework || category
     if (description) {
       baseName = description
         .toLowerCase()
         .replace(/[^a-z0-9\s]/g, '')
-        .replace(/\s+/g, '-');
+        .replace(/\s+/g, '-')
     }
 
-    return `${baseName.toLowerCase().replace(/[^a-z0-9-]/g, '')}.md`;
+    return `${baseName.toLowerCase().replace(/[^a-z0-9-]/g, '')}.md`
   }
 
   /**
@@ -420,25 +426,25 @@ ${cleanContent}`;
       autoAttached: [],
       agentRequested: [],
       manual: [],
-    };
+    }
 
     for (const rule of rules) {
-      const activationType = this.getCursorActivationType(rule);
+      const activationType = this.getCursorActivationType(rule)
       const groupKey =
         activationType === 'auto-attached'
           ? 'autoAttached'
           : activationType === 'agent-requested'
             ? 'agentRequested'
-            : activationType;
+            : activationType
 
       if (groups[groupKey]) {
-        groups[groupKey].push(rule);
+        groups[groupKey].push(rule)
       } else {
-        groups.manual.push(rule);
+        groups.manual.push(rule)
       }
     }
 
-    return groups;
+    return groups
   }
 
   /**
@@ -447,18 +453,18 @@ ${cleanContent}`;
    * @returns {string} Rule name for @ruleName usage
    */
   getCursorRuleName(rule) {
-    const description = rule.frontmatter?.description || '';
-    const category = rule.frontmatter?.category || 'rule';
+    const description = rule.frontmatter?.description || ''
+    const category = rule.frontmatter?.category || 'rule'
 
     if (description) {
       return description
         .toLowerCase()
         .replace(/[^a-z0-9\s]/g, '')
         .replace(/\s+/g, '')
-        .substring(0, 20);
+        .substring(0, 20)
     }
 
-    return category.toLowerCase();
+    return category.toLowerCase()
   }
 
   /**
@@ -468,25 +474,25 @@ ${cleanContent}`;
    * @returns {Object} Windsurf-native memory files
    */
   async adaptForWindsurf(rules, projectContext) {
-    const adaptedFiles = [];
-    const rulesDir = path.join(this.projectPath, '.windsurf', 'rules');
-    const globalDir = path.join(os.homedir(), '.codeium', 'windsurf', 'memories');
-    const projectRuleFile = path.join(this.projectPath, '.windsurfrules.md');
+    const adaptedFiles = []
+    const rulesDir = path.join(this.projectPath, '.windsurf', 'rules')
+    const globalDir = path.join(os.homedir(), '.codeium', 'windsurf', 'memories')
+    const projectRuleFile = path.join(this.projectPath, '.windsurfrules.md')
 
     // 1. Global rules (organization-wide standards) - Deploy to ~/.codeium/windsurf/memories/
     const globalRules = rules.filter(
       (rule) => rule.frontmatter?.category === 'core' || rule.frontmatter?.alwaysApply === true
-    );
+    )
 
     if (globalRules.length > 0) {
-      let globalContent = this.generateWindsurfGlobalMemory(globalRules, projectContext);
+      let globalContent = this.generateWindsurfGlobalMemory(globalRules, projectContext)
 
       // Enforce 6K character limit for global rules
       if (globalContent.length > 6000) {
         if (this.verbose) {
-          console.warn(chalk.yellow(`Global Windsurf rules exceed 6K limit, truncating...`));
+          console.warn(chalk.yellow('Global Windsurf rules exceed 6K limit, truncating...'))
         }
-        globalContent = globalContent.substring(0, 5900) + '\n\n*Truncated due to character limit*';
+        globalContent = `${globalContent.substring(0, 5900)}\n\n*Truncated due to character limit*`
       }
 
       adaptedFiles.push({
@@ -496,30 +502,29 @@ ${cleanContent}`;
         scope: 'global',
         characterCount: globalContent.length,
         activationType: 'always-on',
-      });
+      })
     }
 
     // 2. Workspace rules (project-specific) - Deploy to .windsurf/rules/
     const workspaceRules = rules.filter(
       (rule) => rule.frontmatter?.category !== 'core' && rule.frontmatter?.alwaysApply !== true
-    );
+    )
 
     for (const rule of workspaceRules) {
-      let windsurfContent = this.generateWindsurfRule(rule, projectContext);
+      let windsurfContent = this.generateWindsurfRule(rule, projectContext)
 
       // Ensure character limit compliance (6K per file)
       if (windsurfContent.length > 6000) {
         if (this.verbose) {
           console.warn(
             chalk.yellow(`Rule ${rule.frontmatter?.description} exceeds 6K limit, truncating...`)
-          );
+          )
         }
-        windsurfContent =
-          windsurfContent.substring(0, 5900) + '\n\n*Truncated due to character limit*';
+        windsurfContent = `${windsurfContent.substring(0, 5900)}\n\n*Truncated due to character limit*`
       }
 
-      const fileName = this.getWindsurfFileName(rule);
-      const activationType = this.getWindsurfActivationType(rule);
+      const fileName = this.getWindsurfFileName(rule)
+      const activationType = this.getWindsurfActivationType(rule)
 
       adaptedFiles.push({
         path: path.join(rulesDir, fileName),
@@ -527,8 +532,8 @@ ${cleanContent}`;
         type: 'rule',
         scope: 'workspace',
         characterCount: windsurfContent.length,
-        activationType: activationType,
-      });
+        activationType,
+      })
     }
 
     // 3. Project rule file (.windsurfrules.md) - Alternative single-file approach
@@ -536,7 +541,7 @@ ${cleanContent}`;
       const consolidatedContent = this.generateConsolidatedWindsurfRules(
         workspaceRules,
         projectContext
-      );
+      )
 
       // Check if consolidated approach is better (fewer files, under limits)
       if (consolidatedContent.length <= 6000 && workspaceRules.length > 3) {
@@ -547,30 +552,29 @@ ${cleanContent}`;
           scope: 'project',
           characterCount: consolidatedContent.length,
           activationType: 'model-decision',
-        });
+        })
       }
     }
 
     // Ensure total character limit compliance (12K across all workspace rules)
     const totalChars = adaptedFiles
       .filter((f) => f.scope === 'workspace')
-      .reduce((total, file) => total + file.characterCount, 0);
+      .reduce((total, file) => total + file.characterCount, 0)
 
     if (totalChars > 12000) {
       if (this.verbose) {
         console.warn(
           chalk.yellow(`⚠️ Windsurf workspace rules exceed 12K total limit (${totalChars} chars)`)
-        );
+        )
       }
 
       // Truncate files proportionally to stay under limit
-      const reductionRatio = 11000 / totalChars; // Leave some buffer
+      const reductionRatio = 11000 / totalChars // Leave some buffer
       for (const file of adaptedFiles.filter((f) => f.scope === 'workspace')) {
-        const targetLength = Math.floor(file.characterCount * reductionRatio);
+        const targetLength = Math.floor(file.characterCount * reductionRatio)
         if (file.content.length > targetLength) {
-          file.content =
-            file.content.substring(0, targetLength - 50) + '\n\n*Truncated for total limit*';
-          file.characterCount = file.content.length;
+          file.content = `${file.content.substring(0, targetLength - 50)}\n\n*Truncated for total limit*`
+          file.characterCount = file.content.length
         }
       }
     }
@@ -583,7 +587,7 @@ ${cleanContent}`;
         totalCharacters: adaptedFiles.reduce((total, file) => total + file.characterCount, 0),
         characterLimit: 12000,
       },
-    };
+    }
   }
 
   /**
@@ -593,17 +597,17 @@ ${cleanContent}`;
    * @param {Object} projectContext - Project context
    * @returns {Object} GitHub Copilot setup instructions
    */
-  async adaptForGitHubCopilot(rules, projectContext) {
+  async adaptForGitHubCopilot(rules, _projectContext) {
     // Don't generate files - generate setup instructions
-    const prioritizedRules = this.prioritizeRulesForCopilot(rules);
-    const selectedRules = prioritizedRules.slice(0, 6); // GitHub Copilot Enterprise limit
+    const prioritizedRules = this.prioritizeRulesForCopilot(rules)
+    const selectedRules = prioritizedRules.slice(0, 6) // GitHub Copilot Enterprise limit
 
     const guidelines = selectedRules.map((rule, index) => ({
       number: index + 1,
       name: rule.frontmatter?.description || `Rule ${index + 1}`,
       description: this.truncateToCharLimit(this.stripFrontmatter(rule.content), 600), // 600 char limit
       filePatterns: rule.frontmatter?.globs || ['**/*'],
-    }));
+    }))
 
     const instructionsContent = `# GitHub Copilot Setup Instructions
 
@@ -638,7 +642,7 @@ For file-based AI rule management, consider:
 - **Windsurf**: .windsurf/rules/ directory with XML grouping
 
 ---
-*Generated by VDK CLI - Setup Instructions Only*`;
+*Generated by VDK CLI - Setup Instructions Only*`
 
     return {
       files: [
@@ -657,7 +661,7 @@ For file-based AI rule management, consider:
         enterpriseOnly: true,
         approach: 'instructions-only',
       },
-    };
+    }
   }
 
   // === Claude Code Memory Generators ===
@@ -667,7 +671,7 @@ For file-based AI rule management, consider:
    * @param {Array} globalRules - Global core rules
    * @returns {string} Global memory content
    */
-  generateClaudeGlobalMemory(globalRules) {
+  generateClaudeGlobalMemory(_globalRules) {
     return `# Claude Code User Memory
 
 ## Coding Preferences
@@ -714,12 +718,12 @@ For file-based AI rule management, consider:
 - Implement monitoring and observability
 
 ---
-*Global Claude Code preferences - Applied across all projects*`;
+*Global Claude Code preferences - Applied across all projects*`
   }
 
-  generateClaudeMainMemory(coreRules, projectContext) {
-    const projectName = path.basename(this.projectPath);
-    const techStack = projectContext.techStack || {};
+  generateClaudeMainMemory(_coreRules, projectContext) {
+    const projectName = path.basename(this.projectPath)
+    const techStack = projectContext.techStack || {}
 
     const content = `# ${projectName} - Claude Code Memory
 
@@ -750,9 +754,9 @@ This project uses VDK CLI for AI assistant integration and follows specific patt
 - \`/project:validate\` - Validate rule consistency
 
 ---
-*Team-shared project memory - Last updated: ${new Date().toISOString()}*`;
+*Team-shared project memory - Last updated: ${new Date().toISOString()}*`
 
-    return content;
+    return content
   }
 
   /**
@@ -771,47 +775,47 @@ This project uses VDK CLI for AI assistant integration and follows specific patt
 - Use this file to override global settings for this project
 
 ---
-*Personal preferences import - Loads from ~/.claude/CLAUDE.md*`;
+*Personal preferences import - Loads from ~/.claude/CLAUDE.md*`
   }
 
-  generateClaudeTechMemory(techRules, projectContext) {
-    const projectName = path.basename(this.projectPath);
+  generateClaudeTechMemory(techRules, _projectContext) {
+    const projectName = path.basename(this.projectPath)
     let content = `# ${projectName} - Technology Patterns
 
 ## Technology-Specific Guidelines
 
 This file contains technology and framework-specific patterns for this project.
 
-`;
+`
 
     // Group rules by framework/technology
-    const rulesByTech = this.groupRulesByTechnology(techRules);
+    const rulesByTech = this.groupRulesByTechnology(techRules)
 
     for (const [tech, rules] of Object.entries(rulesByTech)) {
-      content += `## ${tech}\n\n`;
+      content += `## ${tech}\n\n`
 
       for (const rule of rules) {
-        const cleanContent = this.stripFrontmatter(rule.content);
+        const cleanContent = this.stripFrontmatter(rule.content)
         content += this.extractKeySections(cleanContent, [
           'patterns',
           'best practices',
           'conventions',
-        ]);
-        content += '\n';
+        ])
+        content += '\n'
       }
 
-      content += '\n';
+      content += '\n'
     }
 
     content += `---
-*Generated by VDK CLI - Technology patterns for ${projectName}*`;
+*Generated by VDK CLI - Technology patterns for ${projectName}*`
 
-    return content;
+    return content
   }
 
   generateClaudeIntegrationMemory(projectContext) {
-    const projectName = path.basename(this.projectPath);
-    const techStack = projectContext.techStack || {};
+    const projectName = path.basename(this.projectPath)
+    const techStack = projectContext.techStack || {}
 
     return `# ${projectName} - Integration Context
 
@@ -835,10 +839,10 @@ This file contains technology and framework-specific patterns for this project.
 - \`/project:validate\` - Validate rule consistency
 
 ---
-*Integration context maintained by VDK CLI*`;
+*Integration context maintained by VDK CLI*`
   }
 
-  generateClaudeActiveContext(projectContext) {
+  generateClaudeActiveContext(_projectContext) {
     return `# Active Development Context
 
 ## Current Session
@@ -855,12 +859,12 @@ This file contains technology and framework-specific patterns for this project.
 *This file can be used for temporary notes and context that shouldn't be shared with the team*
 
 ---
-*Local memory file - not version controlled*`;
+*Local memory file - not version controlled*`
   }
 
-  generateClaudeSlashCommand(rule, projectContext) {
-    const commandName = this.getCommandName(rule.frontmatter?.description);
-    const cleanContent = this.stripFrontmatter(rule.content);
+  generateClaudeSlashCommand(rule, _projectContext) {
+    const commandName = this.getCommandName(rule.frontmatter?.description)
+    const cleanContent = this.stripFrontmatter(rule.content)
 
     return `# ${commandName}
 
@@ -869,56 +873,56 @@ ${cleanContent}
 Arguments: $ARGUMENTS
 
 ---
-*Simple contextual aid with $ARGUMENTS placeholder support*`;
+*Simple contextual aid with $ARGUMENTS placeholder support*`
   }
 
   // === Cursor MDC Generators === (Duplicates removed - using methods from line 358)
 
   // === Windsurf Memory Generators ===
 
-  generateWindsurfGlobalMemory(globalRules, projectContext) {
+  generateWindsurfGlobalMemory(globalRules, _projectContext) {
     let content = `# Global Development Standards - VDK Enhanced
 
 ## Organization Standards
 
-`;
+`
 
     for (const rule of globalRules) {
-      const cleanContent = this.stripFrontmatter(rule.content);
-      const xmlSection = this.convertToWindsurfXML(rule, cleanContent);
-      content += xmlSection + '\n\n';
+      const cleanContent = this.stripFrontmatter(rule.content)
+      const xmlSection = this.convertToWindsurfXML(rule, cleanContent)
+      content += `${xmlSection}\n\n`
     }
 
-    content += `*Organization-wide standards - Applied across all Windsurf workspaces*`;
+    content += '*Organization-wide standards - Applied across all Windsurf workspaces*'
 
-    return content;
+    return content
   }
 
-  generateWindsurfRule(rule, projectContext) {
-    const cleanContent = this.stripFrontmatter(rule.content);
-    const title = this.extractTitle(cleanContent) || rule.frontmatter?.description || 'Rule';
-    const category = rule.frontmatter?.category || 'general';
-    const xmlTag = this.getWindsurfXMLTag(category);
+  generateWindsurfRule(rule, _projectContext) {
+    const cleanContent = this.stripFrontmatter(rule.content)
+    const _title = this.extractTitle(cleanContent) || rule.frontmatter?.description || 'Rule'
+    const category = rule.frontmatter?.category || 'general'
+    const xmlTag = this.getWindsurfXMLTag(category)
 
     return `<${xmlTag}>
 ${cleanContent}
-</${xmlTag}>`;
+</${xmlTag}>`
   }
 
   convertToWindsurfXML(rule, content) {
-    const category = rule.frontmatter?.category || 'general';
-    const xmlTag = this.getWindsurfXMLTag(category);
+    const category = rule.frontmatter?.category || 'general'
+    const xmlTag = this.getWindsurfXMLTag(category)
 
     const keyContent = this.extractKeySections(content, [
       'principles',
       'guidelines',
       'patterns',
       'best practices',
-    ]);
+    ])
 
     return `<${xmlTag}>
 ${this.formatForWindsurf(keyContent)}
-</${xmlTag}>`;
+</${xmlTag}>`
   }
 
   getWindsurfXMLTag(category) {
@@ -930,8 +934,8 @@ ${this.formatForWindsurf(keyContent)}
       testing: 'testing-patterns',
       task: 'task-workflow',
       assistant: 'ai-assistance',
-    };
-    return tagMap[category] || 'rule';
+    }
+    return tagMap[category] || 'rule'
   }
 
   formatForWindsurf(content) {
@@ -940,12 +944,12 @@ ${this.formatForWindsurf(keyContent)}
       .split('\n')
       .map((line) => (line.trim() ? `- ${line.trim()}` : ''))
       .filter((line) => line)
-      .join('\n');
+      .join('\n')
   }
 
   getWindsurfFileName(rule) {
-    const framework = rule.frontmatter?.framework || rule.frontmatter?.category || 'general';
-    return `${framework.toLowerCase().replace(/[^a-z0-9]/g, '-')}.md`;
+    const framework = rule.frontmatter?.framework || rule.frontmatter?.category || 'general'
+    return `${framework.toLowerCase().replace(/[^a-z0-9]/g, '-')}.md`
   }
 
   /**
@@ -955,18 +959,26 @@ ${this.formatForWindsurf(keyContent)}
    */
   getWindsurfActivationType(rule) {
     // Manual - Via @mention in Cascade
-    if (rule.frontmatter?.category === 'task') return 'manual';
+    if (rule.frontmatter?.category === 'task') {
+      return 'manual'
+    }
 
     // Always On - Automatically applied
-    if (rule.frontmatter?.alwaysApply === true) return 'always-on';
+    if (rule.frontmatter?.alwaysApply === true) {
+      return 'always-on'
+    }
 
     // Glob - Based on file pattern matching
-    if (rule.frontmatter?.globs && rule.frontmatter?.globs.length > 0) return 'glob';
+    if (rule.frontmatter?.globs && rule.frontmatter?.globs.length > 0) {
+      return 'glob'
+    }
 
     // Model Decision - Based on natural language description
-    if (rule.frontmatter?.description) return 'model-decision';
+    if (rule.frontmatter?.description) {
+      return 'model-decision'
+    }
 
-    return 'model-decision'; // Default
+    return 'model-decision' // Default
   }
 
   /**
@@ -975,33 +987,33 @@ ${this.formatForWindsurf(keyContent)}
    * @param {Object} projectContext - Project context
    * @returns {string} Consolidated content
    */
-  generateConsolidatedWindsurfRules(rules, projectContext) {
-    const projectName = path.basename(this.projectPath);
+  generateConsolidatedWindsurfRules(rules, _projectContext) {
+    const projectName = path.basename(this.projectPath)
     let content = `# ${projectName} - Windsurf Project Rules
 
 ## Development Standards
 
-`;
+`
 
     // Group rules by category for better organization
-    const rulesByCategory = this.groupRulesByCategory(rules);
+    const rulesByCategory = this.groupRulesByCategory(rules)
 
     for (const [category, categoryRules] of Object.entries(rulesByCategory)) {
-      const xmlTag = this.getWindsurfXMLTag(category);
-      content += `<${xmlTag}>\n`;
+      const xmlTag = this.getWindsurfXMLTag(category)
+      content += `<${xmlTag}>\n`
 
       for (const rule of categoryRules) {
-        const cleanContent = this.stripFrontmatter(rule.content);
-        const keyPoints = this.extractKeyPoints(cleanContent);
-        content += keyPoints.map((point) => `- ${point}`).join('\n') + '\n';
+        const cleanContent = this.stripFrontmatter(rule.content)
+        const keyPoints = this.extractKeyPoints(cleanContent)
+        content += `${keyPoints.map((point) => `- ${point}`).join('\n')}\n`
       }
 
-      content += `</${xmlTag}>\n\n`;
+      content += `</${xmlTag}>\n\n`
     }
 
-    content += `*Consolidated project rules - Model decision activation*`;
+    content += '*Consolidated project rules - Model decision activation*'
 
-    return content;
+    return content
   }
 
   /**
@@ -1010,15 +1022,17 @@ ${this.formatForWindsurf(keyContent)}
    * @returns {Object} Rules grouped by category
    */
   groupRulesByCategory(rules) {
-    const groups = {};
+    const groups = {}
 
     for (const rule of rules) {
-      const category = rule.frontmatter?.category || 'general';
-      if (!groups[category]) groups[category] = [];
-      groups[category].push(rule);
+      const category = rule.frontmatter?.category || 'general'
+      if (!groups[category]) {
+        groups[category] = []
+      }
+      groups[category].push(rule)
     }
 
-    return groups;
+    return groups
   }
 
   /**
@@ -1028,18 +1042,20 @@ ${this.formatForWindsurf(keyContent)}
    * @returns {string} Truncated content
    */
   truncateToCharLimit(content, limit) {
-    if (content.length <= limit) return content;
+    if (content.length <= limit) {
+      return content
+    }
 
     // Try to truncate at a sentence boundary
-    const truncated = content.substring(0, limit - 3);
-    const lastSentence = truncated.lastIndexOf('.');
+    const truncated = content.substring(0, limit - 3)
+    const lastSentence = truncated.lastIndexOf('.')
 
     if (lastSentence > limit * 0.7) {
       // If we can keep at least 70% and end at sentence
-      return truncated.substring(0, lastSentence + 1);
+      return truncated.substring(0, lastSentence + 1)
     }
 
-    return truncated + '...';
+    return `${truncated}...`
   }
 
   // === GitHub Copilot Generators ===
@@ -1049,57 +1065,69 @@ ${this.formatForWindsurf(keyContent)}
     return rules
       .filter((rule) => rule.frontmatter?.category !== 'assistant') // Skip assistant-specific rules
       .sort((a, b) => {
-        const aPriority = this.getCopilotPriority(a);
-        const bPriority = this.getCopilotPriority(b);
-        return bPriority - aPriority;
-      });
+        const aPriority = this.getCopilotPriority(a)
+        const bPriority = this.getCopilotPriority(b)
+        return bPriority - aPriority
+      })
   }
 
   getCopilotPriority(rule) {
     // Assign priority scores for GitHub Copilot effectiveness
-    const category = rule.frontmatter?.category || 'general';
-    const hasGlobs = rule.frontmatter?.globs && rule.frontmatter?.globs.length > 0;
+    const category = rule.frontmatter?.category || 'general'
+    const hasGlobs = rule.frontmatter?.globs && rule.frontmatter?.globs.length > 0
 
-    let score = 0;
-    if (category === 'core') score += 10;
-    if (category === 'language' || category === 'technology') score += 8;
-    if (category === 'stack') score += 6;
-    if (category === 'task') score += 4;
-    if (hasGlobs) score += 3;
-    if (rule.frontmatter?.alwaysApply === true) score += 2;
+    let score = 0
+    if (category === 'core') {
+      score += 10
+    }
+    if (category === 'language' || category === 'technology') {
+      score += 8
+    }
+    if (category === 'stack') {
+      score += 6
+    }
+    if (category === 'task') {
+      score += 4
+    }
+    if (hasGlobs) {
+      score += 3
+    }
+    if (rule.frontmatter?.alwaysApply === true) {
+      score += 2
+    }
 
-    return score;
+    return score
   }
 
-  generateCopilotGuideline(rule, projectContext) {
+  generateCopilotGuideline(rule, _projectContext) {
     const title =
-      this.extractTitle(this.stripFrontmatter(rule.content)) || rule.frontmatter?.description;
-    const description = this.generateCopilotDescription(rule);
-    const paths = rule.frontmatter?.globs || [];
+      this.extractTitle(this.stripFrontmatter(rule.content)) || rule.frontmatter?.description
+    const description = this.generateCopilotDescription(rule)
+    const paths = rule.frontmatter?.globs || []
 
     return {
       title: title.substring(0, 100), // Reasonable title length
       description: description.substring(0, 600), // GitHub Copilot limit
-      paths: paths,
-    };
+      paths,
+    }
   }
 
   generateCopilotDescription(rule) {
-    const cleanContent = this.stripFrontmatter(rule.content);
-    const keyPoints = this.extractKeyPoints(cleanContent);
+    const cleanContent = this.stripFrontmatter(rule.content)
+    const keyPoints = this.extractKeyPoints(cleanContent)
 
     // Create concise description focused on what Copilot should look for
-    let description = rule.frontmatter?.description;
+    let description = rule.frontmatter?.description
 
     if (keyPoints.length > 0) {
-      description += '. Key points: ' + keyPoints.slice(0, 3).join('. ');
+      description += `. Key points: ${keyPoints.slice(0, 3).join('. ')}`
     }
 
-    return description;
+    return description
   }
 
-  generateCopilotDocumentation(guidelines, projectContext) {
-    const projectName = path.basename(this.projectPath);
+  generateCopilotDocumentation(guidelines, _projectContext) {
+    const projectName = path.basename(this.projectPath)
 
     let content = `# GitHub Copilot Guidelines for ${projectName}
 
@@ -1109,20 +1137,20 @@ This directory contains GitHub Copilot Enterprise coding guidelines generated by
 
 ## Active Guidelines
 
-`;
+`
 
     guidelines.forEach((guideline, index) => {
       content += `### ${index + 1}. ${guideline.title}
 
 **Description**: ${guideline.description}
 
-`;
+`
       if (guideline.paths.length > 0) {
         content += `**File Patterns**: ${guideline.paths.map((p) => `\`${p}\``).join(', ')}
 
-`;
+`
       }
-    });
+    })
 
     content += `## Setup Instructions
 
@@ -1138,64 +1166,66 @@ This directory contains GitHub Copilot Enterprise coding guidelines generated by
 - Maximum 6 guidelines per repository (GitHub Copilot limit)
 
 ---
-*Generated by VDK CLI*`;
+*Generated by VDK CLI*`
 
-    return content;
+    return content
   }
 
   // === Utility Methods ===
 
   stripFrontmatter(content) {
     if (content.startsWith('---')) {
-      const parts = content.split('---');
-      return parts.slice(2).join('---').trim();
+      const parts = content.split('---')
+      return parts.slice(2).join('---').trim()
     }
-    return content;
+    return content
   }
 
   extractTitle(content) {
-    const lines = content.split('\n');
-    const titleLine = lines.find((line) => line.startsWith('# '));
-    return titleLine ? titleLine.replace('# ', '').trim() : 'Untitled';
+    const lines = content.split('\n')
+    const titleLine = lines.find((line) => line.startsWith('# '))
+    return titleLine ? titleLine.replace('# ', '').trim() : 'Untitled'
   }
 
   extractKeySections(content, sectionTypes) {
-    const lines = content.split('\n');
-    let result = '';
-    let inTargetSection = false;
+    const lines = content.split('\n')
+    let result = ''
+    let inTargetSection = false
 
     for (const line of lines) {
       if (line.startsWith('## ')) {
-        const sectionTitle = line.toLowerCase();
-        inTargetSection = sectionTypes.some((type) => sectionTitle.includes(type));
+        const sectionTitle = line.toLowerCase()
+        inTargetSection = sectionTypes.some((type) => sectionTitle.includes(type))
       }
 
       if (inTargetSection && !line.startsWith('#')) {
-        result += line + '\n';
+        result += `${line}\n`
       }
     }
 
-    return result.trim();
+    return result.trim()
   }
 
   extractKeyPoints(content) {
-    const lines = content.split('\n');
+    const lines = content.split('\n')
     return lines
       .filter((line) => line.trim().startsWith('-') || line.trim().startsWith('*'))
       .map((line) => line.replace(/^[-*]\s*/, '').trim())
-      .filter((line) => line.length > 10); // Filter out very short points
+      .filter((line) => line.length > 10) // Filter out very short points
   }
 
   groupRulesByTechnology(rules) {
-    const groups = {};
+    const groups = {}
 
     for (const rule of rules) {
-      const tech = rule.frontmatter?.framework || rule.frontmatter?.category || 'General';
-      if (!groups[tech]) groups[tech] = [];
-      groups[tech].push(rule);
+      const tech = rule.frontmatter?.framework || rule.frontmatter?.category || 'General'
+      if (!groups[tech]) {
+        groups[tech] = []
+      }
+      groups[tech].push(rule)
     }
 
-    return groups;
+    return groups
   }
 
   getCommandName(description) {
@@ -1204,6 +1234,6 @@ This directory contains GitHub Copilot Enterprise coding guidelines generated by
       .split(' ')
       .slice(0, 3)
       .join(' ')
-      .trim();
+      .trim()
   }
 }

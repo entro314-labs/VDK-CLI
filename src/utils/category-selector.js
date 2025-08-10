@@ -3,8 +3,8 @@
  * Provides interactive category selection for command fetching
  */
 
-import { intro, multiselect, outro, select } from '@clack/prompts';
-import chalk from 'chalk';
+import { intro, multiselect, outro, select } from '@clack/prompts'
+import chalk from 'chalk'
 
 /**
  * Available command categories with descriptions
@@ -80,7 +80,7 @@ export const COMMAND_CATEGORIES = {
     commands: ['audit', 'harden'],
     essential: false,
   },
-};
+}
 
 /**
  * Predefined preset configurations
@@ -116,17 +116,17 @@ export const PRESETS = {
     categories: [], // Will be determined dynamically
     commands: null,
   },
-};
+}
 
 /**
  * Smart category selection based on project analysis
  */
 export function getSmartCategories(projectContext) {
-  const smartCategories = ['development']; // Always include development
+  const smartCategories = ['development'] // Always include development
 
   // Add quality if testing frameworks detected
   if (projectContext.techStack?.testingFrameworks?.length > 0) {
-    smartCategories.push('quality');
+    smartCategories.push('quality')
   }
 
   // Add workflow if CI/CD indicators found
@@ -137,7 +137,7 @@ export function getSmartCategories(projectContext) {
         lib.includes('github-actions') || lib.includes('gitlab-ci') || lib.includes('jenkins')
     )
   ) {
-    smartCategories.push('workflow');
+    smartCategories.push('workflow')
   }
 
   // Add security for production projects
@@ -146,48 +146,48 @@ export function getSmartCategories(projectContext) {
       (fw) => fw.includes('next') || fw.includes('express') || fw.includes('fastapi')
     )
   ) {
-    smartCategories.push('security');
+    smartCategories.push('security')
   }
 
   // Add meta for documentation-heavy projects
   if (projectContext.projectStructure?.fileTypes?.md > 5) {
-    smartCategories.push('meta');
+    smartCategories.push('meta')
   }
 
-  return smartCategories;
+  return smartCategories
 }
 
 /**
  * Interactive category selection
  */
 export async function selectCategoriesInteractively(projectContext) {
-  intro(chalk.blue('🎯 VDK Command Category Selection'));
+  intro(chalk.blue('🎯 VDK Command Category Selection'))
 
   // Check if this is a demo mode (when commands aren't actually available)
   const isDemoMode =
-    !process.env.VDK_GITHUB_TOKEN || process.env.VDK_GITHUB_TOKEN.includes('expired');
+    !process.env.VDK_GITHUB_TOKEN || process.env.VDK_GITHUB_TOKEN.includes('expired')
 
   if (isDemoMode) {
     console.log(
       chalk.yellow('📋 Interactive Selection Demo (commands not available due to authentication)')
-    );
-    console.log(chalk.dim('This shows what the selection process would look like:\n'));
+    )
+    console.log(chalk.dim('This shows what the selection process would look like:\n'))
   }
 
   try {
     // Show project context
     if (projectContext.techStack) {
-      console.log(chalk.green('📊 Detected Project Context:'));
+      console.log(chalk.green('📊 Detected Project Context:'))
       console.log(
         `   Language: ${projectContext.techStack.primaryLanguages?.join(', ') || 'Unknown'}`
-      );
+      )
       console.log(
         `   Framework: ${projectContext.techStack.frameworks?.join(', ') || 'None detected'}`
-      );
+      )
       console.log(
         `   Testing: ${projectContext.techStack.testingFrameworks?.join(', ') || 'None detected'}`
-      );
-      console.log('');
+      )
+      console.log('')
     }
 
     // Ask for selection method
@@ -198,37 +198,37 @@ export async function selectCategoriesInteractively(projectContext) {
         { value: 'categories', label: 'Select individual categories' },
         { value: 'auto', label: 'Use smart auto-selection' },
       ],
-    });
+    })
 
-    let result;
+    let result
     if (method === 'preset') {
-      result = await selectPreset();
+      result = await selectPreset()
     } else if (method === 'categories') {
-      result = await selectIndividualCategories();
+      result = await selectIndividualCategories()
     } else if (method === 'auto') {
-      const smartCategories = getSmartCategories(projectContext);
-      console.log(chalk.green(`🤖 Smart selection chose: ${smartCategories.join(', ')}`));
-      result = { categories: smartCategories, preset: 'auto' };
+      const smartCategories = getSmartCategories(projectContext)
+      console.log(chalk.green(`🤖 Smart selection chose: ${smartCategories.join(', ')}`))
+      result = { categories: smartCategories, preset: 'auto' }
     } else {
-      console.log(chalk.yellow('Invalid choice, using auto-selection'));
-      result = { categories: getSmartCategories(projectContext), preset: 'auto' };
+      console.log(chalk.yellow('Invalid choice, using auto-selection'))
+      result = { categories: getSmartCategories(projectContext), preset: 'auto' }
     }
 
-    outro(chalk.green('✅ Category selection complete!'));
+    outro(chalk.green('✅ Category selection complete!'))
 
     if (isDemoMode) {
-      console.log(chalk.yellow('\n📋 Demo complete! To actually fetch commands:'));
-      console.log(chalk.gray('   • Add a valid GitHub token to .env.local'));
-      console.log(chalk.gray('   • Run vdk init --interactive again'));
+      console.log(chalk.yellow('\n📋 Demo complete! To actually fetch commands:'))
+      console.log(chalk.gray('   • Add a valid GitHub token to .env.local'))
+      console.log(chalk.gray('   • Run vdk init --interactive again'))
     }
 
-    return result;
+    return result
   } catch (error) {
     if (error.message === 'User cancelled') {
-      outro(chalk.yellow('Operation cancelled'));
-      process.exit(0);
+      outro(chalk.yellow('Operation cancelled'))
+      process.exit(0)
     }
-    throw error;
+    throw error
   }
 }
 
@@ -243,21 +243,21 @@ async function selectPreset() {
       preset.categories.length > 0
         ? `Categories: ${preset.categories.join(', ')}`
         : 'Smart selection',
-  }));
+  }))
 
   const selectedPreset = await select({
     message: 'Choose a preset configuration:',
     options: presetOptions,
-  });
+  })
 
-  const preset = PRESETS[selectedPreset];
-  console.log(chalk.green(`Selected preset: ${preset.name}`));
+  const preset = PRESETS[selectedPreset]
+  console.log(chalk.green(`Selected preset: ${preset.name}`))
 
   return {
     categories: preset.categories,
     preset: selectedPreset,
     specificCommands: preset.commands,
-  };
+  }
 }
 
 /**
@@ -268,28 +268,28 @@ async function selectIndividualCategories() {
     value: key,
     label: `${category.name}${category.essential ? ' ⭐' : ''}`,
     hint: `${category.description} (${category.commands.length} commands)`,
-  }));
+  }))
 
   const selectedCategories = await multiselect({
     message: 'Select command categories:',
     options: categoryOptions,
     required: true,
-  });
+  })
 
   if (!selectedCategories || selectedCategories.length === 0) {
-    console.log(chalk.yellow('No categories selected, using development'));
+    console.log(chalk.yellow('No categories selected, using development'))
     return {
       categories: ['development'],
       preset: 'custom',
-    };
+    }
   }
 
-  console.log(chalk.green(`Selected categories: ${selectedCategories.join(', ')}`));
+  console.log(chalk.green(`Selected categories: ${selectedCategories.join(', ')}`))
 
   return {
     categories: selectedCategories,
     preset: 'custom',
-  };
+  }
 }
 
 /**
@@ -301,48 +301,48 @@ export function getCategoryFilter(options, _projectContext) {
     return {
       categories: options.categories,
       preset: 'custom',
-    };
+    }
   }
 
   // If preset specified
   if (options.preset && options.preset !== 'auto' && PRESETS[options.preset]) {
-    const preset = PRESETS[options.preset];
+    const preset = PRESETS[options.preset]
     return {
       categories: preset.categories,
       preset: options.preset,
       specificCommands: preset.commands,
-    };
+    }
   }
 
   // Auto selection
   if (!options.interactive) {
-    const smartCategories = getSmartCategories(options.projectContext || {});
+    const smartCategories = getSmartCategories(options.projectContext || {})
     return {
       categories: smartCategories,
       preset: 'auto',
-    };
+    }
   }
 
   // This will be handled by interactive selection
-  return null;
+  return null
 }
 
 /**
  * Display selection summary
  */
-export function displaySelectionSummary(selection, projectContext) {
-  console.log(chalk.blue('\n📋 Command Selection Summary:'));
-  console.log(`   Preset: ${selection.preset}`);
-  console.log(`   Categories: ${selection.categories.join(', ')}`);
+export function displaySelectionSummary(selection, _projectContext) {
+  console.log(chalk.blue('\n📋 Command Selection Summary:'))
+  console.log(`   Preset: ${selection.preset}`)
+  console.log(`   Categories: ${selection.categories.join(', ')}`)
 
   if (selection.specificCommands) {
-    console.log(`   Specific Commands: ${selection.specificCommands.join(', ')}`);
+    console.log(`   Specific Commands: ${selection.specificCommands.join(', ')}`)
   }
 
   const totalCommands = selection.categories.reduce((total, cat) => {
-    return total + (COMMAND_CATEGORIES[cat]?.commands.length || 0);
-  }, 0);
+    return total + (COMMAND_CATEGORIES[cat]?.commands.length || 0)
+  }, 0)
 
-  console.log(`   Estimated Commands: ${selection.specificCommands?.length || totalCommands}`);
-  console.log('');
+  console.log(`   Estimated Commands: ${selection.specificCommands?.length > 0 || totalCommands}`)
+  console.log('')
 }

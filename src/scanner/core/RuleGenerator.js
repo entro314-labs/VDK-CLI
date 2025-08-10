@@ -12,62 +12,62 @@
  * - Multi-platform AI assistant support
  */
 
-import chalk from 'chalk';
-import fs from 'fs/promises';
-import yaml from 'js-yaml';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'node:fs/promises'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-import { downloadRule, fetchRuleList } from '../../blueprints-client.js';
-import { createIntegrationManager } from '../../integrations/index.js';
-import { validateBlueprint } from '../../utils/schema-validator.js';
-import { applyLightTemplating, prepareTemplateVariables } from '../utils/light-templating.js';
-import { ClaudeCodeAdapter } from './ClaudeCodeAdapter.js';
-import { RuleAdapter } from './RuleAdapter.js';
+import chalk from 'chalk'
+import yaml from 'js-yaml'
+
+import { createIntegrationManager } from '../../integrations/index.js'
+import { validateBlueprint } from '../../utils/schema-validator.js'
+import { applyLightTemplating, prepareTemplateVariables } from '../utils/light-templating.js'
+import { ClaudeCodeAdapter } from './ClaudeCodeAdapter.js'
+import { RuleAdapter } from './RuleAdapter.js'
 
 // Ensure fetch is available (Node.js 18+ has it built-in)
 if (typeof globalThis.fetch === 'undefined') {
   // Fallback for older Node.js versions would go here
-  console.warn('fetch not available, some features may not work');
+  console.warn('fetch not available, some features may not work')
 }
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export class RuleGenerator {
   constructor(outputPath = './.ai/rules', template = 'default', overwrite = false, options = {}) {
     // Support both (outputPath, template, overwrite) and (options) constructor signatures
     if (typeof outputPath === 'object') {
-      options = outputPath;
-      outputPath = options.outputPath || './.ai/rules';
-      template = options.template || 'default';
-      overwrite = options.overwrite || false;
+      options = outputPath
+      outputPath = options.outputPath || './.ai/rules'
+      template = options.template || 'default'
+      overwrite = options.overwrite
     }
 
-    this.verbose = options.verbose || false;
-    this.outputPath = outputPath;
-    this.template = template;
-    this.overwrite = overwrite;
-    this.templatesDir = options.templatesDir || path.join(__dirname, '../templates');
-    this.generatedFiles = [];
+    this.verbose = options.verbose
+    this.outputPath = outputPath
+    this.template = template
+    this.overwrite = overwrite
+    this.templatesDir = options.templatesDir || path.join(__dirname, '../templates')
+    this.generatedFiles = []
 
     // IDE-aware specific properties
-    this.integrationManager = null;
-    this.detectedIntegrations = [];
-    this.rulesByIDE = {};
-    this.ruleAdapters = {};
+    this.integrationManager = null
+    this.detectedIntegrations = []
+    this.rulesByIDE = {}
+    this.ruleAdapters = {}
 
     // VDK Ecosystem configuration
-    this.ecosystemVersion = '2.1.0';
-    this.hubEndpoint = options.hubEndpoint || 'https://vdk.tools';
+    this.ecosystemVersion = '2.1.0'
+    this.hubEndpoint = options.hubEndpoint || 'https://vdk.tools'
     this.repositoryEndpoint =
-      options.repositoryEndpoint || 'https://api.github.com/repos/entro314-labs/VDK-Blueprints';
-    this.enableRemoteFetch = options.enableRemoteFetch !== false;
-    this.enableAnalytics = options.enableAnalytics !== false;
-    this.schemaValidation = options.schemaValidation !== false;
-    this.ideIntegration = options.ideIntegration !== false;
+      options.repositoryEndpoint || 'https://api.github.com/repos/entro314-labs/VDK-Blueprints'
+    this.enableRemoteFetch = options.enableRemoteFetch !== false
+    this.enableAnalytics = options.enableAnalytics !== false
+    this.schemaValidation = options.schemaValidation !== false
+    this.ideIntegration = options.ideIntegration !== false
 
     // Initialize rule adapters
-    this.initializeRuleAdapters(options);
+    this.initializeRuleAdapters(options)
   }
 
   /**
@@ -78,19 +78,19 @@ export class RuleGenerator {
       verbose: options.verbose,
       projectPath: options.projectPath || process.cwd(),
       ecosystemVersion: this.ecosystemVersion,
-    };
+    }
 
     // Claude Code adapter with sophisticated memory hierarchy
-    this.ruleAdapters.claude = new ClaudeCodeAdapter({ ...adapterOptions, ruleGenerator: this });
+    this.ruleAdapters.claude = new ClaudeCodeAdapter({ ...adapterOptions, ruleGenerator: this })
 
     // Generic adapters for other IDEs
-    this.ruleAdapters.cursor = new RuleAdapter({ ...adapterOptions, targetIDE: 'cursor' });
-    this.ruleAdapters.windsurf = new RuleAdapter({ ...adapterOptions, targetIDE: 'windsurf' });
-    this.ruleAdapters.vscode = new RuleAdapter({ ...adapterOptions, targetIDE: 'vscode' });
-    this.ruleAdapters.copilot = new RuleAdapter({ ...adapterOptions, targetIDE: 'copilot' });
+    this.ruleAdapters.cursor = new RuleAdapter({ ...adapterOptions, targetIDE: 'cursor' })
+    this.ruleAdapters.windsurf = new RuleAdapter({ ...adapterOptions, targetIDE: 'windsurf' })
+    this.ruleAdapters.vscode = new RuleAdapter({ ...adapterOptions, targetIDE: 'vscode' })
+    this.ruleAdapters.copilot = new RuleAdapter({ ...adapterOptions, targetIDE: 'copilot' })
 
     // Set default adapter for VDK ecosystem
-    this.ruleAdapter = this.ruleAdapters.claude; // Claude Code as primary
+    this.ruleAdapter = this.ruleAdapters.claude // Claude Code as primary
   }
 
   /**
@@ -101,39 +101,39 @@ export class RuleGenerator {
    */
   async generateIDESpecificRules(analysisData, categoryFilter = null) {
     if (this.verbose) {
-      console.log(chalk.gray('Starting IDE-aware rule generation...'));
+      console.log(chalk.gray('Starting IDE-aware rule generation...'))
     }
 
     // Initialize integration manager
     this.integrationManager = createIntegrationManager(
       analysisData.projectStructure?.root || process.cwd()
-    );
+    )
 
     // Detect active integrations
-    this.detectedIntegrations = await this.detectActiveIntegrations();
+    this.detectedIntegrations = await this.detectActiveIntegrations()
 
     if (this.verbose) {
       console.log(
         chalk.gray(
           `Detected integrations: ${this.detectedIntegrations.map((i) => i.name).join(', ')}`
         )
-      );
+      )
     }
 
     // First, try to fetch remote blueprints
-    let standardizedRules = [];
+    let standardizedRules = []
     if (this.enableRemoteFetch) {
-      standardizedRules = await this.fetchFromRulesRepository(analysisData);
+      standardizedRules = await this.fetchFromRulesRepository(analysisData)
       if (this.verbose && standardizedRules.length > 0) {
-        console.log(chalk.gray(`Fetched ${standardizedRules.length} remote blueprints`));
+        console.log(chalk.gray(`Fetched ${standardizedRules.length} remote blueprints`))
       }
     }
 
     // Fallback to local rules if remote fetch failed or returned no results
     if (standardizedRules.length === 0) {
-      standardizedRules = await this.loadStandardizedRules(analysisData);
+      standardizedRules = await this.loadStandardizedRules(analysisData)
       if (this.verbose) {
-        console.log(chalk.gray(`Using ${standardizedRules.length} local fallback rules`));
+        console.log(chalk.gray(`Using ${standardizedRules.length} local fallback rules`))
       }
     }
 
@@ -144,16 +144,16 @@ export class RuleGenerator {
         integrations: this.detectedIntegrations.length,
         formats: [],
       },
-    };
+    }
 
     // Generate rules for each detected integration using RuleAdapter
     for (const integration of this.detectedIntegrations) {
       if (this.verbose) {
-        console.log(chalk.gray(`Adapting rules for ${integration.name}...`));
+        console.log(chalk.gray(`Adapting rules for ${integration.name}...`))
       }
 
       try {
-        let adaptedRules;
+        let adaptedRules
 
         // For Claude Code, use the enhanced adapter with category filtering support
         if (integration.name === 'Claude Code') {
@@ -161,33 +161,33 @@ export class RuleGenerator {
             standardizedRules,
             analysisData,
             categoryFilter
-          );
+          )
         } else {
           // For other IDEs, use the standard adapter
           adaptedRules = await this.ruleAdapter.adaptRules(
             standardizedRules,
             this.mapIntegrationToIDE(integration.name),
             analysisData
-          );
+          )
         }
 
         if (this.verbose && process.env.VDK_DEBUG) {
-          console.log('Debug adaptedRules structure:', JSON.stringify(adaptedRules, null, 2));
+          console.log('Debug adaptedRules structure:', JSON.stringify(adaptedRules, null, 2))
         }
 
         // Write adapted files to disk
-        await this.writeAdaptedRules(adaptedRules);
+        await this.writeAdaptedRules(adaptedRules)
 
-        results.generatedRules[integration.name] = adaptedRules;
-        results.summary.totalFiles += adaptedRules.files.length;
+        results.generatedRules[integration.name] = adaptedRules
+        results.summary.totalFiles += adaptedRules.files.length
 
         // Track unique formats
-        const format = this.getIDEFormat(integration.name);
+        const format = this.getIDEFormat(integration.name)
         if (!results.summary.formats.includes(format)) {
-          results.summary.formats.push(format);
+          results.summary.formats.push(format)
         }
       } catch (error) {
-        console.error(chalk.red(`Failed to adapt rules for ${integration.name}: ${error.message}`));
+        console.error(chalk.red(`Failed to adapt rules for ${integration.name}: ${error.message}`))
       }
     }
 
@@ -196,16 +196,16 @@ export class RuleGenerator {
       if (this.verbose) {
         console.log(
           chalk.yellow('No specific IDE integrations detected, generating universal rules...')
-        );
+        )
       }
 
-      const universalRules = await this.generateUniversalRules(analysisData);
-      results.generatedRules['Universal'] = universalRules;
-      results.summary.totalFiles += universalRules.length;
-      results.summary.formats.push('md');
+      const universalRules = await this.generateUniversalRules(analysisData)
+      results.generatedRules.Universal = universalRules
+      results.summary.totalFiles += universalRules.length
+      results.summary.formats.push('md')
     }
 
-    return results;
+    return results
   }
 
   /**
@@ -213,23 +213,23 @@ export class RuleGenerator {
    * @returns {Array} List of active integrations
    */
   async detectActiveIntegrations() {
-    const activeIntegrations = [];
-    const allIntegrations = this.integrationManager.getAllIntegrations();
+    const activeIntegrations = []
+    const allIntegrations = this.integrationManager.getAllIntegrations()
 
     for (const integration of allIntegrations) {
-      const detection = integration.detectUsage();
+      const detection = integration.detectUsage()
 
       // Consider integration active if confidence is medium or high
       if (detection.confidence === 'medium' || detection.confidence === 'high') {
         activeIntegrations.push({
           name: integration.name,
           confidence: detection.confidence,
-          integration: integration,
-        });
+          integration,
+        })
       }
     }
 
-    return activeIntegrations;
+    return activeIntegrations
   }
 
   /**
@@ -238,48 +238,48 @@ export class RuleGenerator {
    * @returns {Array} Array of rule objects with frontmatter and templated content
    */
   async loadStandardizedRules(analysisData = {}) {
-    const rulesDir = path.resolve(__dirname, '../../../.ai/rules');
-    const rules = [];
+    const rulesDir = path.resolve(__dirname, '../../../.ai/rules')
+    const rules = []
 
     try {
-      const ruleFiles = await this.findRuleFiles(rulesDir);
+      const ruleFiles = await this.findRuleFiles(rulesDir)
 
       for (const filePath of ruleFiles) {
         try {
-          const rawContent = await fs.readFile(filePath, 'utf8');
-          const frontmatter = this.parseFrontmatter(rawContent);
+          const rawContent = await fs.readFile(filePath, 'utf8')
+          const frontmatter = this.parseFrontmatter(rawContent)
 
           // Fix framework field if it's 'vdk'
           if (frontmatter.framework === 'vdk') {
-            frontmatter.framework = this.inferFrameworkFromFile(filePath, rawContent);
+            frontmatter.framework = this.inferFrameworkFromFile(filePath, rawContent)
           }
 
           // Apply light templating to content (replaces ${variable} patterns)
-          const templateVariables = prepareTemplateVariables(analysisData);
-          const templatedContent = applyLightTemplating(rawContent, templateVariables);
+          const templateVariables = prepareTemplateVariables(analysisData)
+          const templatedContent = applyLightTemplating(rawContent, templateVariables)
 
           if (this.verbose && rawContent !== templatedContent) {
-            console.log(chalk.gray(`Applied light templating to ${path.basename(filePath)}`));
+            console.log(chalk.gray(`Applied light templating to ${path.basename(filePath)}`))
           }
 
           rules.push({
             filePath,
             frontmatter,
             content: templatedContent,
-          });
+          })
         } catch (error) {
           if (this.verbose) {
-            console.warn(chalk.yellow(`Failed to load rule file ${filePath}: ${error.message}`));
+            console.warn(chalk.yellow(`Failed to load rule file ${filePath}: ${error.message}`))
           }
         }
       }
     } catch (error) {
       if (this.verbose) {
-        console.warn(chalk.yellow(`Failed to load rules directory: ${error.message}`));
+        console.warn(chalk.yellow(`Failed to load rules directory: ${error.message}`))
       }
     }
 
-    return rules;
+    return rules
   }
 
   /**
@@ -288,25 +288,25 @@ export class RuleGenerator {
    * @returns {Array} Array of file paths
    */
   async findRuleFiles(dir) {
-    const files = [];
+    const files = []
 
     try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
+      const entries = await fs.readdir(dir, { withFileTypes: true })
 
       for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
+        const fullPath = path.join(dir, entry.name)
 
         if (entry.isDirectory()) {
-          files.push(...(await this.findRuleFiles(fullPath)));
+          files.push(...(await this.findRuleFiles(fullPath)))
         } else if (entry.name.endsWith('.mdc')) {
-          files.push(fullPath);
+          files.push(fullPath)
         }
       }
-    } catch (error) {
+    } catch {
       // Ignore directory access errors
     }
 
-    return files;
+    return files
   }
 
   /**
@@ -316,24 +316,24 @@ export class RuleGenerator {
    */
   parseFrontmatter(content) {
     if (!content.startsWith('---')) {
-      return {};
+      return {}
     }
 
-    const endIndex = content.indexOf('---', 3);
+    const endIndex = content.indexOf('---', 3)
     if (endIndex === -1) {
-      return {};
+      return {}
     }
 
-    const frontmatterText = content.slice(3, endIndex).trim();
+    const frontmatterText = content.slice(3, endIndex).trim()
     try {
       // Use proper YAML parser for accurate parsing
-      const parsed = yaml.load(frontmatterText);
-      return parsed || {};
+      const parsed = yaml.load(frontmatterText)
+      return parsed || {}
     } catch (error) {
       if (this.verbose) {
-        console.warn(chalk.yellow(`Failed to parse frontmatter: ${error.message}`));
+        console.warn(chalk.yellow(`Failed to parse frontmatter: ${error.message}`))
       }
-      return {};
+      return {}
     }
   }
 
@@ -344,30 +344,62 @@ export class RuleGenerator {
    * @returns {string} Inferred framework
    */
   inferFrameworkFromFile(filePath, content) {
-    const fileName = path.basename(filePath, '.mdc').toLowerCase();
+    const fileName = path.basename(filePath, '.mdc').toLowerCase()
 
     // Check filename for framework indicators
-    if (fileName.includes('nextjs') || fileName.includes('next')) return 'nextjs';
-    if (fileName.includes('react')) return 'react';
-    if (fileName.includes('vue')) return 'vue';
-    if (fileName.includes('angular')) return 'angular';
-    if (fileName.includes('django')) return 'django';
-    if (fileName.includes('node') || fileName.includes('express')) return 'nodejs';
-    if (fileName.includes('typescript')) return 'typescript';
-    if (fileName.includes('python')) return 'python';
-    if (fileName.includes('swift')) return 'swift';
-    if (fileName.includes('kotlin')) return 'kotlin';
+    if (fileName.includes('nextjs') || fileName.includes('next')) {
+      return 'nextjs'
+    }
+    if (fileName.includes('react')) {
+      return 'react'
+    }
+    if (fileName.includes('vue')) {
+      return 'vue'
+    }
+    if (fileName.includes('angular')) {
+      return 'angular'
+    }
+    if (fileName.includes('django')) {
+      return 'django'
+    }
+    if (fileName.includes('node') || fileName.includes('express')) {
+      return 'nodejs'
+    }
+    if (fileName.includes('typescript')) {
+      return 'typescript'
+    }
+    if (fileName.includes('python')) {
+      return 'python'
+    }
+    if (fileName.includes('swift')) {
+      return 'swift'
+    }
+    if (fileName.includes('kotlin')) {
+      return 'kotlin'
+    }
 
     // Check content for framework indicators
-    const contentLower = content.toLowerCase();
-    if (contentLower.includes('next.js') || contentLower.includes('nextjs')) return 'nextjs';
-    if (contentLower.includes('react')) return 'react';
-    if (contentLower.includes('vue.js') || contentLower.includes('vue 3')) return 'vue';
-    if (contentLower.includes('angular')) return 'angular';
-    if (contentLower.includes('django')) return 'django';
-    if (contentLower.includes('express') || contentLower.includes('node.js')) return 'nodejs';
+    const contentLower = content.toLowerCase()
+    if (contentLower.includes('next.js') || contentLower.includes('nextjs')) {
+      return 'nextjs'
+    }
+    if (contentLower.includes('react')) {
+      return 'react'
+    }
+    if (contentLower.includes('vue.js') || contentLower.includes('vue 3')) {
+      return 'vue'
+    }
+    if (contentLower.includes('angular')) {
+      return 'angular'
+    }
+    if (contentLower.includes('django')) {
+      return 'django'
+    }
+    if (contentLower.includes('express') || contentLower.includes('node.js')) {
+      return 'nodejs'
+    }
 
-    return 'general';
+    return 'general'
   }
 
   /**
@@ -381,9 +413,9 @@ export class RuleGenerator {
       Windsurf: 'windsurf',
       'Claude Code': 'claude',
       'GitHub Copilot': 'github-copilot',
-    };
+    }
 
-    return mapping[integrationName] || 'generic';
+    return mapping[integrationName] || 'generic'
   }
 
   /**
@@ -391,11 +423,11 @@ export class RuleGenerator {
    * @param {Object} adaptedRules - Adapted rules from RuleAdapter
    */
   async writeAdaptedRules(adaptedRules) {
-    if (!adaptedRules || !adaptedRules.files) {
+    if (!adaptedRules?.files) {
       console.error(
         chalk.red('No files to write - adaptedRules or adaptedRules.files is undefined')
-      );
-      return;
+      )
+      return
     }
 
     // Handle ClaudeCodeAdapter structure (files are already written, just paths returned)
@@ -403,33 +435,33 @@ export class RuleGenerator {
       if (this.verbose) {
         console.log(
           chalk.gray(`Claude Code files already written: ${adaptedRules.files.length} files`)
-        );
+        )
         adaptedRules.files.forEach((filePath) => {
-          console.log(chalk.gray(`  - ${filePath}`));
-        });
+          console.log(chalk.gray(`  - ${filePath}`))
+        })
       }
-      return;
+      return
     }
 
     // Handle standard RuleAdapter structure (file objects with path and content)
     for (const file of adaptedRules.files) {
       try {
         if (!file.path) {
-          console.error(chalk.red(`Failed to write file: path is undefined`), file);
-          continue;
+          console.error(chalk.red('Failed to write file: path is undefined'), file)
+          continue
         }
 
         // Ensure directory exists
-        await fs.mkdir(path.dirname(file.path), { recursive: true });
+        await fs.mkdir(path.dirname(file.path), { recursive: true })
 
         // Write file
-        await fs.writeFile(file.path, file.content, 'utf8');
+        await fs.writeFile(file.path, file.content, 'utf8')
 
         if (this.verbose) {
-          console.log(chalk.gray(`Written: ${file.path}`));
+          console.log(chalk.gray(`Written: ${file.path}`))
         }
       } catch (error) {
-        console.error(chalk.red(`Failed to write ${file.path || 'undefined'}: ${error.message}`));
+        console.error(chalk.red(`Failed to write ${file.path || 'undefined'}: ${error.message}`))
       }
     }
   }
@@ -441,18 +473,18 @@ export class RuleGenerator {
    */
   async generateUniversalRules(analysisData) {
     // Set output to .ai/rules for universal compatibility
-    const originalOutputPath = this.outputPath;
+    const originalOutputPath = this.outputPath
     this.outputPath = path.join(
       analysisData.projectStructure?.root || process.cwd(),
       '.ai',
       'rules'
-    );
+    )
 
     try {
       // Generate basic fallback rules with standard templates
-      return await this.generateBasicUniversalRules(analysisData);
+      return await this.generateBasicUniversalRules(analysisData)
     } finally {
-      this.outputPath = originalOutputPath;
+      this.outputPath = originalOutputPath
     }
   }
 
@@ -464,24 +496,24 @@ export class RuleGenerator {
    * @returns {string} Output directory path
    */
   getIDEOutputDirectory(ideName, _configPaths, analysisData) {
-    const projectRoot = analysisData.projectStructure?.root || process.cwd();
+    const projectRoot = analysisData.projectStructure?.root || process.cwd()
 
     switch (ideName) {
       case 'Cursor AI':
-        return path.join(projectRoot, '.cursor', 'rules');
+        return path.join(projectRoot, '.cursor', 'rules')
 
       case 'Windsurf':
-        return path.join(projectRoot, '.windsurf', 'rules');
+        return path.join(projectRoot, '.windsurf', 'rules')
 
       case 'Claude Code':
         // Claude Code uses project root for memory files
-        return projectRoot;
+        return projectRoot
 
       case 'GitHub Copilot':
-        return path.join(projectRoot, '.github', 'copilot');
+        return path.join(projectRoot, '.github', 'copilot')
 
       default:
-        return path.join(projectRoot, '.ai', 'rules');
+        return path.join(projectRoot, '.ai', 'rules')
     }
   }
 
@@ -493,15 +525,15 @@ export class RuleGenerator {
   getIDEFormat(ideName) {
     switch (ideName) {
       case 'Cursor AI':
-        return 'mdc'; // MDC format with YAML frontmatter
+        return 'mdc' // MDC format with YAML frontmatter
       case 'Windsurf':
-        return 'md'; // Markdown with XML tags
+        return 'md' // Markdown with XML tags
       case 'Claude Code':
-        return 'md'; // Pure markdown for memory
+        return 'md' // Pure markdown for memory
       case 'GitHub Copilot':
-        return 'json'; // JSON configuration
+        return 'json' // JSON configuration
       default:
-        return 'md';
+        return 'md'
     }
   }
 
@@ -511,40 +543,40 @@ export class RuleGenerator {
    */
   async generateEnhancedRules(analysisData) {
     if (this.verbose) {
-      console.log(chalk.blue('🚀 Starting VDK ecosystem-aware rule generation...'));
+      console.log(chalk.blue('🚀 Starting VDK ecosystem-aware rule generation...'))
     }
 
     try {
       // Step 1: Fetch templates from Rules Repository (CLI ↔ Rules Repository)
-      let remoteTemplates = [];
+      let remoteTemplates = []
       if (this.enableRemoteFetch) {
-        remoteTemplates = await this.fetchFromRulesRepository(analysisData);
+        remoteTemplates = await this.fetchFromRulesRepository(analysisData)
       }
 
       // Step 2: Generate base rules using standard process
-      const standardRules = await this.generateIDESpecificRules(analysisData);
+      const standardRules = await this.generateIDESpecificRules(analysisData)
 
       // Step 2.5: Convert remote templates to actual rule files
       if (remoteTemplates.length > 0) {
-        await this.generateRulesFromRemoteTemplates(remoteTemplates, analysisData);
+        await this.generateRulesFromRemoteTemplates(remoteTemplates, analysisData)
         if (this.verbose) {
           console.log(
             chalk.green(`📝 Generated ${remoteTemplates.length} rules from remote templates`)
-          );
+          )
         }
       }
 
       // Step 3: Apply VDK schema validation (only for remote templates)
       if (this.schemaValidation) {
-        await this.validateRulesWithVDKSchema(standardRules, remoteTemplates);
+        await this.validateRulesWithVDKSchema(standardRules, remoteTemplates)
       }
 
       // Step 4: Generate VDK ecosystem manifest
-      await this.generateVDKManifest(analysisData, remoteTemplates, standardRules);
+      await this.generateVDKManifest(analysisData, remoteTemplates, standardRules)
 
       // Step 5: Send analytics to Hub (CLI → Hub)
       if (this.enableAnalytics) {
-        await this.sendAnalyticsToHub(analysisData, standardRules);
+        await this.sendAnalyticsToHub(analysisData, standardRules)
       }
 
       return {
@@ -555,12 +587,12 @@ export class RuleGenerator {
           validated: this.schemaValidation,
           analyticsEnabled: this.enableAnalytics,
         },
-      };
+      }
     } catch (error) {
       if (this.verbose) {
-        console.error(chalk.red(`❌ VDK ecosystem generation failed: ${error.message}`));
+        console.error(chalk.red(`❌ VDK ecosystem generation failed: ${error.message}`))
       }
-      throw error;
+      throw error
     }
   }
 
@@ -578,34 +610,36 @@ export class RuleGenerator {
     platform = null,
     categoryFilter = null
   ) {
-    if (!this.enableRemoteFetch) return [];
+    if (!this.enableRemoteFetch) {
+      return []
+    }
 
     try {
       if (this.verbose) {
-        console.log(chalk.gray(`📚 Fetching ${contentType} from VDK Blueprints Repository...`));
-        console.log(chalk.gray(`   Repository endpoint: ${this.repositoryEndpoint}`));
+        console.log(chalk.gray(`📚 Fetching ${contentType} from VDK Blueprints Repository...`))
+        console.log(chalk.gray(`   Repository endpoint: ${this.repositoryEndpoint}`))
       }
 
-      const projectSignature = this.generateProjectSignature(analysisData);
+      const projectSignature = this.generateProjectSignature(analysisData)
       // Include analysisData in signature for templating
-      projectSignature.analysisData = analysisData;
+      projectSignature.analysisData = analysisData
       const templates = await this.fetchRepositoryContent(
         projectSignature,
         contentType,
         platform,
         categoryFilter
-      );
+      )
 
       if (this.verbose) {
-        console.log(chalk.green(`📚 Fetched ${templates.length} ${contentType} items`));
+        console.log(chalk.green(`📚 Fetched ${templates.length} ${contentType} items`))
       }
 
-      return templates;
+      return templates
     } catch (error) {
       if (this.verbose) {
-        console.log(chalk.yellow(`⚠️ Could not fetch remote ${contentType}: ${error.message}`));
+        console.log(chalk.yellow(`⚠️ Could not fetch remote ${contentType}: ${error.message}`))
       }
-      return [];
+      return []
     }
   }
 
@@ -613,7 +647,7 @@ export class RuleGenerator {
    * Fetch rules from repository
    */
   async fetchFromRulesRepository(analysisData) {
-    return this.fetchFromRepository(analysisData, 'rules');
+    return this.fetchFromRepository(analysisData, 'rules')
   }
 
   /**
@@ -621,7 +655,7 @@ export class RuleGenerator {
    */
   generateProjectSignature(analysisData) {
     // Handle both techStack and technologyData structure for backward compatibility
-    const techData = analysisData.techStack || analysisData.technologyData || {};
+    const techData = analysisData.techStack || analysisData.technologyData || {}
 
     const signature = {
       languages: techData.primaryLanguages || [],
@@ -633,16 +667,16 @@ export class RuleGenerator {
       projectSize: this.categorizeProjectSize(analysisData.projectStructure),
       complexity: this.assessComplexity(analysisData),
       ecosystemVersion: this.ecosystemVersion,
-    };
-
-    if (this.verbose) {
-      console.log(chalk.gray(`🎯 Project signature for template matching:`));
-      console.log(chalk.gray(`   Languages: ${signature.languages.join(', ')}`));
-      console.log(chalk.gray(`   Frameworks: ${signature.frameworks.join(', ')}`));
-      console.log(chalk.gray(`   Libraries: ${signature.libraries.slice(0, 5).join(', ')}`));
     }
 
-    return signature;
+    if (this.verbose) {
+      console.log(chalk.gray('🎯 Project signature for template matching:'))
+      console.log(chalk.gray(`   Languages: ${signature.languages.join(', ')}`))
+      console.log(chalk.gray(`   Frameworks: ${signature.frameworks.join(', ')}`))
+      console.log(chalk.gray(`   Libraries: ${signature.libraries.slice(0, 5).join(', ')}`))
+    }
+
+    return signature
   }
 
   /**
@@ -661,46 +695,46 @@ export class RuleGenerator {
     try {
       // Build the API URL based on content type
       // For commands, we fetch from .ai/commands/ root and filter by platform later
-      const apiUrl = `${this.repositoryEndpoint}/contents/.ai/${contentType}`;
+      const apiUrl = `${this.repositoryEndpoint}/contents/.ai/${contentType}`
 
       const headers = {
         Accept: 'application/vnd.github.v3+json',
         'User-Agent': `VDK-CLI/${this.ecosystemVersion}`,
-      };
+      }
 
       // Use GitHub token if available to avoid rate limiting
       if (process.env.VDK_GITHUB_TOKEN) {
-        headers['Authorization'] = `token ${process.env.VDK_GITHUB_TOKEN}`;
+        headers.Authorization = `token ${process.env.VDK_GITHUB_TOKEN}`
       }
 
-      const response = await fetch(apiUrl, { headers });
+      const response = await fetch(apiUrl, { headers })
 
       if (!response.ok) {
         if (this.verbose) {
-          console.log(chalk.yellow(`⚠️ Repository fetch failed: ${response.status} for ${apiUrl}`));
+          console.log(chalk.yellow(`⚠️ Repository fetch failed: ${response.status} for ${apiUrl}`))
         }
-        throw new Error(`Repository API failed: ${response.status}`);
+        throw new Error(`Repository API failed: ${response.status}`)
       }
 
       if (this.verbose) {
-        console.log(chalk.gray(`✅ Repository fetch successful from: ${apiUrl}`));
+        console.log(chalk.gray(`✅ Repository fetch successful from: ${apiUrl}`))
       }
 
-      const contents = await response.json();
+      const contents = await response.json()
 
       if (this.verbose) {
-        console.log(chalk.gray(`📁 Found ${contents.length} items in repository`));
+        console.log(chalk.gray(`📁 Found ${contents.length} items in repository`))
       }
       if (this.verbose) {
         console.log(
           chalk.gray(
             `📁 Repository contents: ${contents.map((item) => `${item.name}(${item.type})`).join(', ')}`
           )
-        );
+        )
       }
 
       // For commands, we need to handle platform-specific directory structure and dynamic categories
-      let allTemplates;
+      let allTemplates
       if (contentType === 'commands' && platform) {
         allTemplates = await this.expandRepositoryDirectoriesWithCategories(
           contents,
@@ -708,14 +742,14 @@ export class RuleGenerator {
           contentType,
           platform,
           categoryFilter
-        );
+        )
       } else {
         // First expand directories to get all template files
         allTemplates = await this.expandRepositoryDirectories(
           contents,
           projectSignature,
           contentType
-        );
+        )
       }
 
       if (this.verbose) {
@@ -723,11 +757,11 @@ export class RuleGenerator {
           chalk.gray(
             `📁 After directory expansion: ${allTemplates.length} ${contentType} files found`
           )
-        );
-        if (categoryFilter && categoryFilter.categories) {
+        )
+        if (categoryFilter?.categories) {
           console.log(
             chalk.gray(`🎯 Category filter applied: ${categoryFilter.categories.join(', ')}`)
-          );
+          )
         }
       }
 
@@ -735,33 +769,33 @@ export class RuleGenerator {
         allTemplates,
         projectSignature,
         contentType
-      );
+      )
 
       if (this.verbose) {
         console.log(
           chalk.gray(`🎯 Relevant templates after filtering: ${relevantTemplates.length}`)
-        );
+        )
         relevantTemplates.slice(0, 3).forEach((template) => {
-          console.log(chalk.gray(`   - ${template.name} (${template.path})`));
-        });
+          console.log(chalk.gray(`   - ${template.name} (${template.path})`))
+        })
       }
 
-      const templates = [];
+      const templates = []
       // For commands, allow more templates since they're all potentially useful
       // For rules, allow more templates to include technology-specific rules
       // Increased limits to include more technology-specific rules
-      const limit = contentType === 'commands' ? 25 : contentType === 'rules' ? 20 : 10;
+      const limit = contentType === 'commands' ? 25 : contentType === 'rules' ? 20 : 10
       for (const template of relevantTemplates.slice(0, limit)) {
         // Allow more rules for better coverage
         try {
-          const rawTemplateContent = await this.fetchTemplateContent(template.download_url);
+          const rawTemplateContent = await this.fetchTemplateContent(template.download_url)
 
           // Apply light templating to remote content (replaces ${variable} patterns)
-          const templateVariables = prepareTemplateVariables(projectSignature.analysisData || {});
-          const templatedContent = applyLightTemplating(rawTemplateContent, templateVariables);
+          const templateVariables = prepareTemplateVariables(projectSignature.analysisData || {})
+          const templatedContent = applyLightTemplating(rawTemplateContent, templateVariables)
 
           if (this.verbose && rawTemplateContent !== templatedContent) {
-            console.log(chalk.gray(`Applied light templating to remote template ${template.name}`));
+            console.log(chalk.gray(`Applied light templating to remote template ${template.name}`))
           }
 
           templates.push({
@@ -770,20 +804,20 @@ export class RuleGenerator {
             source: 'repository',
             path: template.path,
             relevanceScore: template.relevanceScore,
-          });
+          })
         } catch (err) {
           if (this.verbose) {
-            console.log(chalk.yellow(`Could not fetch template ${template.name}: ${err.message}`));
+            console.log(chalk.yellow(`Could not fetch template ${template.name}: ${err.message}`))
           }
         }
       }
 
-      return templates;
+      return templates
     } catch (error) {
       if (this.verbose) {
-        console.log(chalk.yellow(`Repository fetch failed: ${error.message}`));
+        console.log(chalk.yellow(`Repository fetch failed: ${error.message}`))
       }
-      return [];
+      return []
     }
   }
 
@@ -802,80 +836,76 @@ export class RuleGenerator {
     maxDepth = 2,
     currentDepth = 0
   ) {
-    const allTemplates = [];
+    const allTemplates = []
 
     // Determine file extensions based on content type
-    const fileExtensions = this.getFileExtensions(contentType);
+    const fileExtensions = this.getFileExtensions(contentType)
 
     if (this.verbose && currentDepth === 0) {
       console.log(
         chalk.gray(
           `🔍 Looking for ${contentType} files with extensions: ${fileExtensions.join(', ')}`
         )
-      );
+      )
     }
 
     for (const item of contents) {
       if (item.type === 'file' && fileExtensions.some((ext) => item.name.endsWith(ext))) {
         // Direct file - add to templates
-        allTemplates.push(item);
+        allTemplates.push(item)
         if (this.verbose) {
-          console.log(chalk.gray(`   ✅ Found ${contentType} file: ${item.name}`));
+          console.log(chalk.gray(`   ✅ Found ${contentType} file: ${item.name}`))
         }
       } else if (item.type === 'dir' && currentDepth < maxDepth) {
         if (this.verbose) {
-          console.log(chalk.gray(`   📁 Exploring directory: ${item.name}`));
+          console.log(chalk.gray(`   📁 Exploring directory: ${item.name}`))
         }
         try {
           // Fetch subdirectory contents
           const headers = {
             Accept: 'application/vnd.github.v3+json',
             'User-Agent': `VDK-CLI/${this.ecosystemVersion}`,
-          };
+          }
 
           // Use GitHub token if available
           if (process.env.VDK_GITHUB_TOKEN) {
-            headers['Authorization'] = `token ${process.env.VDK_GITHUB_TOKEN}`;
+            headers.Authorization = `token ${process.env.VDK_GITHUB_TOKEN}`
           }
 
-          const subdirResponse = await fetch(item.url, { headers });
+          const subdirResponse = await fetch(item.url, { headers })
 
           if (subdirResponse.ok) {
-            const subdirContents = await subdirResponse.json();
+            const subdirContents = await subdirResponse.json()
             const subdirTemplates = await this.expandRepositoryDirectories(
               subdirContents,
               projectSignature,
               contentType,
               maxDepth,
               currentDepth + 1
-            );
-            allTemplates.push(...subdirTemplates);
+            )
+            allTemplates.push(...subdirTemplates)
 
             if (this.verbose && subdirTemplates.length > 0) {
               console.log(
                 chalk.gray(`   📁 Found ${subdirTemplates.length} templates in ${item.name}/`)
-              );
+              )
             }
-          } else {
-            if (this.verbose) {
-              console.log(
-                chalk.yellow(
-                  `   ⚠️ Failed to fetch ${item.name}: ${subdirResponse.status} ${subdirResponse.statusText}`
-                )
-              );
-            }
+          } else if (this.verbose) {
+            console.log(
+              chalk.yellow(
+                `   ⚠️ Failed to fetch ${item.name}: ${subdirResponse.status} ${subdirResponse.statusText}`
+              )
+            )
           }
         } catch (error) {
           if (this.verbose) {
-            console.log(
-              chalk.yellow(`Could not fetch subdirectory ${item.name}: ${error.message}`)
-            );
+            console.log(chalk.yellow(`Could not fetch subdirectory ${item.name}: ${error.message}`))
           }
         }
       }
     }
 
-    return allTemplates;
+    return allTemplates
   }
 
   /**
@@ -890,81 +920,81 @@ export class RuleGenerator {
    */
   async expandRepositoryDirectoriesWithCategories(
     contents,
-    projectSignature,
+    _projectSignature,
     contentType,
     platform,
     categoryFilter
   ) {
-    const allTemplates = [];
-    const fileExtensions = this.getFileExtensions(contentType);
+    const allTemplates = []
+    const fileExtensions = this.getFileExtensions(contentType)
 
     // Find the platform directory (e.g., 'claude-code')
-    const platformDir = contents.find((item) => item.type === 'dir' && item.name === platform);
+    const platformDir = contents.find((item) => item.type === 'dir' && item.name === platform)
 
     if (!platformDir) {
       if (this.verbose) {
-        console.log(chalk.yellow(`⚠️ Platform directory '${platform}' not found`));
+        console.log(chalk.yellow(`⚠️ Platform directory '${platform}' not found`))
       }
-      return [];
+      return []
     }
 
     try {
       // Fetch platform directory contents to discover categories dynamically
-      const platformResponse = await this.fetchWithAuth(platformDir.url);
+      const platformResponse = await this.fetchWithAuth(platformDir.url)
       if (!platformResponse.ok) {
-        throw new Error(`Failed to fetch platform directory: ${platformResponse.status}`);
+        throw new Error(`Failed to fetch platform directory: ${platformResponse.status}`)
       }
 
-      const platformContents = await platformResponse.json();
+      const platformContents = await platformResponse.json()
       const discoveredCategories = platformContents
         .filter((item) => item.type === 'dir')
-        .map((item) => item.name);
+        .map((item) => item.name)
 
       if (this.verbose) {
-        console.log(chalk.cyan(`🔍 Discovered categories: ${discoveredCategories.join(', ')}`));
+        console.log(chalk.cyan(`🔍 Discovered categories: ${discoveredCategories.join(', ')}`))
       }
 
       // Update the static category list with discovered categories
-      await this.updateDiscoveredCategories(discoveredCategories);
+      await this.updateDiscoveredCategories(discoveredCategories)
 
       // Determine which categories to fetch
-      let categoriesToFetch;
-      if (categoryFilter && categoryFilter.categories && categoryFilter.categories.length > 0) {
+      let categoriesToFetch
+      if (categoryFilter?.categories && categoryFilter.categories.length > 0) {
         // Use specified categories, but validate they exist
         categoriesToFetch = categoryFilter.categories.filter((cat) =>
           discoveredCategories.includes(cat)
-        );
+        )
 
         if (categoriesToFetch.length !== categoryFilter.categories.length) {
           const missing = categoryFilter.categories.filter(
             (cat) => !discoveredCategories.includes(cat)
-          );
+          )
           if (this.verbose) {
-            console.log(
-              chalk.yellow(`⚠️ Categories not found in repository: ${missing.join(', ')}`)
-            );
+            console.log(chalk.yellow(`⚠️ Categories not found in repository: ${missing.join(', ')}`))
           }
         }
       } else {
         // Fetch all discovered categories
-        categoriesToFetch = discoveredCategories;
+        categoriesToFetch = discoveredCategories
       }
 
       if (this.verbose && categoriesToFetch.length > 0) {
-        console.log(chalk.green(`📂 Fetching from categories: ${categoriesToFetch.join(', ')}`));
+        console.log(chalk.green(`📂 Fetching from categories: ${categoriesToFetch.join(', ')}`))
       }
 
       // Fetch commands from each selected category
       for (const category of categoriesToFetch) {
         const categoryDir = platformContents.find(
           (item) => item.name === category && item.type === 'dir'
-        );
-        if (!categoryDir) continue;
+        )
+        if (!categoryDir) {
+          continue
+        }
 
         try {
-          const categoryResponse = await this.fetchWithAuth(categoryDir.url);
+          const categoryResponse = await this.fetchWithAuth(categoryDir.url)
           if (categoryResponse.ok) {
-            const categoryContents = await categoryResponse.json();
+            const categoryContents = await categoryResponse.json()
 
             // Filter for command files and add category metadata
             const categoryTemplates = categoryContents
@@ -974,51 +1004,51 @@ export class RuleGenerator {
               )
               .map((template) => ({
                 ...template,
-                category: category, // Add category metadata
+                category, // Add category metadata
                 path: `${platform}/${category}/${template.name}`, // Add full path
-              }));
+              }))
 
-            allTemplates.push(...categoryTemplates);
+            allTemplates.push(...categoryTemplates)
 
             if (this.verbose && categoryTemplates.length > 0) {
               console.log(
                 chalk.gray(`   📁 Found ${categoryTemplates.length} commands in ${category}/`)
-              );
+              )
             }
           }
         } catch (error) {
           if (this.verbose) {
-            console.log(chalk.yellow(`Could not fetch category ${category}: ${error.message}`));
+            console.log(chalk.yellow(`Could not fetch category ${category}: ${error.message}`))
           }
         }
       }
 
       // Apply specific command filtering if provided
-      if (categoryFilter && categoryFilter.specificCommands) {
+      if (categoryFilter?.specificCommands) {
         const filteredTemplates = allTemplates.filter((template) => {
-          const commandName = template.name.replace(/\.(md|mdc)$/, '');
-          return categoryFilter.specificCommands.includes(commandName);
-        });
+          const commandName = template.name.replace(/\.(md|mdc)$/, '')
+          return categoryFilter.specificCommands.includes(commandName)
+        })
 
         if (this.verbose) {
           console.log(
             chalk.cyan(
               `🎯 Filtered to specific commands: ${filteredTemplates.length}/${allTemplates.length}`
             )
-          );
+          )
         }
 
-        return filteredTemplates;
+        return filteredTemplates
       }
     } catch (error) {
       if (this.verbose) {
         console.log(
           chalk.yellow(`Could not expand platform directory ${platform}: ${error.message}`)
-        );
+        )
       }
     }
 
-    return allTemplates;
+    return allTemplates
   }
 
   /**
@@ -1028,13 +1058,13 @@ export class RuleGenerator {
     const headers = {
       Accept: 'application/vnd.github.v3+json',
       'User-Agent': `VDK-CLI/${this.ecosystemVersion}`,
-    };
-
-    if (process.env.VDK_GITHUB_TOKEN) {
-      headers['Authorization'] = `token ${process.env.VDK_GITHUB_TOKEN}`;
     }
 
-    return fetch(url, { headers });
+    if (process.env.VDK_GITHUB_TOKEN) {
+      headers.Authorization = `token ${process.env.VDK_GITHUB_TOKEN}`
+    }
+
+    return fetch(url, { headers })
   }
 
   /**
@@ -1047,10 +1077,10 @@ export class RuleGenerator {
     if (this.verbose) {
       const newCategories = discoveredCategories.filter(
         (cat) => !['development', 'quality', 'workflow', 'meta', 'security'].includes(cat)
-      );
+      )
 
       if (newCategories.length > 0) {
-        console.log(chalk.magenta(`🆕 New categories discovered: ${newCategories.join(', ')}`));
+        console.log(chalk.magenta(`🆕 New categories discovered: ${newCategories.join(', ')}`))
       }
     }
   }
@@ -1067,8 +1097,8 @@ export class RuleGenerator {
       docs: ['.md'],
       schemas: ['.json'],
       templates: ['.mdc', '.md', '.hbs'],
-    };
-    return extensionMap[contentType] || ['.md', '.mdc'];
+    }
+    return extensionMap[contentType] || ['.md', '.mdc']
   }
 
   /**
@@ -1078,30 +1108,30 @@ export class RuleGenerator {
    * @param {string} contentType - Type of content being filtered
    */
   filterRelevantTemplates(contents, projectSignature, contentType = 'rules') {
-    const relevantTemplates = [];
-    const fileExtensions = this.getFileExtensions(contentType);
+    const relevantTemplates = []
+    const fileExtensions = this.getFileExtensions(contentType)
 
     for (const item of contents) {
       if (item.type === 'file' && fileExtensions.some((ext) => item.name.endsWith(ext))) {
-        const relevanceScore = this.calculateTemplateRelevance(item, projectSignature, contentType);
+        const relevanceScore = this.calculateTemplateRelevance(item, projectSignature, contentType)
         if (this.verbose && relevanceScore > 0.05) {
           console.log(
             chalk.gray(`   💯 ${contentType}: ${item.name} - Score: ${relevanceScore.toFixed(2)}`)
-          );
+          )
         }
 
         // For commands, use a lower threshold since they're all generally useful
-        const threshold = contentType === 'commands' ? 0.05 : 0.1;
+        const threshold = contentType === 'commands' ? 0.05 : 0.1
         if (relevanceScore > threshold) {
           relevantTemplates.push({
             ...item,
             relevanceScore,
-          });
+          })
         }
       }
     }
 
-    return relevantTemplates.sort((a, b) => b.relevanceScore - a.relevanceScore);
+    return relevantTemplates.sort((a, b) => b.relevanceScore - a.relevanceScore)
   }
 
   /**
@@ -1111,14 +1141,14 @@ export class RuleGenerator {
    * @param {string} contentType - Type of content being scored
    */
   calculateTemplateRelevance(template, projectSignature, contentType = 'rules') {
-    let score = 0;
-    const fileName = template.name.toLowerCase();
-    const filePath = (template.path || '').toLowerCase();
+    let score = 0
+    const fileName = template.name.toLowerCase()
+    const filePath = (template.path || '').toLowerCase()
 
     // Content-type specific base scoring
     if (contentType === 'commands') {
       // All commands get a baseline score since they're generally useful
-      score += 0.1;
+      score += 0.1
 
       // Commands get higher relevance for development workflows
       if (
@@ -1126,46 +1156,46 @@ export class RuleGenerator {
         fileName.includes('debug') ||
         fileName.includes('review')
       ) {
-        score += 0.7;
+        score += 0.7
       }
       if (fileName.includes('workflow') || fileName.includes('quality')) {
-        score += 0.6;
+        score += 0.6
       }
       if (fileName.includes('git') || fileName.includes('commit') || fileName.includes('pr')) {
-        score += 0.5;
+        score += 0.5
       }
       if (
         fileName.includes('test') ||
         fileName.includes('security') ||
         fileName.includes('audit')
       ) {
-        score += 0.4;
+        score += 0.4
       }
     } else if (contentType === 'rules') {
       // Core rules always get high relevance
       if (fileName.startsWith('0') && fileName.includes('core')) {
-        score += 0.8;
+        score += 0.8
       }
     }
 
     // MCP configuration is relevant but not overwhelming
     if (fileName.includes('mcp')) {
-      score += 0.3;
+      score += 0.3
     }
 
     // Common errors and project context are universally relevant
     if (fileName.includes('common-errors') || fileName.includes('project-context')) {
-      score += 0.6;
+      score += 0.6
     }
 
     // JavaScript/Node.js related files
     if (fileName.includes('javascript') || fileName.includes('node') || fileName.includes('js')) {
-      score += 0.5;
+      score += 0.5
     }
 
     // Framework matching (highest priority for stack-specific rules)
     for (const framework of projectSignature.frameworks || []) {
-      const frameworkLower = framework.toLowerCase();
+      const frameworkLower = framework.toLowerCase()
       const normalizedFramework = frameworkLower
         .replace('next.js', 'nextjs')
         .replace('react.js', 'react')
@@ -1175,7 +1205,7 @@ export class RuleGenerator {
         .replace('-', '')
         .replace('.', '')
         .replace('/', '')
-        .replace(' ', '');
+        .replace(' ', '')
 
       if (
         fileName.includes(normalizedFramework) ||
@@ -1183,15 +1213,15 @@ export class RuleGenerator {
         fileName.includes(frameworkLower) ||
         filePath.includes(frameworkLower)
       ) {
-        score += 0.8;
+        score += 0.8
       }
 
       // Special matching for technology files with version numbers
       if (frameworkLower.includes('tailwind') && fileName.includes('tailwind')) {
-        score += 0.8;
+        score += 0.8
       }
       if (frameworkLower.includes('shadcn') && fileName.includes('shadcn')) {
-        score += 0.8;
+        score += 0.8
       }
 
       // Special handling for stack combinations
@@ -1199,23 +1229,23 @@ export class RuleGenerator {
         frameworkLower.includes('supabase') &&
         (fileName.includes('supabase') || filePath.includes('supabase'))
       ) {
-        score += 0.9; // Even higher for specific integrations
+        score += 0.9 // Even higher for specific integrations
       }
       if (frameworkLower.includes('nextjs') && fileName.includes('nextjs')) {
-        score += 0.9;
+        score += 0.9
       }
       if (frameworkLower.includes('enterprise') && fileName.includes('enterprise')) {
-        score += 0.7;
+        score += 0.7
       }
     }
 
     // Apply exclusion rules to prevent irrelevant framework pollution
-    const detectedLanguages = projectSignature.languages || [];
-    const detectedFrameworks = projectSignature.frameworks || [];
+    const detectedLanguages = projectSignature.languages || []
+    const detectedFrameworks = projectSignature.frameworks || []
 
     // CRITICAL: Platform-specific filtering to prevent mobile rules in web projects
     const isWebProject = detectedFrameworks.some((framework) => {
-      const fw = framework.toLowerCase();
+      const fw = framework.toLowerCase()
       return (
         fw.includes('next.js') ||
         fw.includes('nextjs') ||
@@ -1225,24 +1255,25 @@ export class RuleGenerator {
         fw.includes('nuxt') ||
         fw.includes('remix') ||
         fw.includes('gatsby')
-      );
-    });
+      )
+    })
 
     const isMobileProject = detectedFrameworks.some((framework) => {
-      const fw = framework.toLowerCase();
+      const fw = framework.toLowerCase()
       return (
         fw.includes('react native') ||
         fw.includes('expo') ||
         fw.includes('flutter') ||
         fw.includes('ionic') ||
         fw.includes('capacitor')
-      );
-    });
+      )
+    })
 
     // For web projects, completely exclude mobile/native patterns
-    if (isWebProject && !isMobileProject) {
-      if (
-        fileName.includes('react-native') ||
+    if (
+      isWebProject &&
+      !isMobileProject &&
+      (fileName.includes('react-native') ||
         filePath.includes('react-native') ||
         fileName.includes('expo') ||
         filePath.includes('expo') ||
@@ -1251,50 +1282,47 @@ export class RuleGenerator {
         fileName.includes('native') ||
         filePath.includes('native') ||
         fileName.includes('ios') ||
-        fileName.includes('android')
-      ) {
-        if (this.verbose) {
-          console.log(chalk.yellow(`🚫 Excluding mobile rule for web project: ${fileName}`));
-        }
-        return 0; // Completely exclude mobile rules for web projects
+        fileName.includes('android'))
+    ) {
+      if (this.verbose) {
+        console.log(chalk.yellow(`🚫 Excluding mobile rule for web project: ${fileName}`))
       }
+      return 0 // Completely exclude mobile rules for web projects
     }
 
     // For mobile projects, prefer mobile-specific rules
-    if (isMobileProject && !isWebProject) {
-      if (
-        fileName.includes('react-native') ||
+    if (
+      isMobileProject &&
+      !isWebProject &&
+      (fileName.includes('react-native') ||
         fileName.includes('expo') ||
-        fileName.includes('mobile')
-      ) {
-        score += 0.7; // Boost mobile rules for mobile projects
-      }
+        fileName.includes('mobile'))
+    ) {
+      score += 0.7 // Boost mobile rules for mobile projects
     }
 
     // If no JavaScript/TypeScript, heavily penalize frontend frameworks
     if (
-      !detectedLanguages.some((lang) => ['javascript', 'typescript'].includes(lang.toLowerCase()))
-    ) {
-      if (
-        fileName.includes('next') ||
+      !detectedLanguages.some((lang) =>
+        ['javascript', 'typescript'].includes(lang.toLowerCase())
+      ) &&
+      (fileName.includes('next') ||
         fileName.includes('react') ||
         fileName.includes('vue') ||
-        fileName.includes('angular')
-      ) {
-        score = Math.max(0, score - 0.6); // Heavy penalty for frontend frameworks in non-JS projects
-      }
+        fileName.includes('angular'))
+    ) {
+      score = Math.max(0, score - 0.6) // Heavy penalty for frontend frameworks in non-JS projects
     }
 
     // If no Python, penalize Python-specific rules
-    if (!detectedLanguages.some((lang) => lang.toLowerCase() === 'python')) {
-      if (
-        fileName.includes('django') ||
+    if (
+      !detectedLanguages.some((lang) => lang.toLowerCase() === 'python') &&
+      (fileName.includes('django') ||
         fileName.includes('flask') ||
         fileName.includes('fastapi') ||
-        fileName.includes('python')
-      ) {
-        score = Math.max(0, score - 0.6);
-      }
+        fileName.includes('python'))
+    ) {
+      score = Math.max(0, score - 0.6)
     }
 
     // Comprehensive exclusion for completely irrelevant languages
@@ -1312,9 +1340,9 @@ export class RuleGenerator {
         if (this.verbose) {
           console.log(
             chalk.yellow(`🚫 Excluding mobile language rule for web project: ${fileName}`)
-          );
+          )
         }
-        return 0;
+        return 0
       }
 
       // Exclude system programming languages
@@ -1329,30 +1357,34 @@ export class RuleGenerator {
         if (this.verbose) {
           console.log(
             chalk.yellow(`🚫 Excluding system language rule for web project: ${fileName}`)
-          );
+          )
         }
-        return 0;
+        return 0
       }
     }
 
     // For documentation/content projects (Astro Starlight), be even more restrictive
     const isContentProject = detectedFrameworks.some((framework) => {
-      const fw = framework.toLowerCase();
-      return fw.includes('astro') || fw.includes('starlight') || fw.includes('content');
-    });
+      const fw = framework.toLowerCase()
+      return fw.includes('astro') || fw.includes('starlight') || fw.includes('content')
+    })
 
     if (isContentProject) {
       // Only allow Astro, TypeScript, and basic web technologies
       if (
-        !fileName.includes('astro') &&
-        !fileName.includes('typescript') &&
-        !fileName.includes('ts') &&
-        !fileName.includes('content') &&
-        !fileName.includes('markdown') &&
-        !fileName.includes('mcp') &&
-        !fileName.includes('common-errors') &&
-        !fileName.includes('project-context') &&
-        !fileName.startsWith('0') // Core rules
+        !(
+          (
+            fileName.includes('astro') ||
+            fileName.includes('typescript') ||
+            fileName.includes('ts') ||
+            fileName.includes('content') ||
+            fileName.includes('markdown') ||
+            fileName.includes('mcp') ||
+            fileName.includes('common-errors') ||
+            fileName.includes('project-context') ||
+            fileName.startsWith('0')
+          ) // Core rules
+        )
       ) {
         // Check if it's a completely different technology stack
         if (
@@ -1374,19 +1406,19 @@ export class RuleGenerator {
           if (this.verbose) {
             console.log(
               chalk.yellow(`🚫 Excluding non-content rule for Astro content project: ${fileName}`)
-            );
+            )
           }
-          score = Math.max(0, score - 0.8); // Heavy penalty instead of complete exclusion for backward compatibility
+          score = Math.max(0, score - 0.8) // Heavy penalty instead of complete exclusion for backward compatibility
         }
       }
     }
 
     // Language matching (important for language-specific rules)
     for (const language of projectSignature.languages || []) {
-      const languageLower = language.toLowerCase();
+      const languageLower = language.toLowerCase()
       const normalizedLanguage = languageLower
         .replace('typescript', 'ts')
-        .replace('javascript', 'js');
+        .replace('javascript', 'js')
 
       if (
         fileName.includes(languageLower) ||
@@ -1394,7 +1426,7 @@ export class RuleGenerator {
         fileName.includes(normalizedLanguage) ||
         filePath.includes(normalizedLanguage)
       ) {
-        score += 0.6;
+        score += 0.6
       }
 
       // Special boosting for TypeScript since it's very common
@@ -1402,20 +1434,20 @@ export class RuleGenerator {
         languageLower === 'typescript' &&
         (fileName.includes('typescript') || fileName.includes('ts'))
       ) {
-        score += 0.3; // Extra boost for TypeScript rules
+        score += 0.3 // Extra boost for TypeScript rules
       }
     }
 
     // Library matching (important for technology-specific rules like shadcn/ui)
     for (const library of projectSignature.libraries || []) {
-      const libraryLower = library.toLowerCase();
+      const libraryLower = library.toLowerCase()
       const normalizedLibrary = libraryLower
         .replace('shadcn/ui', 'shadcnui')
         .replace('tailwind css', 'tailwind')
         .replace('-', '')
         .replace('.', '')
         .replace('/', '')
-        .replace(' ', '');
+        .replace(' ', '')
 
       if (
         fileName.includes(normalizedLibrary) ||
@@ -1423,26 +1455,26 @@ export class RuleGenerator {
         fileName.includes(libraryLower) ||
         filePath.includes(libraryLower)
       ) {
-        score += 0.7; // High score for library-specific rules
+        score += 0.7 // High score for library-specific rules
       }
 
       // Special matching for UI libraries
       if (libraryLower.includes('shadcn') && fileName.includes('shadcn')) {
-        score += 0.8;
+        score += 0.8
       }
       if (libraryLower.includes('radix') && fileName.includes('radix')) {
-        score += 0.7;
+        score += 0.7
       }
     }
 
     // Complexity matching
     if (fileName.includes(projectSignature.complexity)) {
-      score += 0.1;
+      score += 0.1
     }
 
     // Project size matching
     if (fileName.includes(projectSignature.projectSize)) {
-      score += 0.1;
+      score += 0.1
     }
 
     // Technology-specific rules get highest priority
@@ -1451,31 +1483,31 @@ export class RuleGenerator {
       filePath.includes('stacks/') ||
       filePath.includes('languages/')
     ) {
-      score += 0.5; // High priority for technology rules
+      score += 0.5 // High priority for technology rules
     }
 
     // Assistant-specific rules - lower priority for technology rule fetching
     if (filePath.includes('assistants/')) {
-      score += 0.2; // Reduced from 0.4 to prioritize technology rules
+      score += 0.2 // Reduced from 0.4 to prioritize technology rules
     }
 
     // Core tools and tasks get medium relevance
     if (filePath.includes('tools/') || filePath.includes('tasks/')) {
-      score += 0.3;
+      score += 0.3
     }
 
-    return Math.min(score, 1.0);
+    return Math.min(score, 1.0)
   }
 
   /**
    * Fetch template content from URL
    */
   async fetchTemplateContent(downloadUrl) {
-    const response = await fetch(downloadUrl);
+    const response = await fetch(downloadUrl)
     if (!response.ok) {
-      throw new Error(`Template fetch failed: ${response.status}`);
+      throw new Error(`Template fetch failed: ${response.status}`)
     }
-    return await response.text();
+    return await response.text()
   }
 
   /**
@@ -1483,51 +1515,51 @@ export class RuleGenerator {
    * (Skip validation for generated local files as they're IDE-specific)
    */
   async validateRulesWithVDKSchema(_rulesResult, remoteTemplates = []) {
-    if (!this.schemaValidation) return [];
-
-    if (this.verbose) {
-      console.log(chalk.gray('✅ Validating remote templates against VDK schema...'));
+    if (!this.schemaValidation) {
+      return []
     }
 
-    const validationErrors = [];
+    if (this.verbose) {
+      console.log(chalk.gray('✅ Validating remote templates against VDK schema...'))
+    }
+
+    const validationErrors = []
 
     // Only validate remote templates, not generated local files
     for (const template of remoteTemplates) {
       if (template.content) {
         try {
-          const parsed = this.parseFrontmatter(template.content);
-          const errors = await this.validateVDKSchema(parsed);
+          const parsed = this.parseFrontmatter(template.content)
+          const errors = await this.validateVDKSchema(parsed)
           if (errors.length > 0) {
             validationErrors.push({
               template: template.name,
               path: template.path,
               errors,
-            });
+            })
           }
         } catch (error) {
           validationErrors.push({
             template: template.name,
             path: template.path,
             errors: [`Parse error: ${error.message}`],
-          });
+          })
         }
       }
     }
 
     if (validationErrors.length > 0 && this.verbose) {
       console.log(
-        chalk.yellow(
-          `⚠️ Found ${validationErrors.length} VDK schema violations in remote templates`
-        )
-      );
+        chalk.yellow(`⚠️ Found ${validationErrors.length} VDK schema violations in remote templates`)
+      )
       validationErrors.slice(0, 3).forEach((error) => {
-        console.log(chalk.yellow(`   - ${error.template}: ${error.errors[0]}`));
-      });
+        console.log(chalk.yellow(`   - ${error.template}: ${error.errors[0]}`))
+      })
     } else if (this.verbose && remoteTemplates.length > 0) {
-      console.log(chalk.green('✅ All remote templates pass VDK schema validation'));
+      console.log(chalk.green('✅ All remote templates pass VDK schema validation'))
     }
 
-    return validationErrors;
+    return validationErrors
   }
 
   /**
@@ -1535,21 +1567,21 @@ export class RuleGenerator {
    */
   async validateVDKSchema(frontmatter) {
     try {
-      const validation = await validateBlueprint(frontmatter);
-      return validation.errors || [];
+      const validation = await validateBlueprint(frontmatter)
+      return validation.errors || []
     } catch (error) {
       if (this.verbose) {
-        console.log(chalk.yellow(`Schema validation error: ${error.message}`));
+        console.log(chalk.yellow(`Schema validation error: ${error.message}`))
       }
       // Fallback to basic validation if schema loading fails
-      const errors = [];
-      const required = ['description', 'version', 'lastUpdated'];
+      const errors = []
+      const required = ['description', 'version', 'lastUpdated']
       for (const field of required) {
         if (!(field in frontmatter)) {
-          errors.push(`Missing required field: ${field}`);
+          errors.push(`Missing required field: ${field}`)
         }
       }
-      return errors;
+      return errors
     }
   }
 
@@ -1557,7 +1589,7 @@ export class RuleGenerator {
    * Generate VDK ecosystem manifest
    */
   async generateVDKManifest(analysisData, remoteTemplates, rulesResult) {
-    const projectRoot = analysisData.projectStructure?.root || process.cwd();
+    const projectRoot = analysisData.projectStructure?.root || process.cwd()
 
     const manifest = {
       ecosystemVersion: this.ecosystemVersion,
@@ -1582,17 +1614,17 @@ export class RuleGenerator {
         hubAnalytics: this.enableAnalytics,
         schemaValidation: this.schemaValidation,
       },
-    };
+    }
 
     // Create .vdk directory structure
-    const vdkDir = path.join(projectRoot, '.vdk');
-    await fs.mkdir(vdkDir, { recursive: true });
+    const vdkDir = path.join(projectRoot, '.vdk')
+    await fs.mkdir(vdkDir, { recursive: true })
 
-    const manifestPath = path.join(vdkDir, 'manifest.json');
-    await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+    const manifestPath = path.join(vdkDir, 'manifest.json')
+    await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2))
 
     if (this.verbose) {
-      console.log(chalk.green(`📋 Generated VDK manifest: ${manifestPath}`));
+      console.log(chalk.green(`📋 Generated VDK manifest: ${manifestPath}`))
     }
   }
 
@@ -1600,11 +1632,13 @@ export class RuleGenerator {
    * Send analytics to VDK Hub
    */
   async sendAnalyticsToHub(analysisData, rulesResult) {
-    if (!this.enableAnalytics) return;
+    if (!this.enableAnalytics) {
+      return
+    }
 
     try {
       if (this.verbose) {
-        console.log(chalk.gray('📊 Sending analytics to VDK Hub...'));
+        console.log(chalk.gray('📊 Sending analytics to VDK Hub...'))
       }
 
       const analyticsData = {
@@ -1616,16 +1650,16 @@ export class RuleGenerator {
           integrations: rulesResult.summary?.integrations || 0,
           formats: rulesResult.summary?.formats || [],
         },
-      };
+      }
 
-      await this.fetchFromHub('/analytics/usage', analyticsData);
+      await this.fetchFromHub('/analytics/usage', analyticsData)
 
       if (this.verbose) {
-        console.log(chalk.green('📊 Analytics sent successfully'));
+        console.log(chalk.green('📊 Analytics sent successfully'))
       }
     } catch (error) {
       if (this.verbose) {
-        console.log(chalk.yellow(`⚠️ Analytics failed: ${error.message}`));
+        console.log(chalk.yellow(`⚠️ Analytics failed: ${error.message}`))
       }
     }
   }
@@ -1634,23 +1668,35 @@ export class RuleGenerator {
    * Utility methods for project analysis
    */
   categorizeProjectSize(projectStructure) {
-    const fileCount = projectStructure?.fileCount || 0;
-    if (fileCount < 50) return 'small';
-    if (fileCount < 200) return 'medium';
-    if (fileCount < 1000) return 'large';
-    return 'enterprise';
+    const fileCount = projectStructure?.fileCount || 0
+    if (fileCount < 50) {
+      return 'small'
+    }
+    if (fileCount < 200) {
+      return 'medium'
+    }
+    if (fileCount < 1000) {
+      return 'large'
+    }
+    return 'enterprise'
   }
 
   assessComplexity(analysisData) {
-    let score = 0;
-    score += (analysisData.techStack?.primaryLanguages?.length || 0) * 2;
-    score += (analysisData.techStack?.frameworks?.length || 0) * 3;
-    score += Math.min((analysisData.techStack?.libraries?.length || 0) * 0.5, 20);
+    let score = 0
+    score += (analysisData.techStack?.primaryLanguages?.length || 0) * 2
+    score += (analysisData.techStack?.frameworks?.length || 0) * 3
+    score += Math.min((analysisData.techStack?.libraries?.length || 0) * 0.5, 20)
 
-    if (score < 10) return 'simple';
-    if (score < 25) return 'moderate';
-    if (score < 50) return 'complex';
-    return 'highly-complex';
+    if (score < 10) {
+      return 'simple'
+    }
+    if (score < 25) {
+      return 'moderate'
+    }
+    if (score < 50) {
+      return 'complex'
+    }
+    return 'highly-complex'
   }
 
   /**
@@ -1665,15 +1711,15 @@ export class RuleGenerator {
           'User-Agent': `VDK-CLI/${this.ecosystemVersion}`,
         },
         body: JSON.stringify(data),
-      });
+      })
 
       if (!response.ok) {
-        throw new Error(`Hub request failed: ${response.status}`);
+        throw new Error(`Hub request failed: ${response.status}`)
       }
 
-      return await response.json();
+      return await response.json()
     } catch (error) {
-      throw new Error(`Hub communication failed: ${error.message}`);
+      throw new Error(`Hub communication failed: ${error.message}`)
     }
   }
 
@@ -1684,35 +1730,35 @@ export class RuleGenerator {
   async fetchAndDeployRemoteRules(ruleType, relevantItems, analysisData) {
     if (!this.enableRemoteFetch) {
       // Generate basic fallback rules using light templating
-      return await this.generateBasicFallbackRules(ruleType, relevantItems, analysisData);
+      return await this.generateBasicFallbackRules(ruleType, relevantItems, analysisData)
     }
 
     try {
       if (this.verbose) {
-        console.log(chalk.blue(`🌐 Fetching ${ruleType} rules from remote repository...`));
+        console.log(chalk.blue(`🌐 Fetching ${ruleType} rules from remote repository...`))
       }
 
       // Fetch remote rules using specific items
-      const remoteRules = await this.fetchSpecificRemoteRules(ruleType, relevantItems);
+      const remoteRules = await this.fetchSpecificRemoteRules(ruleType, relevantItems)
 
       if (remoteRules.length === 0) {
         if (this.verbose) {
-          console.log(chalk.yellow(`No remote ${ruleType} rules available, using local fallback`));
+          console.log(chalk.yellow(`No remote ${ruleType} rules available, using local fallback`))
         }
-        return await this.generateFromLocalTemplates(ruleType, relevantItems, analysisData);
+        return await this.generateFromLocalTemplates(ruleType, relevantItems, analysisData)
       }
 
       // Apply light templating for project context
-      const templatedRules = await this.applyLightTemplatingToRules(remoteRules, analysisData);
+      const templatedRules = await this.applyLightTemplatingToRules(remoteRules, analysisData)
 
       // Deploy to detected IDEs using adapters
-      const deployedRules = [];
+      const deployedRules = []
       for (const integration of this.detectedIntegrations || []) {
-        const ideId = this.mapIntegrationToIDE(integration.name);
-        const adapter = this.ruleAdapters[ideId];
+        const ideId = this.mapIntegrationToIDE(integration.name)
+        const adapter = this.ruleAdapters[ideId]
         if (adapter) {
-          const adapted = await adapter.adaptRules(templatedRules, ideId, analysisData);
-          deployedRules.push(...adapted.files);
+          const adapted = await adapter.adaptRules(templatedRules, ideId, analysisData)
+          deployedRules.push(...adapted.files)
         }
       }
 
@@ -1721,17 +1767,17 @@ export class RuleGenerator {
           chalk.green(
             `✅ Successfully deployed ${deployedRules.length} ${ruleType} rules to ${this.detectedIntegrations.length} IDEs`
           )
-        );
+        )
       }
 
-      return deployedRules;
+      return deployedRules
     } catch (error) {
       if (this.verbose) {
-        console.warn(chalk.yellow(`Remote ${ruleType} fetch failed: ${error.message}`));
+        console.warn(chalk.yellow(`Remote ${ruleType} fetch failed: ${error.message}`))
       }
 
       // Graceful fallback to basic rule generation
-      return await this.generateBasicFallbackRules(ruleType, relevantItems, analysisData);
+      return await this.generateBasicFallbackRules(ruleType, relevantItems, analysisData)
     }
   }
 
@@ -1742,59 +1788,59 @@ export class RuleGenerator {
    * @returns {Array} Array of relevant task names
    */
   selectRelevantTasks(analysisData) {
-    const tasks = ['file-operations']; // Always include basic file operations
+    const tasks = ['file-operations'] // Always include basic file operations
 
-    const frameworks = analysisData.techStack?.frameworks || [];
-    const languages = analysisData.techStack?.primaryLanguages || [];
-    const hasTests = analysisData.techStack?.testingFrameworks?.length > 0;
-    const hasDocker = analysisData.techStack?.hasDocker;
-    const hasDatabase = analysisData.techStack?.hasDatabase;
+    const frameworks = analysisData.techStack?.frameworks || []
+    const languages = analysisData.techStack?.primaryLanguages || []
+    const hasTests = analysisData.techStack?.testingFrameworks?.length > 0
+    const hasDocker = analysisData.techStack?.hasDocker
+    const hasDatabase = analysisData.techStack?.hasDatabase
 
     // Framework-specific tasks
     if (frameworks.includes('React')) {
-      tasks.push('UI-Component', 'Component-Interfaces', 'Write-Tests');
+      tasks.push('UI-Component', 'Component-Interfaces', 'Write-Tests')
     }
 
     if (frameworks.includes('Next.js')) {
-      tasks.push('API-Endpoints', 'Service-Integration', 'UI-Component');
+      tasks.push('API-Endpoints', 'Service-Integration', 'UI-Component')
     }
 
     if (frameworks.includes('Vue')) {
-      tasks.push('UI-Component', 'Component-Interfaces');
+      tasks.push('UI-Component', 'Component-Interfaces')
     }
 
     if (frameworks.includes('Angular')) {
-      tasks.push('UI-Component', 'Service-Integration');
+      tasks.push('UI-Component', 'Service-Integration')
     }
 
     if (frameworks.includes('Express') || frameworks.includes('FastAPI')) {
-      tasks.push('API-Endpoints', 'Service-Integration');
+      tasks.push('API-Endpoints', 'Service-Integration')
     }
 
     // Language-specific tasks
     if (languages.includes('TypeScript')) {
-      tasks.push('Type-Definitions', 'Interface-Design');
+      tasks.push('Type-Definitions', 'Interface-Design')
     }
 
     if (languages.includes('Python')) {
-      tasks.push('API-Endpoints', 'Data-Processing');
+      tasks.push('API-Endpoints', 'Data-Processing')
     }
 
     // Infrastructure tasks
     if (hasDocker) {
-      tasks.push('DevOps-Tasks', 'Service-Integration');
+      tasks.push('DevOps-Tasks', 'Service-Integration')
     }
 
     if (hasDatabase) {
-      tasks.push('Database-Schema', 'API-Endpoints');
+      tasks.push('Database-Schema', 'API-Endpoints')
     }
 
     // Testing tasks
     if (hasTests) {
-      tasks.push('Write-Tests', 'Analyze-Coverage', 'Code-Quality-Review');
+      tasks.push('Write-Tests', 'Analyze-Coverage', 'Code-Quality-Review')
     }
 
-    return [...new Set(tasks)]; // Remove duplicates
+    return [...new Set(tasks)] // Remove duplicates
   }
 
   /**
@@ -1804,30 +1850,30 @@ export class RuleGenerator {
    * @returns {Array} Array of relevant tool names
    */
   selectRelevantTools(analysisData) {
-    const tools = ['file-operations']; // Always include
+    const tools = ['file-operations'] // Always include
 
-    const packageManager = analysisData.techStack?.packageManager;
-    const hasGit = analysisData.techStack?.hasGit;
-    const hasDocker = analysisData.techStack?.hasDocker;
-    const buildTools = analysisData.techStack?.buildTools || [];
+    const packageManager = analysisData.techStack?.packageManager
+    const hasGit = analysisData.techStack?.hasGit
+    const hasDocker = analysisData.techStack?.hasDocker
+    const buildTools = analysisData.techStack?.buildTools || []
 
     if (packageManager) {
-      tools.push('command-execution');
+      tools.push('command-execution')
     }
 
     if (hasGit) {
-      tools.push('code-search', 'version-control');
+      tools.push('code-search', 'version-control')
     }
 
     if (hasDocker) {
-      tools.push('command-execution', 'container-management');
+      tools.push('command-execution', 'container-management')
     }
 
     if (buildTools.includes('webpack') || buildTools.includes('vite')) {
-      tools.push('build-tools');
+      tools.push('build-tools')
     }
 
-    return [...new Set(tools)];
+    return [...new Set(tools)]
   }
 
   /**
@@ -1837,14 +1883,14 @@ export class RuleGenerator {
    * @returns {Array} Array of relevant assistant names
    */
   selectRelevantAssistants(analysisData) {
-    const assistants = [];
+    const assistants = []
 
     // Use detected integrations from analysis
     if (this.detectedIntegrations) {
       for (const integration of this.detectedIntegrations) {
-        const assistantId = this.mapIntegrationToAssistant(integration.name);
+        const assistantId = this.mapIntegrationToAssistant(integration.name)
         if (assistantId) {
-          assistants.push(assistantId);
+          assistants.push(assistantId)
         }
       }
     }
@@ -1852,28 +1898,28 @@ export class RuleGenerator {
     // Fallback: detect from IDE indicators in project
     if (assistants.length === 0) {
       // Check for common IDE configuration files
-      const projectStructure = analysisData.projectStructure || {};
-      const files = projectStructure.files || [];
+      const projectStructure = analysisData.projectStructure || {}
+      const files = projectStructure.files || []
 
       if (files.some((f) => f.includes('.cursor'))) {
-        assistants.push('cursor');
+        assistants.push('cursor')
       }
 
       if (files.some((f) => f.includes('.windsurf'))) {
-        assistants.push('windsurf');
+        assistants.push('windsurf')
       }
 
       if (files.some((f) => f.includes('CLAUDE.md'))) {
-        assistants.push('claude-code');
+        assistants.push('claude-code')
       }
 
       // Default assistants for common scenarios
       if (analysisData.techStack?.frameworks?.length > 0) {
-        assistants.push('general-coding', 'code-review');
+        assistants.push('general-coding', 'code-review')
       }
     }
 
-    return [...new Set(assistants)];
+    return [...new Set(assistants)]
   }
 
   /**
@@ -1887,9 +1933,9 @@ export class RuleGenerator {
       Windsurf: 'windsurf',
       'Claude Code': 'claude-code',
       'GitHub Copilot': 'github-copilot',
-    };
+    }
 
-    return mapping[integrationName] || null;
+    return mapping[integrationName] || null
   }
 
   /**
@@ -1899,16 +1945,16 @@ export class RuleGenerator {
    * @returns {Array} Array of fetched rules
    */
   async fetchSpecificRemoteRules(ruleType, relevantItems) {
-    const rules = [];
+    const rules = []
 
     try {
-      const response = await fetch(`${this.repositoryEndpoint}/contents/.ai/rules/${ruleType}`);
+      const response = await fetch(`${this.repositoryEndpoint}/contents/.ai/rules/${ruleType}`)
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch ${ruleType} directory: ${response.status}`);
+        throw new Error(`Failed to fetch ${ruleType} directory: ${response.status}`)
       }
 
-      const contents = await response.json();
+      const contents = await response.json()
 
       // Filter for relevant files
       const relevantFiles = contents.filter(
@@ -1916,31 +1962,31 @@ export class RuleGenerator {
           item.type === 'file' &&
           item.name.endsWith('.mdc') &&
           relevantItems.some((itemName) => item.name === `${itemName}.mdc`)
-      );
+      )
 
       // Fetch individual rule files
       for (const file of relevantFiles) {
         try {
-          const fileResponse = await fetch(file.download_url);
+          const fileResponse = await fetch(file.download_url)
           if (fileResponse.ok) {
-            const content = await fileResponse.text();
-            const rule = this.parseRuleContent(content);
-            rule.name = file.name.replace('.mdc', '');
-            rules.push(rule);
+            const content = await fileResponse.text()
+            const rule = this.parseRuleContent(content)
+            rule.name = file.name.replace('.mdc', '')
+            rules.push(rule)
           }
         } catch (fileError) {
           if (this.verbose) {
-            console.warn(chalk.yellow(`Failed to fetch ${file.name}: ${fileError.message}`));
+            console.warn(chalk.yellow(`Failed to fetch ${file.name}: ${fileError.message}`))
           }
         }
       }
     } catch (error) {
       if (this.verbose) {
-        console.warn(chalk.yellow(`Failed to fetch remote ${ruleType}: ${error.message}`));
+        console.warn(chalk.yellow(`Failed to fetch remote ${ruleType}: ${error.message}`))
       }
     }
 
-    return rules;
+    return rules
   }
 
   /**
@@ -1955,12 +2001,12 @@ export class RuleGenerator {
       frameworks: (analysisData.techStack?.frameworks || []).join(', '),
       languages: (analysisData.techStack?.languages || []).join(', '),
       packageManager: analysisData.techStack?.packageManager || 'npm',
-    };
+    }
 
     return rules.map((rule) => ({
       ...rule,
       content: this.applySimpleTemplating(rule.content, templateVariables),
-    }));
+    }))
   }
 
   /**
@@ -1970,14 +2016,14 @@ export class RuleGenerator {
    * @returns {string} Templated content
    */
   applySimpleTemplating(content, variables) {
-    let templated = content;
+    let templated = content
 
     for (const [key, value] of Object.entries(variables)) {
-      const regex = new RegExp(`\\$\\{${key}\\}`, 'g');
-      templated = templated.replace(regex, value);
+      const regex = new RegExp(`\\$\\{${key}\\}`, 'g')
+      templated = templated.replace(regex, value)
     }
 
-    return templated;
+    return templated
   }
 
   /**
@@ -1989,10 +2035,10 @@ export class RuleGenerator {
    * @returns {Array} Array of generated rules
    */
   async generateBasicFallbackRules(ruleType, relevantItems, analysisData) {
-    const rules = [];
+    const rules = []
     const projectName =
-      analysisData.projectContext?.name || path.basename(this.projectPath || process.cwd());
-    const frameworks = (analysisData.techStack?.frameworks || []).join(', ');
+      analysisData.projectContext?.name || path.basename(this.projectPath || process.cwd())
+    const frameworks = (analysisData.techStack?.frameworks || []).join(', ')
 
     for (const item of relevantItems) {
       const ruleContent = `---
@@ -2027,7 +2073,7 @@ When working with ${item}:
 
 ---
 NOTE TO AI: Apply this rule when working with ${item} in this project.
-`;
+`
 
       rules.push({
         name: item,
@@ -2046,10 +2092,10 @@ NOTE TO AI: Apply this rule when working with ${item} in this project.
           compatibleWith: [frameworks || 'General'],
           category: ruleType.slice(0, -1),
         },
-      });
+      })
     }
 
-    return rules;
+    return rules
   }
 
   /**
@@ -2058,37 +2104,39 @@ NOTE TO AI: Apply this rule when working with ${item} in this project.
    * @param {Object} analysisData - Project analysis data
    */
   async generateRulesFromRemoteTemplates(remoteTemplates, analysisData) {
-    if (!remoteTemplates || remoteTemplates.length === 0) return;
+    if (!remoteTemplates || remoteTemplates.length === 0) {
+      return
+    }
 
     const rulesOutputPath = path.join(
       analysisData.projectStructure?.root || process.cwd(),
       '.ai',
       'rules'
-    );
-    await fs.mkdir(rulesOutputPath, { recursive: true });
+    )
+    await fs.mkdir(rulesOutputPath, { recursive: true })
 
     for (const template of remoteTemplates) {
       try {
         // Apply light templating to the content
-        const templateData = prepareTemplateVariables(analysisData);
-        const processedContent = applyLightTemplating(template.content, templateData);
+        const templateData = prepareTemplateVariables(analysisData)
+        const processedContent = applyLightTemplating(template.content, templateData)
 
         // Generate filename based on template name or ID
-        const filename = this.generateRuleFilename(template);
-        const filePath = path.join(rulesOutputPath, filename);
+        const filename = this.generateRuleFilename(template)
+        const filePath = path.join(rulesOutputPath, filename)
 
         // Write the rule file
-        await fs.writeFile(filePath, processedContent, 'utf8');
-        this.generatedFiles.push(filePath);
+        await fs.writeFile(filePath, processedContent, 'utf8')
+        this.generatedFiles.push(filePath)
 
         if (this.verbose) {
-          console.log(chalk.gray(`Generated rule: ${filename}`));
+          console.log(chalk.gray(`Generated rule: ${filename}`))
         }
       } catch (error) {
         if (this.verbose) {
           console.log(
             chalk.yellow(`Failed to generate rule from template ${template.name}: ${error.message}`)
-          );
+          )
         }
       }
     }
@@ -2102,19 +2150,19 @@ NOTE TO AI: Apply this rule when working with ${item} in this project.
   generateRuleFilename(template) {
     // Use the template's suggested filename or generate one
     if (template.filename) {
-      return template.filename.endsWith('.md') ? template.filename : `${template.filename}.md`;
+      return template.filename.endsWith('.md') ? template.filename : `${template.filename}.md`
     }
 
     if (template.name) {
-      return `${template.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}.md`;
+      return `${template.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}.md`
     }
 
     if (template.id) {
-      return `${template.id.toLowerCase().replace(/[^a-z0-9]/g, '-')}.md`;
+      return `${template.id.toLowerCase().replace(/[^a-z0-9]/g, '-')}.md`
     }
 
     // Fallback to a generic name with timestamp
-    return `rule-${Date.now()}.md`;
+    return `rule-${Date.now()}.md`
   }
 
   /**
@@ -2122,23 +2170,23 @@ NOTE TO AI: Apply this rule when working with ${item} in this project.
    * @param {Object} analysisData - Analysis data
    * @returns {Array} Generated file paths
    */
-  async generateBasicUniversalRules(analysisData) {
-    const rules = [];
+  async generateBasicUniversalRules(_analysisData) {
+    const rules = []
 
     // Create output directory
-    await fs.mkdir(this.outputPath, { recursive: true });
+    await fs.mkdir(this.outputPath, { recursive: true })
 
     // Generate core agent rule
-    const coreAgentPath = path.join(this.outputPath, '00-core-agent.md');
-    const coreAgentContent = this.getDefaultCoreAgentTemplate();
-    await fs.writeFile(coreAgentPath, coreAgentContent, 'utf8');
-    rules.push(coreAgentPath);
+    const coreAgentPath = path.join(this.outputPath, '00-core-agent.md')
+    const coreAgentContent = this.getDefaultCoreAgentTemplate()
+    await fs.writeFile(coreAgentPath, coreAgentContent, 'utf8')
+    rules.push(coreAgentPath)
 
     if (this.verbose) {
-      console.log(chalk.gray(`Generated core agent rule at: ${coreAgentPath}`));
+      console.log(chalk.gray(`Generated core agent rule at: ${coreAgentPath}`))
     }
 
-    return rules;
+    return rules
   }
 
   /**
@@ -2149,24 +2197,24 @@ NOTE TO AI: Apply this rule when working with ${item} in this project.
    * @returns {Array} Array of generated rules
    */
   async generateFromLocalTemplates(ruleType, relevantItems, analysisData) {
-    const rules = [];
+    const rules = []
 
     for (const item of relevantItems) {
       try {
-        const rule = await this.generateBasicRule(ruleType, item, analysisData);
+        const rule = await this.generateBasicRule(ruleType, item, analysisData)
         if (rule) {
-          rules.push(rule);
+          rules.push(rule)
         }
       } catch (error) {
         if (this.verbose) {
           console.warn(
             chalk.yellow(`Failed to generate ${ruleType} rule for ${item}: ${error.message}`)
-          );
+          )
         }
       }
     }
 
-    return rules;
+    return rules
   }
 
   /**
@@ -2177,8 +2225,8 @@ NOTE TO AI: Apply this rule when working with ${item} in this project.
    * @returns {Object} Generated rule object
    */
   async generateBasicRule(ruleType, item, analysisData) {
-    const projectName = analysisData.projectContext?.name || 'Project';
-    const frameworks = analysisData.techStack?.frameworks || [];
+    const projectName = analysisData.projectContext?.name || 'Project'
+    const frameworks = analysisData.techStack?.frameworks || []
 
     const ruleContent = `---
 description: ${ruleType.charAt(0).toUpperCase() + ruleType.slice(0, -1)} rule for ${item}
@@ -2207,14 +2255,14 @@ When working with ${item}:
 
 ---
 NOTE TO AI: Apply this rule when working with ${item} in this project.
-`;
+`
 
     return {
       name: item,
       type: ruleType,
       content: ruleContent,
       filePath: path.join(this.outputPath, `${item}.md`),
-    };
+    }
   }
 
   /**
@@ -2263,7 +2311,7 @@ compatibleWith: ["All-AI-Assistants", "Core-Behavior"]
 
 ---
 NOTE TO AI: These are the fundamental rules that apply to all interactions in this project.
-`;
+`
   }
 
   // ============================================================================
@@ -2278,28 +2326,28 @@ NOTE TO AI: These are the fundamental rules that apply to all interactions in th
    */
   async generateLocalTemplateRules(analysisData) {
     if (this.verbose) {
-      console.log(chalk.gray('Generating rules from local templates (fallback mode)...'));
+      console.log(chalk.gray('Generating rules from local templates (fallback mode)...'))
     }
 
-    this.generatedFiles = [];
+    this.generatedFiles = []
 
     // Ensure output directory exists
-    await fs.mkdir(this.outputPath, { recursive: true });
+    await fs.mkdir(this.outputPath, { recursive: true })
 
     // Generate the 4 core rules that the CLI currently produces
-    await this.generateCoreAgentRule(analysisData);
-    await this.generateProjectContextRule(analysisData);
-    await this.generateCommonErrorsRule(analysisData);
-    await this.generateMcpConfigRule(analysisData);
+    await this.generateCoreAgentRule(analysisData)
+    await this.generateProjectContextRule(analysisData)
+    await this.generateCommonErrorsRule(analysisData)
+    await this.generateMcpConfigRule(analysisData)
 
-    return this.generatedFiles;
+    return this.generatedFiles
   }
 
   /**
    * Generates 00-core-agent.mdc with core agent behavior
    */
   async generateCoreAgentRule(analysisData) {
-    const variables = prepareTemplateVariables(analysisData);
+    const _variables = prepareTemplateVariables(analysisData)
     const content = `---
 description: "Core agent behavior and personality configuration"
 globs: []
@@ -2329,16 +2377,16 @@ You are an expert AI Developer Assistant. Your primary goal is to help users wri
 - Be direct and concise while remaining helpful
 - Use code examples when explaining concepts
 - Reference specific files and line numbers when relevant
-- Suggest improvements that align with project patterns`;
+- Suggest improvements that align with project patterns`
 
-    await this.writeRuleFile('00-core-agent.mdc', content);
+    await this.writeRuleFile('00-core-agent.mdc', content)
   }
 
   /**
    * Generates 01-project-context.mdc with project-specific information
    */
   async generateProjectContextRule(analysisData) {
-    const variables = prepareTemplateVariables(analysisData);
+    const variables = prepareTemplateVariables(analysisData)
     const content = applyLightTemplating(
       `---
 description: "Project-specific context and technology stack information"
@@ -2378,16 +2426,16 @@ compatibleWith: ["00-core-agent.mdc", "02-common-errors.mdc", "03-mcp-configurat
 - **Tests**: \${testPath}
 - **Docs**: \${docsPath}`,
       variables
-    );
+    )
 
-    await this.writeRuleFile('01-project-context.mdc', content);
+    await this.writeRuleFile('01-project-context.mdc', content)
   }
 
   /**
    * Generates 02-common-errors.mdc with error patterns
    */
   async generateCommonErrorsRule(analysisData) {
-    const variables = prepareTemplateVariables(analysisData);
+    const variables = prepareTemplateVariables(analysisData)
     const content = applyLightTemplating(
       `---
 description: "Common error patterns and debugging guidance"
@@ -2423,16 +2471,16 @@ compatibleWith: ["00-core-agent.mdc", "01-project-context.mdc", "03-mcp-configur
 - Check for typos in variable names
 - Ensure dependencies are installed`,
       variables
-    );
+    )
 
-    await this.writeRuleFile('02-common-errors.mdc', content);
+    await this.writeRuleFile('02-common-errors.mdc', content)
   }
 
   /**
    * Generates 03-mcp-configuration.mdc with MCP setup
    */
   async generateMcpConfigRule(analysisData) {
-    const variables = prepareTemplateVariables(analysisData);
+    const variables = prepareTemplateVariables(analysisData)
     const content = applyLightTemplating(
       `---
 description: "MCP (Model Context Protocol) configuration and setup"
@@ -2466,29 +2514,29 @@ The Model Context Protocol enables AI assistants to access external tools and da
 - Monitor server responses for errors
 - Keep configurations up to date`,
       variables
-    );
+    )
 
-    await this.writeRuleFile('03-mcp-configuration.mdc', content);
+    await this.writeRuleFile('03-mcp-configuration.mdc', content)
   }
 
   /**
    * Helper to write rule files with proper error handling
    */
   async writeRuleFile(filename, content) {
-    const filePath = path.join(this.outputPath, filename);
+    const filePath = path.join(this.outputPath, filename)
 
     try {
-      await fs.writeFile(filePath, content, 'utf8');
-      this.generatedFiles.push(filePath);
+      await fs.writeFile(filePath, content, 'utf8')
+      this.generatedFiles.push(filePath)
 
       if (this.verbose) {
-        console.log(chalk.gray(`Generated ${filename}`));
+        console.log(chalk.gray(`Generated ${filename}`))
       } else {
-        console.log(`Generated ${filename} at: ${path.relative(process.cwd(), filePath)}`);
+        console.log(`Generated ${filename} at: ${path.relative(process.cwd(), filePath)}`)
       }
     } catch (error) {
-      console.error(chalk.red(`Failed to write ${filename}: ${error.message}`));
-      throw error;
+      console.error(chalk.red(`Failed to write ${filename}: ${error.message}`))
+      throw error
     }
   }
 }

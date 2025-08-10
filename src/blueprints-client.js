@@ -5,48 +5,47 @@
  * which includes fetching rule lists, downloading rule files, and checking for updates.
  */
 
-import chalk from 'chalk';
-import https from 'https';
-import ora from 'ora';
+import chalk from 'chalk'
+import ora from 'ora'
 
 const VDK_BLUEPRINTS_BASE_URL =
-  'https://api.github.com/repos/entro314-labs/VDK-Blueprints/contents/.ai';
+  'https://api.github.com/repos/entro314-labs/VDK-Blueprints/contents/.ai'
 
 /**
  * Fetches the list of available blueprints from the VDK-Blueprints repository.
  * @returns {Promise<Array>} A promise that resolves to an array of blueprint file objects.
  */
 async function fetchRuleList() {
-  const spinner = ora('Connecting to VDK-Blueprints repository...').start();
+  const spinner = ora('Connecting to VDK-Blueprints repository...').start()
   try {
     const headers = {
       Accept: 'application/vnd.github.v3+json',
-    };
+    }
 
     // Use GitHub token if available to avoid rate limiting
     if (process.env.VDK_GITHUB_TOKEN) {
-      headers['Authorization'] = `token ${process.env.VDK_GITHUB_TOKEN}`;
+      headers.Authorization = `token ${process.env.VDK_GITHUB_TOKEN}`
     } else {
-      spinner.warn('VDK_GITHUB_TOKEN not set. You may encounter rate limiting.');
+      spinner.warn('VDK_GITHUB_TOKEN not set. You may encounter rate limiting.')
     }
 
-    const response = await fetch(`${VDK_BLUEPRINTS_BASE_URL}/rules?ref=main`, { headers });
+    const response = await fetch(`${VDK_BLUEPRINTS_BASE_URL}/rules?ref=main`, { headers })
 
     if (!response.ok) {
-      spinner.fail('Failed to connect to VDK-Blueprints repository.');
-      throw new Error(`Failed to fetch blueprint list. Status: ${response.status}`);
+      spinner.fail('Failed to connect to VDK-Blueprints repository.')
+      throw new Error(`Failed to fetch blueprint list. Status: ${response.status}`)
     }
 
-    const data = await response.json();
-    spinner.succeed('Successfully connected to VDK-Blueprints repository.');
-    return data.filter((item) => item.type === 'file' && item.name.endsWith('.mdc'));
+    const data = await response.json()
+    spinner.succeed('Successfully connected to VDK-Blueprints repository.')
+    return data.filter((item) => item.type === 'file' && item.name.endsWith('.mdc'))
   } catch (error) {
     // Ora spinner might not be initialized if fetch fails, so check before using
     if (ora.isSpinning) {
-      ora().stop();
+      ora().stop()
     }
-    console.error(chalk.red(`Error: ${error.message}`));
-    return [];
+    console.error(chalk.red(`Error: ${error.message}`))
+    return []
   }
 }
 
@@ -57,15 +56,15 @@ async function fetchRuleList() {
  */
 async function downloadRule(downloadUrl) {
   try {
-    const response = await fetch(downloadUrl);
+    const response = await fetch(downloadUrl)
     if (!response.ok) {
-      throw new Error(`Failed to download rule. Status: ${response.status}`);
+      throw new Error(`Failed to download rule. Status: ${response.status}`)
     }
-    return await response.text();
+    return await response.text()
   } catch (error) {
-    console.error(chalk.red(`Error downloading rule from ${downloadUrl}: ${error.message}`));
-    return null;
+    console.error(chalk.red(`Error downloading rule from ${downloadUrl}: ${error.message}`))
+    return null
   }
 }
 
-export { downloadRule, fetchRuleList };
+export { downloadRule, fetchRuleList }
