@@ -132,7 +132,20 @@ async function updateMCPConfig() {
 
   // Then, check common rule directories if none found from IDEs
   if (ruleDirectories.length === 0) {
-    const commonPaths = ['.ai/rules', '.vscode/ai-rules', '.cursor/rules', '.claude/rules']
+    const commonPaths = [
+      '.ai/rules',
+      '.vscode/ai-rules',
+      '.vscode-insiders/ai-rules',
+      '.vscode-oss/ai-rules',
+      '.cursor/rules',
+      '.claude/rules',
+      '.claude/commands',
+      '.windsurf/rules',
+      '.windsurf-next/rules',
+      '.zed/ai-rules',
+      '.idea/ai-rules',
+      '.github/copilot/rules'
+    ]
 
     commonPaths.forEach((rulePath) => {
       const fullPath = path.join(options.path, rulePath)

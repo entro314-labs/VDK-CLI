@@ -14,6 +14,12 @@ import { GitHubCopilotIntegration } from './github-copilot-integration.js'
 import { IntegrationManager } from './integration-manager.js'
 import { WindsurfIntegration } from './windsurf-integration.js'
 
+// New integrations
+import { JetBrainsIntegration } from './jetbrains-integration.js'
+import { ZedIntegration } from './zed-integration.js'
+import { VSCodeInsidersIntegration, VSCodiumIntegration } from './vscode-variants-integration.js'
+import { GenericAIIntegration } from './generic-ai-integration.js'
+
 export { BaseIntegration } from './base-integration.js'
 // Specific integrations
 export { ClaudeCodeIntegration } from './claude-code-integration.js'
@@ -22,6 +28,12 @@ export { GenericIDEIntegration } from './generic-ide-integration.js'
 export { GitHubCopilotIntegration } from './github-copilot-integration.js'
 export { IntegrationManager } from './integration-manager.js'
 export { WindsurfIntegration } from './windsurf-integration.js'
+
+// New integrations
+export { JetBrainsIntegration } from './jetbrains-integration.js'
+export { ZedIntegration } from './zed-integration.js'
+export { VSCodeInsidersIntegration, VSCodiumIntegration } from './vscode-variants-integration.js'
+export { GenericAIIntegration } from './generic-ai-integration.js'
 
 // Helper function to create a pre-configured integration manager
 export function createIntegrationManager(projectPath = process.cwd()) {
@@ -33,6 +45,13 @@ export function createIntegrationManager(projectPath = process.cwd()) {
   manager.register(new WindsurfIntegration(projectPath))
   manager.register(new GitHubCopilotIntegration(projectPath))
   manager.register(new GenericIDEIntegration(projectPath))
+
+  // Register new integrations
+  manager.register(new JetBrainsIntegration(projectPath))
+  manager.register(new ZedIntegration(projectPath))
+  manager.register(new VSCodeInsidersIntegration(projectPath))
+  manager.register(new VSCodiumIntegration(projectPath))
+  manager.register(new GenericAIIntegration(projectPath))
 
   return manager
 }

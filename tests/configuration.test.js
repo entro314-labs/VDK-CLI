@@ -166,6 +166,43 @@ describe('Configuration & Environment', () => {
 
       expect(ideConfig).toBeDefined()
       expect(typeof ideConfig).toBe('object')
+      expect(typeof ideConfig.detectIDEs).toBe('function')
+      expect(typeof ideConfig.detectSpecificJetBrainsIDEs).toBe('function')
+      expect(Array.isArray(ideConfig.IDE_CONFIGURATIONS)).toBe(true)
+    })
+
+    it('should include new platform configurations', async () => {
+      const { IDE_CONFIGURATIONS } = await import('../src/shared/ide-configuration.js')
+
+      const expectedPlatforms = [
+        'vscode', 'vscode-insiders', 'vscodium',
+        'cursor', 'windsurf', 'windsurf-next',
+        'claude', 'claude-desktop', 'zed',
+        'jetbrains', 'intellij', 'webstorm', 'pycharm', 'phpstorm',
+        'rubymine', 'clion', 'datagrip', 'goland', 'rider', 'android-studio',
+        'github-copilot', 'generic-ai', 'generic'
+      ]
+
+      const configIds = IDE_CONFIGURATIONS.map(ide => ide.id)
+      
+      for (const platform of expectedPlatforms) {
+        expect(configIds).toContain(platform)
+      }
+    })
+
+    it('should detect specific JetBrains IDEs', async () => {
+      const { detectSpecificJetBrainsIDEs } = await import('../src/shared/ide-configuration.js')
+
+      // Test with a mock project path
+      tempDir = await createTempDir('test-jetbrains-detection')
+
+      // Create mock .idea folder
+      await fs.mkdir(path.join(tempDir, '.idea'), { recursive: true })
+
+      const results = detectSpecificJetBrainsIDEs(tempDir)
+      
+      expect(Array.isArray(results)).toBe(true)
+      // Results may be empty for empty .idea folder, but function should work
     })
   })
 

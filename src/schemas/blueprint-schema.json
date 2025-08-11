@@ -76,10 +76,28 @@
     "platforms": {
       "type": "object",
       "properties": {
-        "claude-code": { "$ref": "#/definitions/claudePlatform" },
+        "claude-code": { "$ref": "#/definitions/claudeCodePlatform" },
+        "claude-desktop": { "$ref": "#/definitions/claudeDesktopPlatform" },
         "cursor": { "$ref": "#/definitions/cursorPlatform" },
         "windsurf": { "$ref": "#/definitions/windsurfPlatform" },
-        "github-copilot": { "$ref": "#/definitions/copilotPlatform" }
+        "windsurf-next": { "$ref": "#/definitions/windsurfNextPlatform" },
+        "github-copilot": { "$ref": "#/definitions/copilotPlatform" },
+        "zed": { "$ref": "#/definitions/zedPlatform" },
+        "vscode": { "$ref": "#/definitions/vscodePlatform" },
+        "vscode-insiders": { "$ref": "#/definitions/vscodeInsidersPlatform" },
+        "vscodium": { "$ref": "#/definitions/vscodiumPlatform" },
+        "jetbrains": { "$ref": "#/definitions/jetbrainsPlatform" },
+        "intellij": { "$ref": "#/definitions/intellijPlatform" },
+        "webstorm": { "$ref": "#/definitions/webstormPlatform" },
+        "pycharm": { "$ref": "#/definitions/pycharmPlatform" },
+        "phpstorm": { "$ref": "#/definitions/phpstormPlatform" },
+        "rubymine": { "$ref": "#/definitions/rubyminePlatform" },
+        "clion": { "$ref": "#/definitions/clionPlatform" },
+        "datagrip": { "$ref": "#/definitions/datagripPlatform" },
+        "goland": { "$ref": "#/definitions/golandPlatform" },
+        "rider": { "$ref": "#/definitions/riderPlatform" },
+        "android-studio": { "$ref": "#/definitions/androidStudioPlatform" },
+        "generic-ai": { "$ref": "#/definitions/genericAiPlatform" }
       },
       "additionalProperties": false
     },
@@ -129,7 +147,7 @@
     }
   },
   "definitions": {
-    "claudePlatform": {
+    "claudeCodePlatform": {
       "type": "object",
       "required": ["compatible"],
       "properties": {
@@ -228,6 +246,496 @@
           "type": "string",
           "enum": ["security", "performance", "code-quality", "style"],
           "description": "Type of review focus"
+        }
+      }
+    },
+    "claudeDesktopPlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this Blueprint work with Claude Desktop?"
+        },
+        "mcpIntegration": {
+          "type": "boolean",
+          "description": "Uses MCP servers?"
+        },
+        "rules": {
+          "type": "boolean",
+          "description": "Include in rules folder?"
+        },
+        "priority": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Context priority"
+        }
+      }
+    },
+    "windsurfNextPlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this Blueprint work with Windsurf Next?"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["global", "workspace"],
+          "description": "Application mode"
+        },
+        "xmlTag": {
+          "type": "string",
+          "description": "XML tag for Windsurf Next formatting"
+        },
+        "characterLimit": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Estimated character usage (max 6000)"
+        },
+        "priority": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Context priority"
+        }
+      }
+    },
+    "zedPlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this Blueprint work with Zed?"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["global", "project"],
+          "description": "Configuration scope"
+        },
+        "aiFeatures": {
+          "type": "boolean",
+          "description": "Uses Zed AI features?"
+        },
+        "collaborative": {
+          "type": "boolean",
+          "description": "Supports collaborative features?"
+        },
+        "performance": {
+          "type": "string",
+          "enum": ["high", "medium", "low"],
+          "description": "Performance optimization level"
+        }
+      }
+    },
+    "vscodePlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this Blueprint work with VS Code?"
+        },
+        "extension": {
+          "type": "string",
+          "description": "Required VS Code extension"
+        },
+        "settings": {
+          "type": "object",
+          "description": "VS Code settings integration object"
+        },
+        "commands": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Available commands array"
+        },
+        "mcpIntegration": {
+          "type": "boolean",
+          "description": "Uses MCP servers?"
+        }
+      }
+    },
+    "vscodeInsidersPlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this Blueprint work with VS Code Insiders?"
+        },
+        "extension": {
+          "type": "string",
+          "description": "Required VS Code Insiders extension"
+        },
+        "mcpIntegration": {
+          "type": "boolean",
+          "description": "Uses MCP servers?"
+        },
+        "settings": {
+          "type": "object",
+          "description": "VS Code Insiders settings integration"
+        },
+        "commands": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Available commands array"
+        }
+      }
+    },
+    "vscodiumPlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this Blueprint work with VSCodium?"
+        },
+        "extension": {
+          "type": "string",
+          "description": "Required VSCodium extension"
+        },
+        "configPath": {
+          "type": "string",
+          "description": "Configuration path (.vscode-oss/)"
+        },
+        "settings": {
+          "type": "object",
+          "description": "VSCodium settings integration"
+        },
+        "commands": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Available commands array"
+        }
+      }
+    },
+    "jetbrainsPlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this Blueprint work with JetBrains IDEs?"
+        },
+        "ide": {
+          "type": "string",
+          "enum": ["intellij", "webstorm", "pycharm", "phpstorm", "rubymine", "clion", "datagrip", "goland", "rider", "android-studio"],
+          "description": "Specific JetBrains IDE"
+        },
+        "plugin": {
+          "type": "string",
+          "description": "Required JetBrains plugin"
+        },
+        "mcpIntegration": {
+          "type": "boolean",
+          "description": "Uses MCP servers (2025.1+)?"
+        },
+        "fileTemplates": {
+          "type": "boolean",
+          "description": "Uses file templates?"
+        },
+        "inspections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Code inspections to enable array"
+        }
+      }
+    },
+    "intellijPlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this Blueprint work with IntelliJ IDEA?"
+        },
+        "plugin": {
+          "type": "string",
+          "description": "Required IntelliJ plugin"
+        },
+        "mcpIntegration": {
+          "type": "boolean",
+          "description": "Uses MCP servers?"
+        },
+        "fileTemplates": {
+          "type": "boolean",
+          "description": "Uses file templates?"
+        },
+        "inspections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Code inspections to enable"
+        }
+      }
+    },
+    "webstormPlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this Blueprint work with WebStorm?"
+        },
+        "nodeIntegration": {
+          "type": "boolean",
+          "description": "Node.js integration?"
+        },
+        "typescript": {
+          "type": "boolean",
+          "description": "TypeScript support?"
+        },
+        "inspections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "JavaScript/TypeScript inspections"
+        },
+        "mcpIntegration": {
+          "type": "boolean",
+          "description": "Uses MCP servers?"
+        }
+      }
+    },
+    "pycharmPlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this Blueprint work with PyCharm?"
+        },
+        "pythonInterpreter": {
+          "type": "string",
+          "description": "Python interpreter version"
+        },
+        "virtualEnv": {
+          "type": "boolean",
+          "description": "Virtual environment support?"
+        },
+        "inspections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Python inspections"
+        },
+        "mcpIntegration": {
+          "type": "boolean",
+          "description": "Uses MCP servers?"
+        }
+      }
+    },
+    "phpstormPlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this Blueprint work with PHPStorm?"
+        },
+        "phpVersion": {
+          "type": "string",
+          "description": "PHP version"
+        },
+        "composer": {
+          "type": "boolean",
+          "description": "Composer integration?"
+        },
+        "inspections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "PHP inspections"
+        },
+        "mcpIntegration": {
+          "type": "boolean",
+          "description": "Uses MCP servers?"
+        }
+      }
+    },
+    "rubyminePlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this Blueprint work with RubyMine?"
+        },
+        "rubyVersion": {
+          "type": "string",
+          "description": "Ruby version"
+        },
+        "rails": {
+          "type": "boolean",
+          "description": "Rails support?"
+        },
+        "inspections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Ruby inspections"
+        },
+        "mcpIntegration": {
+          "type": "boolean",
+          "description": "Uses MCP servers?"
+        }
+      }
+    },
+    "clionPlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this Blueprint work with CLion?"
+        },
+        "cmake": {
+          "type": "boolean",
+          "description": "CMake integration?"
+        },
+        "debugger": {
+          "type": "boolean",
+          "description": "Debugger integration?"
+        },
+        "inspections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "C/C++ inspections"
+        },
+        "mcpIntegration": {
+          "type": "boolean",
+          "description": "Uses MCP servers?"
+        }
+      }
+    },
+    "datagripPlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this Blueprint work with DataGrip?"
+        },
+        "databases": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Supported databases"
+        },
+        "sqlDialect": {
+          "type": "string",
+          "description": "SQL dialect"
+        },
+        "inspections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "SQL inspections"
+        },
+        "mcpIntegration": {
+          "type": "boolean",
+          "description": "Uses MCP servers?"
+        }
+      }
+    },
+    "golandPlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this Blueprint work with GoLand?"
+        },
+        "goVersion": {
+          "type": "string",
+          "description": "Go version"
+        },
+        "modules": {
+          "type": "boolean",
+          "description": "Go modules support?"
+        },
+        "inspections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Go inspections"
+        },
+        "mcpIntegration": {
+          "type": "boolean",
+          "description": "Uses MCP servers?"
+        }
+      }
+    },
+    "riderPlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this Blueprint work with Rider?"
+        },
+        "dotnetVersion": {
+          "type": "string",
+          "description": ".NET version"
+        },
+        "unity": {
+          "type": "boolean",
+          "description": "Unity integration?"
+        },
+        "inspections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "C#/.NET inspections"
+        },
+        "mcpIntegration": {
+          "type": "boolean",
+          "description": "Uses MCP servers?"
+        }
+      }
+    },
+    "androidStudioPlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this Blueprint work with Android Studio?"
+        },
+        "androidSdk": {
+          "type": "string",
+          "description": "Android SDK version"
+        },
+        "gradleVersion": {
+          "type": "string",
+          "description": "Gradle version"
+        },
+        "inspections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Android/Java inspections"
+        },
+        "mcpIntegration": {
+          "type": "boolean",
+          "description": "Uses MCP servers?"
+        }
+      }
+    },
+    "genericAiPlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this Blueprint work with Generic AI platforms?"
+        },
+        "configPath": {
+          "type": "string",
+          "description": "Configuration folder path (.ai/)"
+        },
+        "rulesPath": {
+          "type": "string",
+          "description": "Rules folder path (.ai/rules/)"
+        },
+        "priority": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Context priority"
         }
       }
     }

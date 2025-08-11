@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { validBlueprint, validCommand } from './helpers/test-fixtures.js'
+import { validBlueprint, validCommand, comprehensivePlatformBlueprint } from './helpers/test-fixtures.js'
 
 describe('Schema Validation', () => {
   describe('Command Validation', () => {
@@ -43,6 +43,17 @@ describe('Schema Validation', () => {
       expect(result.valid).toBe(true)
       if (!result.valid) {
         console.log('Validation errors:', result.errors)
+      }
+    })
+
+    it('should validate comprehensive platform blueprint', async () => {
+      const { validateBlueprint } = await import('../src/utils/schema-validator.js')
+
+      const result = await validateBlueprint(comprehensivePlatformBlueprint)
+
+      expect(result.valid).toBe(true)
+      if (!result.valid) {
+        console.log('Comprehensive platform validation errors:', result.errors)
       }
     })
 

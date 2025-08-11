@@ -63,8 +63,64 @@ export const validBlueprint = {
   platforms: {
     'claude-code': {
       compatible: true,
+      command: true,
+      memory: true,
+      namespace: 'project'
     },
+    'jetbrains': {
+      compatible: true,
+      ide: 'intellij',
+      mcpIntegration: true,
+      fileTemplates: true
+    },
+    'zed': {
+      compatible: true,
+      mode: 'project',
+      aiFeatures: true,
+      performance: 'high'
+    },
+    'generic-ai': {
+      compatible: true,
+      configPath: '.ai/',
+      rulesPath: '.ai/rules/',
+      priority: 5
+    }
   },
+}
+
+// Additional test fixture for comprehensive platform testing
+export const comprehensivePlatformBlueprint = {
+  id: 'comprehensive-platform-test',
+  title: 'Comprehensive Platform Test Blueprint',
+  description: 'Blueprint for testing all supported platforms and their configurations',
+  version: '2.0.0',
+  category: 'tool',
+  complexity: 'medium',
+  scope: 'project',
+  platforms: {
+    'claude-code': { compatible: true, command: true, memory: true },
+    'claude-desktop': { compatible: true, mcpIntegration: true, rules: true },
+    'cursor': { compatible: true, activation: 'auto-attached', priority: 'high' },
+    'windsurf': { compatible: true, mode: 'workspace', characterLimit: 4000 },
+    'windsurf-next': { compatible: true, mode: 'workspace', priority: 8 },
+    'github-copilot': { compatible: true, priority: 7, reviewType: 'code-quality' },
+    'zed': { compatible: true, mode: 'project', aiFeatures: true, performance: 'high' },
+    'vscode': { compatible: true, extension: 'vscode-ai-assistant', mcpIntegration: true },
+    'vscode-insiders': { compatible: true, extension: 'vscode-ai-assistant', mcpIntegration: true },
+    'vscodium': { compatible: true, extension: 'vscodium-ai-assistant', configPath: '.vscode-oss/' },
+    'jetbrains': { compatible: true, ide: 'intellij', mcpIntegration: true, fileTemplates: true },
+    'intellij': { compatible: true, plugin: 'ai-assistant', fileTemplates: true },
+    'webstorm': { compatible: true, nodeIntegration: true, typescript: true },
+    'pycharm': { compatible: true, pythonInterpreter: '3.9', virtualEnv: true },
+    'phpstorm': { compatible: true, phpVersion: '8.1', composer: true },
+    'rubymine': { compatible: true, rubyVersion: '3.0', rails: true },
+    'clion': { compatible: true, cmake: true, debugger: true },
+    'datagrip': { compatible: true, databases: ['PostgreSQL', 'MySQL'], sqlDialect: 'PostgreSQL' },
+    'goland': { compatible: true, goVersion: '1.19', modules: true },
+    'rider': { compatible: true, dotnetVersion: '6.0', unity: false },
+    'android-studio': { compatible: true, androidSdk: '33', gradleVersion: '7.4' },
+    'generic-ai': { compatible: true, configPath: '.ai/', priority: 5 }
+  }
 }
 
 export const malformedCodeSamples = [

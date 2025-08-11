@@ -753,13 +753,30 @@ ${technologyGuidelines}
     try {
       const projectPath = projectContext.projectPath || this.projectPath
 
-      // Check for IDE-specific files and folders
+      // Check for IDE-specific files and folders with enhanced platform detection
       const ideIndicators = {
         'VS Code': ['.vscode/', '.vscode/settings.json', '.vscode/launch.json'],
-        Cursor: ['.cursor/', 'cursor.json', '.cursorrules'],
-        Windsurf: ['.windsurf/', '.windsurfrules.md', '.codeium/'],
-        JetBrains: ['.idea/', '*.iml'],
-        Zed: ['.zed/', 'zed.json'],
+        'VS Code Insiders': ['.vscode-insiders/', '.vscode-insiders/settings.json'],
+        'VSCodium': ['.vscode-oss/', '.vscode-oss/settings.json'],
+        'Cursor': ['.cursor/', 'cursor.json', '.cursorrules'],
+        'Windsurf': ['.windsurf/', '.windsurfrules.md', '.codeium/'],
+        'Windsurf Next': ['.windsurf-next/', '.windsurf-next/config.json'],
+        'Claude Code': ['.claude/', '.claude/settings.json', '.claude/commands/'],
+        'Claude Desktop': ['.claude-desktop/', '.claude-desktop/config.json'],
+        'Zed': ['.zed/', 'zed.json', '.zed/settings.json'],
+        'IntelliJ IDEA': ['.idea/', '.idea/modules.xml', 'src/main/java/'],
+        'WebStorm': ['.idea/', '.idea/webServers.xml', 'package.json'],
+        'PyCharm': ['.idea/', '.idea/misc.xml', 'requirements.txt'],
+        'PHPStorm': ['.idea/', '.idea/php.xml', 'composer.json'],
+        'RubyMine': ['.idea/', '.idea/runConfigurations.xml', 'Gemfile'],
+        'CLion': ['.idea/', 'CMakeLists.txt', '.idea/cmake.xml'],
+        'DataGrip': ['.idea/', '.idea/dataSources.xml'],
+        'GoLand': ['.idea/', 'go.mod', '.idea/go.xml'],
+        'Rider': ['.idea/', '*.sln', '.idea/.idea.*.dir/'],
+        'Android Studio': ['.idea/', 'build.gradle', 'app/build.gradle'],
+        'JetBrains (Generic)': ['.idea/', '*.iml'],
+        'GitHub Copilot': ['.github/copilot/', '.github/copilot/config.json'],
+        'Generic AI': ['.ai/', '.ai/config.json', '.ai/rules/']
       }
 
       for (const [ide, indicators] of Object.entries(ideIndicators)) {

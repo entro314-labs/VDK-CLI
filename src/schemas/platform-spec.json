@@ -7,7 +7,30 @@
   "properties": {
     "platform": {
       "type": "string",
-      "enum": ["claude-code", "cursor", "windsurf", "github-copilot"],
+      "enum": [
+        "claude-code",
+        "claude-desktop",
+        "cursor",
+        "windsurf",
+        "windsurf-next",
+        "github-copilot",
+        "zed",
+        "vscode",
+        "vscode-insiders",
+        "vscodium",
+        "jetbrains",
+        "intellij",
+        "webstorm",
+        "pycharm",
+        "phpstorm",
+        "rubymine",
+        "clion",
+        "datagrip",
+        "goland",
+        "rider",
+        "android-studio",
+        "generic-ai"
+      ],
       "description": "Platform identifier"
     },
     "version": {
@@ -54,6 +77,55 @@
           "type": "string",
           "enum": ["file", "project", "workspace", "global"],
           "description": "Level of context awareness"
+        },
+        "mcpSupport": {
+          "type": "boolean",
+          "description": "Supports Model Context Protocol (MCP)"
+        },
+        "aiFeatures": {
+          "type": "boolean",
+          "description": "Has built-in AI assistance features"
+        },
+        "collaborativeFeatures": {
+          "type": "boolean",
+          "description": "Supports real-time collaboration"
+        },
+        "extensionSystem": {
+          "type": "boolean",
+          "description": "Has plugin/extension system"
+        },
+        "languageServer": {
+          "type": "boolean",
+          "description": "Supports Language Server Protocol (LSP)"
+        },
+        "debugger": {
+          "type": "boolean",
+          "description": "Has integrated debugger"
+        },
+        "terminalIntegration": {
+          "type": "boolean",
+          "description": "Has integrated terminal"
+        },
+        "versionControl": {
+          "type": "boolean",
+          "description": "Has built-in version control support"
+        },
+        "databaseSupport": {
+          "type": "boolean",
+          "description": "Has database integration capabilities"
+        },
+        "mobileSupport": {
+          "type": "boolean",
+          "description": "Supports mobile development"
+        },
+        "webDevelopment": {
+          "type": "boolean",
+          "description": "Optimized for web development"
+        },
+        "performance": {
+          "type": "string",
+          "enum": ["high", "medium", "low"],
+          "description": "General performance characteristics"
         }
       }
     },

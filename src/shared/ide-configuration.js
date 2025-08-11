@@ -34,6 +34,16 @@ const IDE_CONFIGURATIONS = [
     description: 'Works with VS Code Insiders AI extensions.',
   },
   {
+    id: 'vscodium',
+    name: 'VSCodium',
+    configFolder: '.vscode-oss',
+    rulesFolder: '.vscode-oss/ai-rules',
+    configFiles: ['~/.config/VSCodium/User/settings.json', '~/.config/VSCodium/User/keybindings.json'],
+    globalConfigPath: '~/.config/VSCodium/User/settings.json',
+    logPath: '~/.config/VSCodium/logs',
+    description: 'Open source distribution of VS Code with telemetry removed.',
+  },
+  {
     id: 'cursor',
     name: 'Cursor AI',
     configFolder: '.cursor',
@@ -95,7 +105,8 @@ const IDE_CONFIGURATIONS = [
     name: 'Zed Editor',
     configFolder: '.zed',
     rulesFolder: '.zed/ai-rules',
-    configFiles: ['~/.zed/settings.json', '~/.zed/keymap.json'],
+    configFiles: ['~/.config/zed/settings.json', '~/.config/zed/keymap.json'],
+    globalConfigPath: '~/.config/zed/settings.json',
     logPath: '~/Library/Logs/Zed/Zed.log',
     description: 'For use with Zed Editor AI features.',
   },
@@ -105,16 +116,136 @@ const IDE_CONFIGURATIONS = [
     configFolder: '.idea',
     rulesFolder: '.idea/ai-rules',
     configFiles: ['.idea/workspace.xml'],
-    mcpConfigPath: 'Settings | Tools | AI Assistant | Model Context Protocol (MCP)',
+    mcpConfigPath: '~/.cache/JetBrains/*/mcp',
+    settingsPath: 'Settings | Tools | AI Assistant | Model Context Protocol (MCP)',
+    mcpConfigFile: null, // Configured through IDE Settings UI
     description: 'Compatible with JetBrains AI assistant integration.',
   },
   {
+    id: 'intellij',
+    name: 'IntelliJ IDEA',
+    configFolder: '.idea',
+    rulesFolder: '.idea/ai-rules',
+    configFiles: ['.idea/workspace.xml', '.idea/modules.xml'],
+    mcpConfigPath: '~/.cache/JetBrains/IntelliJIdea*/mcp',
+    settingsPath: 'Settings | Tools | AI Assistant | Model Context Protocol (MCP)',
+    mcpConfigFile: null,
+    description: 'IntelliJ IDEA with AI assistant integration and file templates.',
+  },
+  {
+    id: 'webstorm',
+    name: 'WebStorm',
+    configFolder: '.idea',
+    rulesFolder: '.idea/ai-rules',
+    configFiles: ['.idea/workspace.xml', '.idea/webServers.xml'],
+    mcpConfigPath: '~/.cache/JetBrains/WebStorm*/mcp',
+    settingsPath: 'Settings | Tools | AI Assistant | Model Context Protocol (MCP)',
+    mcpConfigFile: null,
+    description: 'WebStorm with Node.js and TypeScript AI integration.',
+  },
+  {
+    id: 'pycharm',
+    name: 'PyCharm',
+    configFolder: '.idea',
+    rulesFolder: '.idea/ai-rules',
+    configFiles: ['.idea/workspace.xml', '.idea/misc.xml'],
+    mcpConfigPath: '~/.cache/JetBrains/PyCharm*/mcp',
+    settingsPath: 'Settings | Tools | AI Assistant | Model Context Protocol (MCP)',
+    mcpConfigFile: null,
+    description: 'PyCharm with Python virtual environment and AI integration.',
+  },
+  {
+    id: 'phpstorm',
+    name: 'PHPStorm',
+    configFolder: '.idea',
+    rulesFolder: '.idea/ai-rules',
+    configFiles: ['.idea/workspace.xml', '.idea/php.xml'],
+    mcpConfigPath: '~/.cache/JetBrains/PhpStorm*/mcp',
+    settingsPath: 'Settings | Tools | AI Assistant | Model Context Protocol (MCP)',
+    mcpConfigFile: null,
+    description: 'PHPStorm with PHP and Composer AI integration.',
+  },
+  {
+    id: 'rubymine',
+    name: 'RubyMine',
+    configFolder: '.idea',
+    rulesFolder: '.idea/ai-rules',
+    configFiles: ['.idea/workspace.xml', '.idea/runConfigurations.xml'],
+    mcpConfigPath: '~/.cache/JetBrains/RubyMine*/mcp',
+    settingsPath: 'Settings | Tools | AI Assistant | Model Context Protocol (MCP)',
+    mcpConfigFile: null,
+    description: 'RubyMine with Ruby on Rails AI integration.',
+  },
+  {
+    id: 'clion',
+    name: 'CLion',
+    configFolder: '.idea',
+    rulesFolder: '.idea/ai-rules',
+    configFiles: ['.idea/workspace.xml', 'CMakeLists.txt'],
+    mcpConfigPath: '~/.cache/JetBrains/CLion*/mcp',
+    settingsPath: 'Settings | Tools | AI Assistant | Model Context Protocol (MCP)',
+    mcpConfigFile: null,
+    description: 'CLion with CMake and C/C++ debugger AI integration.',
+  },
+  {
+    id: 'datagrip',
+    name: 'DataGrip',
+    configFolder: '.idea',
+    rulesFolder: '.idea/ai-rules',
+    configFiles: ['.idea/workspace.xml', '.idea/dataSources.xml'],
+    mcpConfigPath: '~/.cache/JetBrains/DataGrip*/mcp',
+    settingsPath: 'Settings | Tools | AI Assistant | Model Context Protocol (MCP)',
+    mcpConfigFile: null,
+    description: 'DataGrip with database AI integration and SQL inspections.',
+  },
+  {
+    id: 'goland',
+    name: 'GoLand',
+    configFolder: '.idea',
+    rulesFolder: '.idea/ai-rules',
+    configFiles: ['.idea/workspace.xml', 'go.mod'],
+    mcpConfigPath: '~/.cache/JetBrains/GoLand*/mcp',
+    settingsPath: 'Settings | Tools | AI Assistant | Model Context Protocol (MCP)',
+    mcpConfigFile: null,
+    description: 'GoLand with Go modules AI integration.',
+  },
+  {
+    id: 'rider',
+    name: 'Rider',
+    configFolder: '.idea',
+    rulesFolder: '.idea/ai-rules',
+    configFiles: ['.idea/workspace.xml', '.idea/.idea.*.dir/.idea/indexLayout.xml'],
+    mcpConfigPath: '~/.cache/JetBrains/Rider*/mcp',
+    settingsPath: 'Settings | Tools | AI Assistant | Model Context Protocol (MCP)',
+    mcpConfigFile: null,
+    description: 'Rider with .NET and Unity AI integration.',
+  },
+  {
+    id: 'android-studio',
+    name: 'Android Studio',
+    configFolder: '.idea',
+    rulesFolder: '.idea/ai-rules',
+    configFiles: ['.idea/workspace.xml', 'build.gradle', 'app/build.gradle'],
+    mcpConfigPath: '~/.cache/Google/AndroidStudio*/mcp',
+    settingsPath: 'Settings | Tools | AI Assistant | Model Context Protocol (MCP)',
+    mcpConfigFile: null,
+    description: 'Android Studio with Android SDK and Gradle AI integration.',
+  },
+  {
     id: 'openai',
-    name: 'OpenAI Codex',
+    name: 'OpenAI API Tools',
     configFolder: '.openai',
     rulesFolder: '.openai/rules',
     configFiles: ['.openai/config.json'],
-    description: 'Structure for OpenAI Codex integration.',
+    description: 'Configuration for OpenAI API-based development tools (Note: Original Codex API deprecated March 2023).',
+  },
+  {
+    id: 'generic-ai',
+    name: 'Generic AI Platform',
+    configFolder: '.ai',
+    rulesFolder: '.ai/rules',
+    configFiles: ['.ai/config.json'],
+    description: 'Works with most AI coding assistants and platforms.',
   },
   {
     id: 'generic',
@@ -167,9 +298,13 @@ function detectIDEs(projectPath) {
 
     // If config folder doesn't exist, check specific config files
     if (ide.configFiles && ide.configFiles.length > 0) {
-      const configFileExists = ide.configFiles.some((filePath) =>
-        fs.existsSync(path.join(projectPath, filePath))
-      )
+      const configFileExists = ide.configFiles.some((filePath) => {
+        // Handle files with wildcards or relative paths
+        if (filePath.includes('~')) {
+          return false // Skip global config files in project detection
+        }
+        return fs.existsSync(path.join(projectPath, filePath))
+      })
       if (configFileExists) {
         detectedIDEs.push(ide)
       }
@@ -177,6 +312,128 @@ function detectIDEs(projectPath) {
   }
 
   return detectedIDEs
+}
+
+/**
+ * Detect specific JetBrains IDEs based on project characteristics
+ * @param {string} projectPath - Project root path
+ * @returns {Array} List of detected JetBrains IDEs with confidence scores
+ */
+function detectSpecificJetBrainsIDEs(projectPath) {
+  const detectedIDEs = []
+  
+  // Check if .idea folder exists first
+  const ideaPath = path.join(projectPath, '.idea')
+  if (!fs.existsSync(ideaPath)) {
+    return detectedIDEs
+  }
+
+  // IDE-specific detection patterns
+  const ideDetectionPatterns = {
+    'intellij': {
+      files: ['.idea/modules.xml', '.idea/compiler.xml', 'src/main/java/', 'pom.xml', 'build.gradle'],
+      indicators: ['Java', 'Maven', 'Gradle', 'Kotlin'],
+      confidence: 0.8
+    },
+    'webstorm': {
+      files: ['.idea/webServers.xml', '.idea/jsLibraryMappings.xml', 'package.json', 'tsconfig.json'],
+      indicators: ['Node.js', 'TypeScript', 'JavaScript', 'React', 'Vue'],
+      confidence: 0.9
+    },
+    'pycharm': {
+      files: ['.idea/misc.xml', 'requirements.txt', 'setup.py', 'pyproject.toml', '__pycache__/'],
+      indicators: ['Python', 'Django', 'Flask'],
+      confidence: 0.9
+    },
+    'phpstorm': {
+      files: ['.idea/php.xml', 'composer.json', 'composer.lock', '*.php'],
+      indicators: ['PHP', 'Laravel', 'Symfony'],
+      confidence: 0.9
+    },
+    'rubymine': {
+      files: ['.idea/runConfigurations.xml', 'Gemfile', 'Gemfile.lock', 'config.ru'],
+      indicators: ['Ruby', 'Rails', 'Bundler'],
+      confidence: 0.9
+    },
+    'clion': {
+      files: ['CMakeLists.txt', '.idea/cmake.xml', 'Makefile', '*.cpp', '*.c', '*.h'],
+      indicators: ['C++', 'C', 'CMake'],
+      confidence: 0.8
+    },
+    'datagrip': {
+      files: ['.idea/dataSources.xml', '.idea/sqldialects.xml', '*.sql'],
+      indicators: ['SQL', 'Database'],
+      confidence: 0.7
+    },
+    'goland': {
+      files: ['go.mod', 'go.sum', '.idea/go.xml', '*.go'],
+      indicators: ['Go', 'Golang'],
+      confidence: 0.9
+    },
+    'rider': {
+      files: ['.idea/.idea.*.dir/', '*.sln', '*.csproj', 'global.json'],
+      indicators: ['.NET', 'C#', 'Unity'],
+      confidence: 0.8
+    },
+    'android-studio': {
+      files: ['build.gradle', 'app/build.gradle', '.idea/gradle.xml', 'AndroidManifest.xml'],
+      indicators: ['Android', 'Gradle', 'Kotlin'],
+      confidence: 0.9
+    }
+  }
+
+  // Check each IDE pattern
+  for (const [ideId, pattern] of Object.entries(ideDetectionPatterns)) {
+    let matchCount = 0
+    const totalPatterns = pattern.files.length
+
+    for (const filePattern of pattern.files) {
+      const filePath = path.join(projectPath, filePattern)
+      
+      if (filePattern.includes('*')) {
+        // Handle wildcard patterns
+        const dir = path.dirname(filePath)
+        const fileName = path.basename(filePattern)
+        
+        try {
+          if (fs.existsSync(dir)) {
+            const files = fs.readdirSync(dir)
+            const hasMatch = files.some(file => {
+              const regex = new RegExp(fileName.replace('*', '.*'))
+              return regex.test(file)
+            })
+            if (hasMatch) matchCount++
+          }
+        } catch (error) {
+          // Ignore directory read errors
+        }
+      } else {
+        if (fs.existsSync(filePath)) {
+          matchCount++
+        }
+      }
+    }
+
+    // Calculate confidence score
+    const matchRatio = matchCount / totalPatterns
+    const confidence = matchRatio >= 0.3 ? pattern.confidence * matchRatio : 0
+
+    if (confidence > 0.5) {
+      const ideConfig = IDE_CONFIGURATIONS.find(ide => ide.id === ideId)
+      if (ideConfig) {
+        detectedIDEs.push({
+          ...ideConfig,
+          confidence,
+          matchCount,
+          totalPatterns,
+          indicators: pattern.indicators
+        })
+      }
+    }
+  }
+
+  // Sort by confidence (highest first)
+  return detectedIDEs.sort((a, b) => b.confidence - a.confidence)
 }
 
 /**
@@ -212,6 +469,7 @@ function getIDEOptionsForCLI() {
 // Export functions for use in CLI
 export {
   detectIDEs,
+  detectSpecificJetBrainsIDEs,
   ensureRuleDirectory,
   getIDEConfigById,
   getIDEConfigPaths,

@@ -54,6 +54,10 @@ export class IntegrationManager {
       './cursor-integration.js',
       './windsurf-integration.js',
       './github-copilot-integration.js',
+      './jetbrains-integration.js',
+      './zed-integration.js',
+      './vscode-variants-integration.js',
+      './generic-ai-integration.js',
       './generic-ide-integration.js',
     ]
 
