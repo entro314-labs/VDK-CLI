@@ -165,6 +165,17 @@ export const tables = {
         border: ['gray'],
       },
     }),
+
+  validation: () =>
+    new Table({
+      head: [colors.primary('File'), colors.primary('Type'), colors.primary('Status'), colors.primary('Errors')],
+      colWidths: [40, 12, 8, 50],
+      style: {
+        head: ['cyan', 'bold'],
+        border: ['gray'],
+      },
+      wordWrap: true,
+    }),
 }
 
 // Status indicators

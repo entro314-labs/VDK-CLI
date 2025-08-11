@@ -35,6 +35,110 @@ async function loadSchema(schemaName) {
 }
 
 /**
+ * Validate platforms object with $ref definitions
+ */
+async function validatePlatformsObject(platformsData, schema, errors) {
+  if (!schema.definitions) return
+
+  const schemaProperties = schema.properties.platforms.properties || {}
+  
+  for (const [platformName, platformConfig] of Object.entries(platformsData)) {
+    if (typeof platformConfig !== 'object') {
+      errors.push(`Platform '${platformName}' configuration must be an object`)
+      continue
+    }
+
+    // Find the appropriate definition
+    let definition = null
+    if (schemaProperties[platformName]?.['$ref']) {
+      const refPath = schemaProperties[platformName]['$ref']
+      const defName = refPath.replace('#/definitions/', '')
+      definition = schema.definitions[defName]
+    } else {
+      // Use genericPlatform for unknown platforms
+      definition = schema.definitions.genericPlatform
+    }
+
+    if (!definition) continue
+
+    // Validate required fields
+    if (definition.required) {
+      for (const requiredField of definition.required) {
+        if (!(requiredField in platformConfig)) {
+          errors.push(`Platform '${platformName}' missing required field: ${requiredField}`)
+        }
+      }
+    }
+
+    // Validate platform-specific properties
+    if (definition.properties) {
+      for (const [fieldName, fieldValue] of Object.entries(platformConfig)) {
+        const fieldDef = definition.properties[fieldName]
+        if (!fieldDef) {
+          errors.push(`Platform '${platformName}' has unknown field: ${fieldName}`)
+          continue
+        }
+
+        // Type validation
+        if (fieldDef.type) {
+          const expectedType = fieldDef.type
+          const actualType = Array.isArray(fieldValue) ? 'array' : typeof fieldValue
+          if (actualType !== expectedType) {
+            errors.push(`Platform '${platformName}.${fieldName}' should be ${expectedType}, got ${actualType}`)
+            continue
+          }
+        }
+
+        // Enum validation
+        if (fieldDef.enum && !fieldDef.enum.includes(fieldValue)) {
+          errors.push(`Platform '${platformName}.${fieldName}' must be one of: ${fieldDef.enum.join(', ')}`)
+        }
+
+        // Number range validation
+        if (fieldDef.type === 'number') {
+          if (fieldDef.minimum !== undefined && fieldValue < fieldDef.minimum) {
+            errors.push(`Platform '${platformName}.${fieldName}' must be at least ${fieldDef.minimum}`)
+          }
+          if (fieldDef.maximum !== undefined && fieldValue > fieldDef.maximum) {
+            errors.push(`Platform '${platformName}.${fieldName}' must not exceed ${fieldDef.maximum}`)
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Validate relationship fields (requires, suggests, conflicts, supersedes)
+ */
+function validateRelationships(data, errors) {
+  const relationshipFields = ['requires', 'suggests', 'conflicts', 'supersedes']
+  
+  for (const field of relationshipFields) {
+    if (data[field] && Array.isArray(data[field])) {
+      // Check for self-references
+      if (data.id && data[field].includes(data.id)) {
+        errors.push(`Blueprint cannot reference itself in ${field}`)
+      }
+      
+      // Check for duplicates within each array
+      const uniqueItems = new Set(data[field])
+      if (uniqueItems.size !== data[field].length) {
+        errors.push(`${field} array must have unique items`)
+      }
+    }
+  }
+
+  // Check for conflicts between relationship fields
+  if (data.requires && data.conflicts) {
+    const conflicts = data.requires.filter(id => data.conflicts.includes(id))
+    if (conflicts.length > 0) {
+      errors.push(`Cannot both require and conflict with: ${conflicts.join(', ')}`)
+    }
+  }
+}
+
+/**
  * Validate data against a schema
  */
 export async function validateSchema(data, schemaName) {
@@ -93,30 +197,87 @@ export async function validateSchema(data, schemaName) {
       }
 
       // Array validation
-      if (expectedType === 'array' && Array.isArray(value) && fieldSchema.items?.type) {
-        for (const [index, item] of value.entries()) {
-          const itemType = typeof item
-          if (itemType !== fieldSchema.items.type) {
-            errors.push(
-              `Array '${field}' item at index ${index} should be ${fieldSchema.items.type}, got ${itemType}`
-            )
+      if (expectedType === 'array' && Array.isArray(value)) {
+        // Check array constraints
+        if (fieldSchema.minItems && value.length < fieldSchema.minItems) {
+          errors.push(`Array '${field}' must have at least ${fieldSchema.minItems} items`)
+        }
+        if (fieldSchema.maxItems && value.length > fieldSchema.maxItems) {
+          errors.push(`Array '${field}' must not have more than ${fieldSchema.maxItems} items`)
+        }
+        if (fieldSchema.uniqueItems && new Set(value).size !== value.length) {
+          errors.push(`Array '${field}' must have unique items`)
+        }
+
+        // Validate array items
+        if (fieldSchema.items) {
+          for (const [index, item] of value.entries()) {
+            if (fieldSchema.items.type) {
+              const itemType = typeof item
+              if (itemType !== fieldSchema.items.type) {
+                errors.push(
+                  `Array '${field}' item at index ${index} should be ${fieldSchema.items.type}, got ${itemType}`
+                )
+              }
+            }
+            // Validate item patterns
+            if (fieldSchema.items.pattern && typeof item === 'string') {
+              const pattern = new RegExp(fieldSchema.items.pattern)
+              if (!pattern.test(item)) {
+                errors.push(`Array '${field}' item at index ${index} does not match required pattern`)
+              }
+            }
+            // Validate item length
+            if (fieldSchema.items.maxLength && typeof item === 'string' && item.length > fieldSchema.items.maxLength) {
+              errors.push(`Array '${field}' item at index ${index} exceeds maximum length`)
+            }
           }
         }
       }
 
-      // Object validation (simplified)
-      if (expectedType === 'object' && typeof value === 'object' && fieldSchema.properties) {
-        for (const [subField, subSchema] of Object.entries(fieldSchema.properties)) {
-          const subValue = value[subField]
-          if (subValue !== undefined && subSchema.type) {
-            const subType = Array.isArray(subValue) ? 'array' : typeof subValue
-            if (subType !== subSchema.type) {
-              errors.push(
-                `Object '${field}.${subField}' should be ${subSchema.type}, got ${subType}`
-              )
+      // Number validation
+      if (expectedType === 'number' && typeof value === 'number') {
+        if (fieldSchema.minimum !== undefined && value < fieldSchema.minimum) {
+          errors.push(`Field '${field}' must be at least ${fieldSchema.minimum}`)
+        }
+        if (fieldSchema.maximum !== undefined && value > fieldSchema.maximum) {
+          errors.push(`Field '${field}' must not exceed ${fieldSchema.maximum}`)
+        }
+      }
+
+      // Object validation with $ref support
+      if (expectedType === 'object' && typeof value === 'object') {
+        if (field === 'platforms') {
+          // Special handling for platforms object with $ref definitions
+          await validatePlatformsObject(value, schema, errors)
+        } else if (fieldSchema.properties) {
+          for (const [subField, subSchema] of Object.entries(fieldSchema.properties)) {
+            const subValue = value[subField]
+            if (subValue !== undefined && subSchema.type) {
+              const subType = Array.isArray(subValue) ? 'array' : typeof subValue
+              if (subType !== subSchema.type) {
+                errors.push(
+                  `Object '${field}.${subField}' should be ${subSchema.type}, got ${subType}`
+                )
+              }
             }
           }
         }
+      }
+    }
+  }
+
+  // Additional validation for blueprints
+  if (schemaName === 'blueprint-schema') {
+    validateRelationships(data, errors)
+    
+    // Validate platforms has at least one compatible platform
+    if (data.platforms) {
+      const hasCompatiblePlatform = Object.values(data.platforms).some(platform => 
+        platform && platform.compatible === true
+      )
+      if (!hasCompatiblePlatform) {
+        errors.push('Blueprint must have at least one compatible platform')
       }
     }
   }

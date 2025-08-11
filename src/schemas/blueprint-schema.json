@@ -24,7 +24,7 @@
     },
     "version": {
       "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9-]+)?(\\+[a-zA-Z0-9-]+)?$",
       "description": "Semantic version number"
     },
     "lastUpdated": {
@@ -34,24 +34,28 @@
     },
     "category": {
       "type": "string",
-      "enum": ["core", "language", "technology", "stack", "task", "assistant", "tool"],
+      "enum": ["core", "language", "technology", "stack", "task", "assistant", "tool", "project"],
       "description": "Primary categorization"
     },
     "subcategory": {
       "type": "string",
+      "maxLength": 50,
       "description": "Optional fine-grained grouping"
     },
     "framework": {
       "type": "string",
+      "maxLength": 50,
       "description": "Specific technology framework"
     },
     "language": {
       "type": "string",
+      "maxLength": 30,
       "description": "Programming language"
     },
     "stack": {
       "type": "string",
-      "description": "Technology stack"
+      "maxLength": 100,
+      "description": "Technology stack description"
     },
     "complexity": {
       "type": "string",
@@ -65,7 +69,7 @@
     },
     "audience": {
       "type": "string",
-      "enum": ["developer", "architect", "team-lead", "junior"],
+      "enum": ["developer", "architect", "team-lead", "junior", "senior", "any"],
       "description": "Target audience"
     },
     "maturity": {
@@ -97,28 +101,46 @@
         "goland": { "$ref": "#/definitions/golandPlatform" },
         "rider": { "$ref": "#/definitions/riderPlatform" },
         "android-studio": { "$ref": "#/definitions/androidStudioPlatform" },
+        "openai": { "$ref": "#/definitions/openaiPlatform" },
         "generic-ai": { "$ref": "#/definitions/genericAiPlatform" }
       },
-      "additionalProperties": false
+      "additionalProperties": { "$ref": "#/definitions/genericPlatform" },
+      "minProperties": 1
     },
     "requires": {
       "type": "array",
-      "items": { "type": "string" },
-      "description": "Hard dependencies"
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      },
+      "uniqueItems": true,
+      "description": "Hard dependencies on other blueprints"
     },
     "suggests": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      },
+      "uniqueItems": true,
       "description": "Soft dependencies/recommendations"
     },
     "conflicts": {
       "type": "array",
-      "items": { "type": "string" },
-      "description": "Incompatible Blueprints"
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      },
+      "uniqueItems": true,
+      "description": "Incompatible blueprints"
     },
     "supersedes": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      },
+      "uniqueItems": true,
       "description": "Blueprints this replaces"
     },
     "contentSections": {
@@ -128,22 +150,42 @@
     },
     "author": {
       "type": "string",
+      "maxLength": 100,
       "description": "Author identifier"
     },
     "contributors": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string",
+        "maxLength": 100
+      },
+      "uniqueItems": true,
       "description": "List of contributors"
     },
     "tags": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$",
+        "maxLength": 30
+      },
+      "uniqueItems": true,
+      "maxItems": 20,
       "description": "Searchable tags"
     },
     "discussionUrl": {
       "type": "string",
       "format": "uri",
       "description": "Community discussion URL"
+    },
+    "repositoryUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Source repository URL"
+    },
+    "license": {
+      "type": "string",
+      "description": "License identifier (SPDX format preferred)"
     }
   },
   "definitions": {
@@ -153,15 +195,15 @@
       "properties": {
         "compatible": {
           "type": "boolean",
-          "description": "Can this Blueprint work with Claude Code?"
-        },
-        "command": {
-          "type": "boolean",
-          "description": "Can become a slash command?"
+          "description": "Can this blueprint work with Claude Code?"
         },
         "memory": {
           "type": "boolean",
           "description": "Should be included in memory files?"
+        },
+        "command": {
+          "type": "boolean",
+          "description": "Can become a slash command?"
         },
         "namespace": {
           "type": "string",
@@ -176,6 +218,12 @@
         "mcpIntegration": {
           "type": "boolean",
           "description": "Uses MCP servers?"
+        },
+        "priority": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Memory priority"
         }
       }
     },
@@ -201,6 +249,11 @@
           "type": "string",
           "enum": ["high", "medium", "low"],
           "description": "Blueprint priority"
+        },
+        "fileTypes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Supported file types"
         }
       }
     },
@@ -224,7 +277,14 @@
         "characterLimit": {
           "type": "number",
           "minimum": 0,
+          "maximum": 10000,
           "description": "Estimated character usage"
+        },
+        "priority": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Context priority"
         }
       }
     },
@@ -244,8 +304,13 @@
         },
         "reviewType": {
           "type": "string",
-          "enum": ["security", "performance", "code-quality", "style"],
+          "enum": ["security", "performance", "code-quality", "style", "general"],
           "description": "Type of review focus"
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["repository", "organization"],
+          "description": "Configuration scope"
         }
       }
     },
@@ -712,6 +777,48 @@
         "mcpIntegration": {
           "type": "boolean",
           "description": "Uses MCP servers?"
+        }
+      }
+    },
+    "openaiPlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this Blueprint work with OpenAI tools?"
+        },
+        "apiVersion": {
+          "type": "string",
+          "description": "OpenAI API version"
+        },
+        "model": {
+          "type": "string",
+          "enum": ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"],
+          "description": "OpenAI model to use"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["deprecated", "limited", "active"],
+          "description": "Platform status"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Platform-specific notes or limitations"
+        }
+      }
+    },
+    "genericPlatform": {
+      "type": "object",
+      "required": ["compatible"],
+      "properties": {
+        "compatible": {
+          "type": "boolean",
+          "description": "Can this blueprint work with this platform?"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Platform-specific notes or limitations"
         }
       }
     },

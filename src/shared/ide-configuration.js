@@ -407,11 +407,9 @@ function detectSpecificJetBrainsIDEs(projectPath) {
         } catch (error) {
           // Ignore directory read errors
         }
-      } else {
-        if (fs.existsSync(filePath)) {
+      } else if (fs.existsSync(filePath)) {
           matchCount++
         }
-      }
     }
 
     // Calculate confidence score

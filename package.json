@@ -1,6 +1,6 @@
 {
   "name": "@vibe-dev-kit/cli",
-  "version": "2.9.0",
+  "version": "2.10.0",
   "type": "module",
   "description": "Advanced Command-line toolkit that analyzes your codebase, migrates existing AI contexts from any platform, and deploys project-aware rules, memories, commands and agents to any AI coding assistant - VDK is the world's first Vibe Development Kit",
   "main": "cli.js",

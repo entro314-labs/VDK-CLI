@@ -81,7 +81,7 @@ export class ContextConverter {
         'claude-code': {
           compatible: true,
           memory: true,
-          mcpIntegration: claudeSpecific?.hasMCPReferences || false
+          mcpIntegration: claudeSpecific?.hasMCPReferences
         }
       }
     })

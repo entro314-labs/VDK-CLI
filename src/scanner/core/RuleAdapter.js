@@ -3,6 +3,11 @@
  *
  * Transforms standardized VDK rules into IDE-native formats and locations.
  * Each IDE gets rules in the format that makes the most sense for that platform.
+ * 
+ * TODO: Integration with RuleGenerator
+ * - RuleGenerator needs to extract and pass platformConfig from blueprint frontmatter
+ * - Currently receives empty platformConfig={} in most calls
+ * - Platform-specific features (globs, characterLimit, priority, etc.) not being utilized
  */
 
 import os from 'node:os'
@@ -38,34 +43,56 @@ export class RuleAdapter {
   }
 
   /**
-   * Adapt a collection of rules for a specific IDE
+   * Adapt a collection of rules for a specific IDE with platform configuration
    * @param {Array} rules - Array of rule objects with frontmatter and content
    * @param {string} targetIDE - Target IDE ('claude', 'cursor', 'windsurf', 'github-copilot')
    * @param {Object} projectContext - Project analysis context
+   * @param {Object} platformConfig - Platform-specific configuration from blueprint
    * @returns {Object} Adapted rules with paths and content
    */
-  async adaptRules(rules, targetIDE, projectContext = {}) {
+  async adaptRules(rules, targetIDE, projectContext = {}, platformConfig = {}) {
     if (this.verbose) {
       console.log(chalk.gray(`Adapting ${rules.length} rules for ${targetIDE}...`))
+    }
+
+    // Check platform compatibility first
+    if (platformConfig.compatible === false) {
+      return {
+        paths: [],
+        rules: [],
+        summary: {
+          generated: 0,
+          skipped: rules.length,
+          reason: 'Platform not compatible'
+        }
+      }
     }
 
     switch (targetIDE.toLowerCase()) {
       case 'claude':
       case 'claude-code':
-        return await this.adaptForClaude(rules, projectContext)
+        return await this.adaptForClaude(rules, projectContext, platformConfig)
 
       case 'cursor':
       case 'cursor-ai':
-        return await this.adaptForCursor(rules, projectContext)
+        return await this.adaptForCursor(rules, projectContext, platformConfig)
 
       case 'windsurf':
-        return await this.adaptForWindsurf(rules, projectContext)
+        return await this.adaptForWindsurf(rules, projectContext, platformConfig)
 
       case 'github-copilot':
-        return await this.adaptForGitHubCopilot(rules, projectContext)
+        return await this.adaptForGitHubCopilot(rules, projectContext, platformConfig)
+
+      case 'zed':
+        return await this.adaptForZed(rules, projectContext, platformConfig)
+
+      case 'vscode':
+      case 'vscode-insiders':
+      case 'vscodium':
+        return await this.adaptForVSCode(rules, projectContext, platformConfig)
 
       default:
-        throw new Error(`Unknown IDE: ${targetIDE}`)
+        return await this.adaptForGeneric(rules, projectContext, platformConfig)
     }
   }
 
@@ -146,22 +173,46 @@ export class RuleAdapter {
    * Adapt rules for Claude Code's memory system with proper hierarchy
    * @param {Array} rules - Standardized rules
    * @param {Object} projectContext - Project context
+   * @param {Object} platformConfig - Claude-specific configuration
    * @returns {Object} Claude-native memory files and commands
    */
-  async adaptForClaude(rules, projectContext) {
+  async adaptForClaude(rules, projectContext, platformConfig = {}) {
+    // Extract platform-specific settings with defaults
+    const memory = platformConfig.memory !== false // Default: true
+    const command = platformConfig.command !== false // Default: true
+    const priority = platformConfig.priority || 5 // Default priority
+    const namespace = platformConfig.namespace || 'project' // Default: project
+    const allowedTools = platformConfig.allowedTools || []
+    const mcpIntegration = platformConfig.mcpIntegration
     const adaptedFiles = []
     const _projectName = path.basename(this.projectPath)
     const globalDir = path.join(os.homedir(), '.claude')
     const commandsDir = path.join(this.projectPath, '.claude', 'commands')
     const userCommandsDir = path.join(os.homedir(), '.claude', 'commands')
 
+    // Skip memory generation if disabled
+    if (!memory) {
+      return {
+        paths: [],
+        rules: [],
+        summary: { generated: 0, skipped: rules.length, reason: 'Memory disabled in platform config' }
+      }
+    }
+
+    // Sort rules by priority (higher priority first)
+    const prioritizedRules = rules.sort((a, b) => {
+      const aPriority = a.frontmatter?.priority || priority
+      const bPriority = b.frontmatter?.priority || priority
+      return bPriority - aPriority
+    })
+
     // 1. Global memory (cross-project preferences) - Deploy to ~/.claude/CLAUDE.md
-    const globalRules = rules.filter(
+    const globalRules = prioritizedRules.filter(
       (rule) => rule.frontmatter?.category === 'core' && rule.frontmatter?.alwaysApply === true
     )
 
     if (globalRules.length > 0) {
-      const globalContent = this.generateClaudeGlobalMemory(globalRules)
+      const globalContent = this.generateClaudeGlobalMemory(globalRules, { priority, allowedTools })
       adaptedFiles.push({
         path: path.join(globalDir, 'CLAUDE.md'),
         content: globalContent,
@@ -271,9 +322,15 @@ export class RuleAdapter {
    * @param {Object} projectContext - Project context
    * @returns {Object} Cursor-native MDC files
    */
-  async adaptForCursor(rules, projectContext) {
+  async adaptForCursor(rules, projectContext, platformConfig = {}) {
     const adaptedFiles = []
     const rulesDir = path.join(this.projectPath, '.cursor', 'rules')
+    
+    // Extract platform-specific settings
+    const activation = platformConfig.activation || 'auto-attached'
+    const globs = platformConfig.globs || []
+    const priority = platformConfig.priority || 'medium'
+    const fileTypes = platformConfig.fileTypes || []
 
     // Group rules by activation type for better organization
     const rulesByActivation = this.groupCursorRulesByActivation(rules)
@@ -473,7 +530,12 @@ ${cleanContent}`
    * @param {Object} projectContext - Project context
    * @returns {Object} Windsurf-native memory files
    */
-  async adaptForWindsurf(rules, projectContext) {
+  async adaptForWindsurf(rules, projectContext, platformConfig = {}) {
+    // Extract platform-specific settings
+    const mode = platformConfig.mode || 'workspace' // global or workspace
+    const xmlTag = platformConfig.xmlTag || 'context'
+    const characterLimit = platformConfig.characterLimit || 6000
+    const priority = platformConfig.priority || 5
     const adaptedFiles = []
     const rulesDir = path.join(this.projectPath, '.windsurf', 'rules')
     const globalDir = path.join(os.homedir(), '.codeium', 'windsurf', 'memories')
@@ -597,7 +659,11 @@ ${cleanContent}`
    * @param {Object} projectContext - Project context
    * @returns {Object} GitHub Copilot setup instructions
    */
-  async adaptForGitHubCopilot(rules, _projectContext) {
+  async adaptForGitHubCopilot(rules, _projectContext, platformConfig = {}) {
+    // Extract platform-specific settings
+    const priority = platformConfig.priority || 8
+    const reviewType = platformConfig.reviewType || 'code-quality'
+    const scope = platformConfig.scope || 'repository'
     // Don't generate files - generate setup instructions
     const prioritizedRules = this.prioritizeRulesForCopilot(rules)
     const selectedRules = prioritizedRules.slice(0, 6) // GitHub Copilot Enterprise limit
@@ -1235,5 +1301,185 @@ This directory contains GitHub Copilot Enterprise coding guidelines generated by
       .slice(0, 3)
       .join(' ')
       .trim()
+  }
+
+  /**
+   * Adapt rules for Zed Editor
+   * @param {Array} rules - Standardized rules
+   * @param {Object} projectContext - Project context
+   * @param {Object} platformConfig - Zed-specific configuration
+   * @returns {Object} Zed-native configuration
+   */
+  async adaptForZed(rules, projectContext, platformConfig = {}) {
+    const adaptedFiles = []
+    const mode = platformConfig.mode || 'project' // global or project
+    const aiFeatures = platformConfig.aiFeatures !== false // Default: true
+    const collaborative = platformConfig.collaborative !== false // Default: true
+    const performance = platformConfig.performance || 'high' // high, medium, low
+
+    const baseDir = mode === 'global' 
+      ? path.join(os.homedir(), '.config', 'zed')
+      : path.join(this.projectPath, '.zed')
+    
+    const aiRulesDir = path.join(baseDir, 'ai-rules')
+
+    for (const rule of rules) {
+      const ruleContent = this.stripFrontmatter(rule.content)
+      const title = rule.frontmatter?.title || this.extractTitle(rule.content)
+      const filename = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.md`
+
+      adaptedFiles.push({
+        path: path.join(aiRulesDir, filename),
+        content: ruleContent,
+        type: 'ai-rule',
+        scope: mode,
+        aiFeatures: aiFeatures && rule.frontmatter?.aiFeatures !== false,
+        collaborative: collaborative && rule.frontmatter?.collaborative !== false,
+        performance
+      })
+    }
+
+    return {
+      files: adaptedFiles,
+      summary: {
+        generated: adaptedFiles.length,
+        mode,
+        aiFeatures,
+        collaborative,
+        performance
+      }
+    }
+  }
+
+  /**
+   * Adapt rules for VS Code family (VS Code, Insiders, VSCodium)
+   * @param {Array} rules - Standardized rules
+   * @param {Object} projectContext - Project context
+   * @param {Object} platformConfig - VS Code-specific configuration
+   * @returns {Object} VS Code-native configuration
+   */
+  async adaptForVSCode(rules, projectContext, platformConfig = {}) {
+    const adaptedFiles = []
+    const extension = platformConfig.extension || null
+    const settings = platformConfig.settings || {}
+    const commands = platformConfig.commands || []
+    const mcpIntegration = platformConfig.mcpIntegration
+    
+    // Determine config directory based on VS Code variant
+    let configDir = '.vscode'
+    if (platformConfig.configPath) {
+      configDir = platformConfig.configPath
+    }
+    
+    const aiRulesDir = path.join(this.projectPath, configDir, 'ai-rules')
+
+    // Generate rule files
+    for (const rule of rules) {
+      const ruleContent = this.stripFrontmatter(rule.content)
+      const title = rule.frontmatter?.title || this.extractTitle(rule.content)
+      const filename = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.md`
+
+      adaptedFiles.push({
+        path: path.join(aiRulesDir, filename),
+        content: ruleContent,
+        type: 'ai-rule'
+      })
+    }
+
+    // Generate MCP configuration if enabled
+    if (mcpIntegration) {
+      const mcpConfig = {
+        servers: {},
+        globalShortcuts: settings
+      }
+      
+      adaptedFiles.push({
+        path: path.join(this.projectPath, configDir, 'mcp.json'),
+        content: JSON.stringify(mcpConfig, null, 2),
+        type: 'mcp-config'
+      })
+    }
+
+    return {
+      files: adaptedFiles,
+      summary: {
+        generated: adaptedFiles.length,
+        extension,
+        mcpIntegration,
+        configDir
+      }
+    }
+  }
+
+  /**
+   * Adapt rules for generic platforms
+   * @param {Array} rules - Standardized rules
+   * @param {Object} projectContext - Project context
+   * @param {Object} platformConfig - Generic platform configuration
+   * @returns {Object} Generic platform configuration
+   */
+  async adaptForGeneric(rules, projectContext, platformConfig = {}) {
+    const adaptedFiles = []
+    const configPath = platformConfig.configPath || '.ai'
+    const rulesPath = platformConfig.rulesPath || '.ai/rules'
+    const priority = platformConfig.priority || 5
+    
+    const baseDir = path.join(this.projectPath, configPath)
+    const rulesDir = path.join(this.projectPath, rulesPath)
+
+    // Sort rules by priority
+    const prioritizedRules = rules.sort((a, b) => {
+      const aPriority = a.frontmatter?.priority || priority
+      const bPriority = b.frontmatter?.priority || priority
+      return bPriority - aPriority
+    })
+
+    // Generate rule files
+    for (const rule of prioritizedRules) {
+      const ruleContent = this.stripFrontmatter(rule.content)
+      const title = rule.frontmatter?.title || this.extractTitle(rule.content)
+      const filename = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.md`
+
+      adaptedFiles.push({
+        path: path.join(rulesDir, filename),
+        content: ruleContent,
+        type: 'ai-rule',
+        priority: rule.frontmatter?.priority || priority
+      })
+    }
+
+    // Generate generic configuration
+    const genericConfig = {
+      version: '3.0.0',
+      platform: 'generic-ai',
+      rules: {
+        directory: rulesPath,
+        priority,
+        count: adaptedFiles.length
+      },
+      project: {
+        name: path.basename(this.projectPath),
+        technologies: projectContext.technologies || [],
+        framework: projectContext.framework || null
+      },
+      generatedAt: new Date().toISOString()
+    }
+
+    adaptedFiles.push({
+      path: path.join(baseDir, 'config.json'),
+      content: JSON.stringify(genericConfig, null, 2),
+      type: 'config'
+    })
+
+    return {
+      files: adaptedFiles,
+      summary: {
+        generated: adaptedFiles.length - 1, // Exclude config file
+        config: 1,
+        priority,
+        configPath,
+        rulesPath
+      }
+    }
   }
 }

@@ -8,6 +8,17 @@
  * - Local Handlebars template generation (fallback)
  * - Remote .mdc rule fetching from repository (primary)
  * - IDE-specific rule adaptation
+ * 
+ * TODO: Platform Configuration Flow
+ * - Extract platform-specific configurations from blueprint frontmatter
+ * - Pass platformConfig to RuleAdapter.adaptRules() calls (lines 160-171)
+ * - Implement getPlatformConfig() method to extract config for each integration
+ * 
+ * TODO: Dependency Resolution System
+ * - Implement blueprint dependency resolution in loadStandardizedRules()
+ * - Process relationship fields (requires, suggests, conflicts, supersedes)
+ * - Add dependency graph resolution before rule adaptation
+ * - Filter/reorder rules based on dependencies
  * - YAML frontmatter schema validation (VDK v2.1.0)
  * - Multi-platform AI assistant support
  */

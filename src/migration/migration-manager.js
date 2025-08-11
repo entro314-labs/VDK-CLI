@@ -32,7 +32,7 @@ export class MigrationManager {
     this.projectPath = options.projectPath || process.cwd()
     this.outputPath = options.outputPath || path.join(this.projectPath, '.ai', 'rules')
     this.migrationOutputPath = options.migrationOutputPath || path.join(this.projectPath, 'vdk-migration')
-    this.verbose = options.verbose || false
+    this.verbose = options.verbose
     
     // Use existing VDK components
     this.projectScanner = new ProjectScanner({
@@ -289,7 +289,7 @@ export class MigrationManager {
     console.log(chalk.green('\n✅ Migration completed successfully!'))
     
     if (this.results.detected.length > 0) {
-      console.log(chalk.blue(`\n📊 Migration Summary:`))
+      console.log(chalk.blue('\n📊 Migration Summary:'))
       console.log(`• Detected contexts: ${this.results.detected.length}`)
       console.log(`• Converted contexts: ${this.results.converted.length}`)
       console.log(`• Generated blueprints: ${this.results.generated.length}`)

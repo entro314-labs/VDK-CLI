@@ -63,7 +63,7 @@ class VSCodeVariantIntegration extends BaseIntegration {
             return path.join(homeDir, '.config', 'VSCodium', 'User', 'settings.json')
         }
         break
-      case 'win32': // Windows
+      case 'win32': { // Windows
         const appData = process.env.APPDATA || path.join(homeDir, 'AppData', 'Roaming')
         switch (this.variant) {
           case 'vscode':
@@ -74,6 +74,7 @@ class VSCodeVariantIntegration extends BaseIntegration {
             return path.join(appData, 'VSCodium', 'User', 'settings.json')
         }
         break
+      }
     }
 
     // Fallback

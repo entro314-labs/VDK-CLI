@@ -186,7 +186,7 @@ export class MigrationAdapter {
         'claude-code': {
           compatible: true,
           memory: true,
-          mcpIntegration: claudeSpecific?.hasMCPReferences || false,
+          mcpIntegration: claudeSpecific?.hasMCPReferences,
           allowedTools: this.extractAllowedTools(context)
         }
       }
@@ -322,7 +322,7 @@ export class MigrationAdapter {
           placeholder: '$ARGUMENTS'
         },
         fileReferences: {
-          supports: commandOptions.features?.fileReferences || false
+          supports: commandOptions.features?.fileReferences
         },
         mcpIntegration: commandOptions.features?.mcpIntegration ? {
           requiredServers: this.extractMCPServers(context)
@@ -430,13 +430,13 @@ export class MigrationAdapter {
     if (content.includes('testing')) return 'testing'
     if (content.includes('styling')) return 'styling'
     
-    return undefined
+    return 
   }
 
   inferComplexity(context) {
     const wordCount = context.wordCount || 0
     const sectionCount = context.sections?.length || 0
-    const hasTemplating = context.hasTemplating || false
+    const hasTemplating = context.hasTemplating
 
     if (wordCount > 1000 || sectionCount > 5 || hasTemplating) return 'complex'
     if (wordCount > 300 || sectionCount > 2) return 'medium'
