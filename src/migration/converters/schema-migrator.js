@@ -13,7 +13,7 @@ import { validateBlueprint } from '../../utils/schema-validator.js'
 
 export class SchemaMigrator {
   constructor(options = {}) {
-    this.verbose = options.verbose || false
+    this.verbose = options.verbose
   }
 
   /**
@@ -28,7 +28,7 @@ export class SchemaMigrator {
       migrated: 0,
       skipped: 0,
       errors: 0,
-      files: []
+      files: [],
     }
 
     try {
@@ -37,20 +37,20 @@ export class SchemaMigrator {
 
       // Find blueprint files
       const files = await this.findBlueprintFiles(inputPath)
-      
+
       for (const filePath of files) {
         try {
           const result = await this.migrateSingleBlueprint(filePath, outputPath, options)
           results.processed++
-          
+
           if (result.migrated) {
             results.migrated++
           } else {
             results.skipped++
           }
-          
+
           results.files.push(result)
-          
+
           if (this.verbose) {
             console.log(`${result.migrated ? '✓' : '→'} ${path.basename(filePath)}`)
           }
@@ -59,15 +59,14 @@ export class SchemaMigrator {
           results.files.push({
             file: path.basename(filePath),
             migrated: false,
-            error: error.message
+            error: error.message,
           })
-          
+
           if (this.verbose) {
             console.error(`✗ ${path.basename(filePath)}: ${error.message}`)
           }
         }
       }
-      
     } catch (error) {
       throw new Error(`Migration failed: ${error.message}`)
     }
@@ -82,21 +81,21 @@ export class SchemaMigrator {
     const content = await fs.readFile(filePath, 'utf8')
     const parsed = matter(content)
     const originalData = { ...parsed.data }
-    
+
     // Check if already in v2.1.0 format
     if (this.isAlreadyMigrated(originalData)) {
       if (!options.force) {
         return {
           file: path.basename(filePath),
           migrated: false,
-          reason: 'Already in v2.1.0 format'
+          reason: 'Already in v2.1.0 format',
         }
       }
     }
 
     // Perform migration
     const migratedData = await this.migrateMetadata(originalData)
-    
+
     // Validate migrated data
     const validation = await validateBlueprint(migratedData)
     if (!validation.valid) {
@@ -105,15 +104,15 @@ export class SchemaMigrator {
 
     // Create migrated file content
     const migratedContent = matter.stringify(parsed.content, migratedData)
-    
+
     // Write migrated file
     const outputFile = path.join(outputPath, path.basename(filePath))
     await fs.writeFile(outputFile, migratedContent, 'utf8')
-    
+
     return {
       file: path.basename(filePath),
       migrated: true,
-      changes: this.getChanges(originalData, migratedData)
+      changes: this.getChanges(originalData, migratedData),
     }
   }
 
@@ -122,9 +121,7 @@ export class SchemaMigrator {
    */
   isAlreadyMigrated(data) {
     const v2Fields = ['complexity', 'scope', 'audience', 'maturity']
-    return v2Fields.some(field => field in data) && 
-           data.platforms && 
-           typeof data.platforms === 'object'
+    return v2Fields.some((field) => field in data) && data.platforms && typeof data.platforms === 'object'
   }
 
   /**
@@ -181,8 +178,11 @@ export class SchemaMigrator {
 
     // Clean up tags (ensure lowercase and kebab-case)
     if (migrated.tags && Array.isArray(migrated.tags)) {
-      migrated.tags = migrated.tags.map(tag => 
-        tag.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-')
+      migrated.tags = migrated.tags.map((tag) =>
+        tag
+          .toLowerCase()
+          .replace(/[^a-z0-9-]/g, '-')
+          .replace(/-+/g, '-')
       )
     }
 
@@ -198,7 +198,7 @@ export class SchemaMigrator {
     // Check for existing platform configuration
     if (originalData.platforms && typeof originalData.platforms === 'object') {
       // Migrate existing platform config
-      Object.keys(originalData.platforms).forEach(platform => {
+      Object.keys(originalData.platforms).forEach((platform) => {
         const config = originalData.platforms[platform]
         if (typeof config === 'boolean') {
           platforms[platform] = { compatible: config }
@@ -209,7 +209,7 @@ export class SchemaMigrator {
     } else {
       // Create default platform configuration
       const defaultPlatforms = ['claude', 'cursor', 'windsurf']
-      defaultPlatforms.forEach(platform => {
+      defaultPlatforms.forEach((platform) => {
         platforms[platform] = { compatible: true }
       })
     }
@@ -224,7 +224,7 @@ export class SchemaMigrator {
 
     if (originalData.fileTypes && Array.isArray(originalData.fileTypes)) {
       if (platforms.cursor) {
-        platforms.cursor.globs = originalData.fileTypes.map(type => `**/*.${type}`)
+        platforms.cursor.globs = originalData.fileTypes.map((type) => `**/*.${type}`)
         platforms.cursor.activation = 'auto-attached'
       }
     }
@@ -292,7 +292,7 @@ export class SchemaMigrator {
   titleCase(str) {
     return str
       .split('-')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ')
   }
 
@@ -301,13 +301,13 @@ export class SchemaMigrator {
    */
   async findBlueprintFiles(dirPath) {
     const files = []
-    
+
     try {
       const entries = await fs.readdir(dirPath, { withFileTypes: true })
-      
+
       for (const entry of entries) {
         const fullPath = path.join(dirPath, entry.name)
-        
+
         if (entry.isDirectory()) {
           const subFiles = await this.findBlueprintFiles(fullPath)
           files.push(...subFiles)
@@ -320,7 +320,7 @@ export class SchemaMigrator {
         console.warn(`Warning: Could not read directory ${dirPath}: ${error.message}`)
       }
     }
-    
+
     return files
   }
 
@@ -329,26 +329,26 @@ export class SchemaMigrator {
    */
   getChanges(original, migrated) {
     const changes = []
-    
+
     const v2Fields = ['complexity', 'scope', 'audience', 'maturity']
-    v2Fields.forEach(field => {
-      if (!(field in original) && (field in migrated)) {
+    v2Fields.forEach((field) => {
+      if (!(field in original) && field in migrated) {
         changes.push(`Added ${field}: ${migrated[field]}`)
       }
     })
-    
+
     if (!original.platforms && migrated.platforms) {
       changes.push('Added platform configuration')
     }
-    
+
     if (original.created !== migrated.created) {
       changes.push('Formatted created date')
     }
-    
+
     if (original.lastUpdated !== migrated.lastUpdated) {
       changes.push('Formatted lastUpdated date')
     }
-    
+
     return changes
   }
 }
@@ -358,25 +358,23 @@ export class SchemaMigrator {
  */
 export async function migrateToSchemaV2(inputPath, outputPath = null, options = {}) {
   const migrator = new SchemaMigrator(options)
-  
+
   if (!outputPath) {
     outputPath = inputPath + '_v2'
   }
-  
+
   const results = await migrator.migrateBlueprints(inputPath, outputPath, options)
-  
+
   console.log(`Migration completed:`)
   console.log(`- Processed: ${results.processed}`)
   console.log(`- Migrated: ${results.migrated}`)
   console.log(`- Skipped: ${results.skipped}`)
   console.log(`- Errors: ${results.errors}`)
-  
+
   if (results.errors > 0) {
     console.log('\\nErrors:')
-    results.files
-      .filter(f => f.error)
-      .forEach(f => console.log(`- ${f.file}: ${f.error}`))
+    results.files.filter((f) => f.error).forEach((f) => console.log(`- ${f.file}: ${f.error}`))
   }
-  
+
   return results
 }

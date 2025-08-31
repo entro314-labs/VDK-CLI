@@ -26,7 +26,7 @@ export class JetBrainsIntegration extends BaseIntegration {
       'DataGrip',
       'GoLand',
       'Rider',
-      'AndroidStudio'
+      'AndroidStudio',
     ]
   }
 
@@ -88,7 +88,7 @@ export class JetBrainsIntegration extends BaseIntegration {
       isUsed: confidence !== 'none',
       confidence,
       indicators,
-      recommendations
+      recommendations,
     }
   }
 
@@ -104,22 +104,20 @@ export class JetBrainsIntegration extends BaseIntegration {
     // Check for IDE-specific configuration files
     const ideIndicators = {
       'IntelliJ IDEA': ['.idea/modules.xml', '.idea/compiler.xml'],
-      'WebStorm': ['.idea/webServers.xml', '.idea/jsLibraryMappings.xml'],
-      'PyCharm': ['.idea/misc.xml', '.idea/inspectionProfiles/'],
-      'PHPStorm': ['.idea/php.xml', '.idea/blade.xml'],
-      'RubyMine': ['.idea/runConfigurations.xml'],
-      'CLion': ['CMakeLists.txt', '.idea/cmake.xml'],
-      'DataGrip': ['.idea/dataSources.xml', '.idea/sqldialects.xml'],
-      'GoLand': ['go.mod', '.idea/go.xml'],
-      'Rider': ['.idea/.idea.*.dir/', '*.sln'],
-      'Android Studio': ['build.gradle', 'app/build.gradle', '.idea/gradle.xml']
+      WebStorm: ['.idea/webServers.xml', '.idea/jsLibraryMappings.xml'],
+      PyCharm: ['.idea/misc.xml', '.idea/inspectionProfiles/'],
+      PHPStorm: ['.idea/php.xml', '.idea/blade.xml'],
+      RubyMine: ['.idea/runConfigurations.xml'],
+      CLion: ['CMakeLists.txt', '.idea/cmake.xml'],
+      DataGrip: ['.idea/dataSources.xml', '.idea/sqldialects.xml'],
+      GoLand: ['go.mod', '.idea/go.xml'],
+      Rider: ['.idea/.idea.*.dir/', '*.sln'],
+      'Android Studio': ['build.gradle', 'app/build.gradle', '.idea/gradle.xml'],
     }
 
     for (const [ide, indicators] of Object.entries(ideIndicators)) {
-      const hasIndicators = indicators.some(indicator => {
-        const fullPath = path.isAbsolute(indicator) 
-          ? indicator 
-          : path.join(this.projectPath, indicator)
+      const hasIndicators = indicators.some((indicator) => {
+        const fullPath = path.isAbsolute(indicator) ? indicator : path.join(this.projectPath, indicator)
         return fs.existsSync(fullPath)
       })
 
@@ -140,15 +138,9 @@ export class JetBrainsIntegration extends BaseIntegration {
     if (!fs.existsSync(ideaPath)) return false
 
     // Look for AI assistant or MCP related files
-    const aiConfigFiles = [
-      '.idea/ai-assistant.xml',
-      '.idea/mcp.xml',
-      '.idea/ai-rules/'
-    ]
+    const aiConfigFiles = ['.idea/ai-assistant.xml', '.idea/mcp.xml', '.idea/ai-rules/']
 
-    return aiConfigFiles.some(file => 
-      fs.existsSync(path.join(this.projectPath, file))
-    )
+    return aiConfigFiles.some((file) => fs.existsSync(path.join(this.projectPath, file)))
   }
 
   /**
@@ -160,9 +152,10 @@ export class JetBrainsIntegration extends BaseIntegration {
 
     try {
       if (fs.existsSync(cacheDir)) {
-        const jetbrainsVersions = fs.readdirSync(cacheDir)
-          .filter(dir => this.supportedIDEs.some(ide => dir.includes(ide)))
-        
+        const jetbrainsVersions = fs
+          .readdirSync(cacheDir)
+          .filter((dir) => this.supportedIDEs.some((ide) => dir.includes(ide)))
+
         if (jetbrainsVersions.length > 0) {
           return path.join(cacheDir, jetbrainsVersions[0], 'mcp')
         }
@@ -181,10 +174,10 @@ export class JetBrainsIntegration extends BaseIntegration {
     try {
       const { execSync } = require('node:child_process')
       const processes = execSync('ps aux', { encoding: 'utf8' })
-      
+
       const jetbrainsProcesses = []
       const lines = processes.split('\n')
-      
+
       for (const line of lines) {
         for (const ide of this.supportedIDEs) {
           if (line.toLowerCase().includes(ide.toLowerCase())) {
@@ -208,7 +201,7 @@ export class JetBrainsIntegration extends BaseIntegration {
       projectConfig: path.join(this.projectPath, '.idea'),
       rulesPath: path.join(this.projectPath, '.idea', 'ai-rules'),
       mcpConfig: this.getMCPConfigPath(),
-      workspaceConfig: path.join(this.projectPath, '.idea', 'workspace.xml')
+      workspaceConfig: path.join(this.projectPath, '.idea', 'workspace.xml'),
     }
   }
 
@@ -252,7 +245,7 @@ export class JetBrainsIntegration extends BaseIntegration {
       detectedIDEs,
       configPath: path.join(this.projectPath, '.idea'),
       rulesPath: path.join(this.projectPath, '.idea', 'ai-rules'),
-      mcpSupported: true
+      mcpSupported: true,
     }
   }
 }

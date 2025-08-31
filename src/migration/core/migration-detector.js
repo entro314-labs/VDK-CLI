@@ -12,39 +12,39 @@ import matter from 'gray-matter'
 export class MigrationDetector {
   constructor(projectPath) {
     this.projectPath = projectPath
-    
+
     // AI context patterns to look for
     this.aiContextPatterns = {
-      'claude-code': {
+      'claude-code-cli': {
         filePatterns: ['CLAUDE.md', '.claude/**/*.md', '.claude/commands/**/*'],
         directoryPatterns: ['.claude'],
-        indicators: ['claude-code', 'mcp:', 'slash command', 'claude.md'],
-        priority: 'high'
+        indicators: ['claude-code-cli', 'mcp:', 'slash command', 'claude.md'],
+        priority: 'high',
       },
-      'cursor': {
+      cursor: {
         filePatterns: ['.cursorrules', 'cursorrules', '.cursor-rules', '.cursor/**/*'],
         directoryPatterns: ['.cursor'],
         indicators: ['cursor', '@', 'tab trigger'],
-        priority: 'high'
+        priority: 'high',
       },
       'github-copilot': {
         filePatterns: ['.copilotrc*', '.github/copilot/**/*', '.github/copilot.y*ml'],
         directoryPatterns: ['.github/copilot'],
         indicators: ['copilot', 'github', 'review', 'pull_request'],
-        priority: 'medium'
+        priority: 'medium',
       },
-      'windsurf': {
+      windsurf: {
         filePatterns: ['.windsurfrc', 'windsurf.config.*', '.windsurf/**/*'],
         directoryPatterns: ['.windsurf'],
         indicators: ['windsurf', 'cascade', 'codeium'],
-        priority: 'high'
+        priority: 'high',
       },
       'generic-ai': {
-        filePatterns: ['.ai/**/*', 'ai-rules/**/*', 'prompts/**/*', '.prompts/**/*'],
-        directoryPatterns: ['.ai', 'ai-rules', 'prompts', '.prompts'],
+        filePatterns: ['.vdk/**/*', 'ai-rules/**/*', 'prompts/**/*', '.prompts/**/*'],
+        directoryPatterns: ['.vdk', 'ai-rules', 'prompts', '.prompts'],
         indicators: ['ai', 'prompt', 'assistant', 'context', 'memory'],
-        priority: 'low'
-      }
+        priority: 'low',
+      },
     }
   }
 
@@ -55,17 +55,17 @@ export class MigrationDetector {
    */
   async detectAIContexts(projectData) {
     const contexts = []
-    
+
     // Use existing file discovery from ProjectScanner
     const allFiles = projectData.files || []
-    
+
     for (const file of allFiles) {
       const context = await this.analyzeFileForAIContext(file)
       if (context) {
         contexts.push(context)
       }
     }
-    
+
     // Also check directories for AI context patterns
     const directories = projectData.directories || []
     for (const dir of directories) {
@@ -74,7 +74,7 @@ export class MigrationDetector {
         contexts.push(dirContext)
       }
     }
-    
+
     // Deduplicate and prioritize contexts
     return this.dedupAndPrioritizeContexts(contexts)
   }
@@ -88,17 +88,17 @@ export class MigrationDetector {
     const fileName = file.name
     const relativePath = file.relativePath
     const fullPath = file.path
-    
+
     // Check if file matches known AI context patterns
     const contextType = this.identifyContextType(fileName, relativePath)
     if (!contextType) {
       return null
     }
-    
+
     // Read and analyze file content if it's a text file
     let content = ''
     let hasContent = false
-    
+
     try {
       // Only read text-based files
       if (this.isTextFile(fileName)) {
@@ -109,14 +109,14 @@ export class MigrationDetector {
       // File might not be readable, skip content analysis
       hasContent = false
     }
-    
+
     if (!hasContent && contextType === 'generic-ai') {
       // Skip empty generic AI files
       return null
     }
-    
+
     const analysis = this.analyzeContent(content, contextType)
-    
+
     return {
       type: contextType,
       source: this.getSourceName(contextType),
@@ -129,7 +129,7 @@ export class MigrationDetector {
       hasContent,
       wordCount: content.split(/\s+/).length,
       lineCount: content.split('\n').length,
-      ...analysis
+      ...analysis,
     }
   }
 
@@ -142,22 +142,20 @@ export class MigrationDetector {
   analyzeDirForAIContext(dir, allFiles) {
     const dirName = dir.name
     const relativePath = dir.relativePath
-    
+
     // Check if directory matches AI context patterns
     const contextType = this.identifyContextTypeFromPath(relativePath, dirName)
     if (!contextType) {
       return null
     }
-    
+
     // Get files within this directory
-    const dirFiles = allFiles.filter(file => 
-      file.relativePath.startsWith(relativePath + '/')
-    )
-    
+    const dirFiles = allFiles.filter((file) => file.relativePath.startsWith(relativePath + '/'))
+
     if (dirFiles.length === 0) {
       return null
     }
-    
+
     return {
       type: contextType,
       source: this.getSourceName(contextType),
@@ -166,13 +164,13 @@ export class MigrationDetector {
       relativePath,
       directoryName: dirName,
       fileCount: dirFiles.length,
-      files: dirFiles.map(f => ({
+      files: dirFiles.map((f) => ({
         name: f.name,
         relativePath: f.relativePath,
-        type: f.type
+        type: f.type,
       })),
       confidence: this.calculateDirectoryConfidence(contextType, dirName, dirFiles),
-      lastModified: Math.max(...dirFiles.map(f => new Date(f.modifiedTime || 0).getTime()))
+      lastModified: Math.max(...dirFiles.map((f) => new Date(f.modifiedTime || 0).getTime())),
     }
   }
 
@@ -185,13 +183,13 @@ export class MigrationDetector {
   identifyContextType(fileName, relativePath) {
     const lowerFileName = fileName.toLowerCase()
     const lowerPath = relativePath.toLowerCase()
-    
+
     // Check specific file names first (highest priority)
-    if (fileName === 'CLAUDE.md') return 'claude-code'
+    if (fileName === 'CLAUDE.md') return 'claude-code-cli'
     if (['.cursorrules', 'cursorrules', '.cursor-rules'].includes(fileName)) return 'cursor'
     if (fileName.startsWith('.copilotrc')) return 'github-copilot'
     if (fileName.startsWith('.windsurfrc') || fileName.startsWith('windsurf.config')) return 'windsurf'
-    
+
     // Check path-based patterns
     for (const [type, config] of Object.entries(this.aiContextPatterns)) {
       for (const pattern of config.filePatterns) {
@@ -200,14 +198,14 @@ export class MigrationDetector {
         }
       }
     }
-    
+
     // Check directory-based patterns
-    if (lowerPath.includes('.claude/')) return 'claude-code'
+    if (lowerPath.includes('.claude/')) return 'claude-code-cli'
     if (lowerPath.includes('.cursor/')) return 'cursor'
     if (lowerPath.includes('copilot/') || lowerPath.includes('.github/copilot')) return 'github-copilot'
     if (lowerPath.includes('.windsurf/')) return 'windsurf'
-    if (lowerPath.includes('.ai/') || lowerPath.includes('prompts/')) return 'generic-ai'
-    
+    if (lowerPath.includes('.vdk/') || lowerPath.includes('prompts/')) return 'generic-ai'
+
     return null
   }
 
@@ -220,13 +218,13 @@ export class MigrationDetector {
   identifyContextTypeFromPath(relativePath, dirName) {
     const lowerPath = relativePath.toLowerCase()
     const lowerDirName = dirName.toLowerCase()
-    
-    if (lowerDirName === '.claude' || lowerPath.includes('.claude')) return 'claude-code'
+
+    if (lowerDirName === '.claude' || lowerPath.includes('.claude')) return 'claude-code-cli'
     if (lowerDirName === '.cursor' || lowerPath.includes('.cursor')) return 'cursor'
     if (lowerDirName === 'copilot' && lowerPath.includes('.github')) return 'github-copilot'
     if (lowerDirName === '.windsurf' || lowerPath.includes('.windsurf')) return 'windsurf'
     if (['.ai', 'ai-rules', 'prompts', '.prompts'].includes(lowerDirName)) return 'generic-ai'
-    
+
     return null
   }
 
@@ -241,8 +239,8 @@ export class MigrationDetector {
     const regexPattern = pattern
       .replace(/\*\*/g, '.*') // ** matches any path segment
       .replace(/\*/g, '[^/]*') // * matches any filename characters
-      .replace(/\./g, '\\.')   // Escape dots
-    
+      .replace(/\./g, '\\.') // Escape dots
+
     const regex = new RegExp(`^${regexPattern}$`, 'i')
     return regex.test(path)
   }
@@ -255,10 +253,10 @@ export class MigrationDetector {
   isTextFile(fileName) {
     const textExtensions = ['.md', '.txt', '.js', '.ts', '.json', '.yaml', '.yml', '.toml', '.ini', '.rc']
     const extension = path.extname(fileName).toLowerCase()
-    
+
     // Files without extension that are typically text
     const textFiles = ['.cursorrules', 'cursorrules', '.gitignore', '.copilotrc', '.windsurfrc']
-    
+
     return textExtensions.includes(extension) || textFiles.includes(fileName)
   }
 
@@ -281,7 +279,7 @@ export class MigrationDetector {
       hasRules: this.detectRules(content),
       hasMemory: this.detectMemory(content),
       hasTemplating: this.detectTemplating(content),
-      sections: this.extractSections(content)
+      sections: this.extractSections(content),
     }
 
     // Parse frontmatter if present
@@ -299,7 +297,7 @@ export class MigrationDetector {
 
     // Context-specific analysis
     switch (contextType) {
-      case 'claude-code':
+      case 'claude-code-cli':
         analysis.claudeSpecific = this.analyzeClaudeContent(content)
         break
       case 'cursor':
@@ -324,17 +322,17 @@ export class MigrationDetector {
    */
   detectCommands(content, contextType) {
     const commandPatterns = {
-      'claude-code': ['/[a-z]', 'mcp:', 'tool:', 'slash command'],
-      'cursor': ['@', 'ctrl+', 'cmd+', 'tab trigger'],
+      'claude-code-cli': ['/[a-z]', 'mcp:', 'tool:', 'slash command'],
+      cursor: ['@', 'ctrl+', 'cmd+', 'tab trigger'],
       'github-copilot': ['copilot:', 'gh ', 'github.com'],
-      'windsurf': ['cascade:', 'windsurf:', 'agent:'],
-      'generic-ai': ['/command', '!', 'run:', 'execute:']
+      windsurf: ['cascade:', 'windsurf:', 'agent:'],
+      'generic-ai': ['/command', '!', 'run:', 'execute:'],
     }
 
     const patterns = commandPatterns[contextType] || commandPatterns['generic-ai']
     const lowerContent = content.toLowerCase()
-    
-    return patterns.some(pattern => lowerContent.includes(pattern.toLowerCase()))
+
+    return patterns.some((pattern) => lowerContent.includes(pattern.toLowerCase()))
   }
 
   /**
@@ -344,13 +342,26 @@ export class MigrationDetector {
    */
   detectRules(content) {
     const ruleKeywords = [
-      'rule:', 'rules:', 'guideline', 'principle', 'convention',
-      'standard', 'pattern', 'practice', 'requirement', 'constraint',
-      'always', 'never', 'should', 'must', 'avoid', 'prefer'
+      'rule:',
+      'rules:',
+      'guideline',
+      'principle',
+      'convention',
+      'standard',
+      'pattern',
+      'practice',
+      'requirement',
+      'constraint',
+      'always',
+      'never',
+      'should',
+      'must',
+      'avoid',
+      'prefer',
     ]
-    
+
     const lowerContent = content.toLowerCase()
-    return ruleKeywords.some(keyword => lowerContent.includes(keyword))
+    return ruleKeywords.some((keyword) => lowerContent.includes(keyword))
   }
 
   /**
@@ -360,13 +371,22 @@ export class MigrationDetector {
    */
   detectMemory(content) {
     const memoryKeywords = [
-      'memory:', 'remember:', 'context:', 'background:',
-      'history:', 'preferences:', 'settings:', 'configuration:',
-      'project:', 'codebase:', 'architecture:', 'stack:'
+      'memory:',
+      'remember:',
+      'context:',
+      'background:',
+      'history:',
+      'preferences:',
+      'settings:',
+      'configuration:',
+      'project:',
+      'codebase:',
+      'architecture:',
+      'stack:',
     ]
-    
+
     const lowerContent = content.toLowerCase()
-    return memoryKeywords.some(keyword => lowerContent.includes(keyword))
+    return memoryKeywords.some((keyword) => lowerContent.includes(keyword))
   }
 
   /**
@@ -376,14 +396,14 @@ export class MigrationDetector {
    */
   detectTemplating(content) {
     const templatePatterns = [
-      /\{\{[\s\S]*?\}\}/,  // Handlebars
-      /\$\{[\s\S]*?\}/,    // Template literals
-      /<[\w-]+>/,          // XML-like tags
-      /\[\[[\s\S]*?\]\]/,  // Double brackets
-      /%[\w-]+%/           // Percent variables
+      /\{\{[\s\S]*?\}\}/, // Handlebars
+      /\$\{[\s\S]*?\}/, // Template literals
+      /<[\w-]+>/, // XML-like tags
+      /\[\[[\s\S]*?\]\]/, // Double brackets
+      /%[\w-]+%/, // Percent variables
     ]
-    
-    return templatePatterns.some(pattern => pattern.test(content))
+
+    return templatePatterns.some((pattern) => pattern.test(content))
   }
 
   /**
@@ -395,10 +415,10 @@ export class MigrationDetector {
     const sections = []
     const lines = content.split('\n')
     let currentSection = null
-    
+
     for (const line of lines) {
       const trimmed = line.trim()
-      
+
       // Markdown headers
       const headerMatch = trimmed.match(/^(#{1,6})\s+(.+)/)
       if (headerMatch) {
@@ -408,20 +428,20 @@ export class MigrationDetector {
         currentSection = {
           level: headerMatch[1].length,
           title: headerMatch[2],
-          content: []
+          content: [],
         }
         continue
       }
-      
+
       if (currentSection && trimmed) {
         currentSection.content.push(line)
       }
     }
-    
+
     if (currentSection) {
       sections.push(currentSection)
     }
-    
+
     return sections
   }
 
@@ -433,7 +453,7 @@ export class MigrationDetector {
       hasToolReferences: content.toLowerCase().includes('tool'),
       hasFileReferences: content.includes('@'),
       hasHooks: content.toLowerCase().includes('hook'),
-      hasMemoryFiles: content.toLowerCase().includes('claude.md')
+      hasMemoryFiles: content.toLowerCase().includes('claude.md'),
     }
   }
 
@@ -442,7 +462,7 @@ export class MigrationDetector {
       hasFileGlobs: /\*\*?\//.test(content),
       hasInstructions: content.toLowerCase().includes('instruction'),
       hasTabTriggers: content.includes('@'),
-      hasIgnorePatterns: content.toLowerCase().includes('ignore')
+      hasIgnorePatterns: content.toLowerCase().includes('ignore'),
     }
   }
 
@@ -451,7 +471,7 @@ export class MigrationDetector {
       hasReviewRules: content.toLowerCase().includes('review'),
       hasSecurityRules: content.toLowerCase().includes('security'),
       hasWorkflowRules: content.toLowerCase().includes('workflow'),
-      hasGitHubReferences: content.toLowerCase().includes('github')
+      hasGitHubReferences: content.toLowerCase().includes('github'),
     }
   }
 
@@ -460,7 +480,7 @@ export class MigrationDetector {
       hasCascadeRules: content.toLowerCase().includes('cascade'),
       hasAgentRules: content.toLowerCase().includes('agent'),
       hasFlowRules: content.toLowerCase().includes('flow'),
-      hasContextRules: content.toLowerCase().includes('context')
+      hasContextRules: content.toLowerCase().includes('context'),
     }
   }
 
@@ -475,17 +495,17 @@ export class MigrationDetector {
   calculateConfidence(contextType, fileName, content, relativePath) {
     let score = 0
     const config = this.aiContextPatterns[contextType]
-    
+
     // Base score from pattern priority
-    const baseScore = { 'high': 60, 'medium': 40, 'low': 20 }[config.priority] || 20
+    const baseScore = { high: 60, medium: 40, low: 20 }[config.priority] || 20
     score += baseScore
-    
+
     // Boost for exact matches
-    if (fileName === 'CLAUDE.md' && contextType === 'claude-code') score += 30
+    if (fileName === 'CLAUDE.md' && contextType === 'claude-code-cli') score += 30
     if (['.cursorrules', 'cursorrules'].includes(fileName) && contextType === 'cursor') score += 30
     if (fileName.startsWith('.copilotrc') && contextType === 'github-copilot') score += 25
     if (fileName.startsWith('.windsurfrc') && contextType === 'windsurf') score += 25
-    
+
     // Boost for content indicators
     const indicators = config.indicators || []
     for (const indicator of indicators) {
@@ -493,15 +513,15 @@ export class MigrationDetector {
         score += 5
       }
     }
-    
+
     // Boost for proper directory structure
-    if (relativePath.includes('.ai/') && contextType === 'generic-ai') score += 10
-    if (relativePath.includes('.claude/') && contextType === 'claude-code') score += 10
+    if (relativePath.includes('.vdk/') && contextType === 'generic-ai') score += 10
+    if (relativePath.includes('.claude/') && contextType === 'claude-code-cli') score += 10
     if (relativePath.includes('.cursor/') && contextType === 'cursor') score += 10
-    
+
     // Penalty for generic patterns
     if (contextType === 'generic-ai') score -= 10
-    
+
     // Convert score to confidence level
     if (score >= 80) return 'high'
     if (score >= 60) return 'medium'
@@ -518,17 +538,17 @@ export class MigrationDetector {
    */
   calculateDirectoryConfidence(contextType, dirName, files) {
     let score = 40 // Base score for directory detection
-    
+
     // Boost for exact directory name matches
-    if (dirName === '.claude' && contextType === 'claude-code') score += 30
+    if (dirName === '.claude' && contextType === 'claude-code-cli') score += 30
     if (dirName === '.cursor' && contextType === 'cursor') score += 30
     if (dirName === 'copilot' && contextType === 'github-copilot') score += 25
     if (dirName === '.windsurf' && contextType === 'windsurf') score += 25
-    
+
     // Boost for relevant file types in directory
-    const relevantFiles = files.filter(file => this.isRelevantFile(file, contextType))
+    const relevantFiles = files.filter((file) => this.isRelevantFile(file, contextType))
     score += Math.min(relevantFiles.length * 5, 20)
-    
+
     // Convert score to confidence level
     if (score >= 80) return 'high'
     if (score >= 60) return 'medium'
@@ -544,16 +564,16 @@ export class MigrationDetector {
    */
   isRelevantFile(file, contextType) {
     const relevantExtensions = {
-      'claude-code': ['.md', '.json'],
-      'cursor': ['.md', '.json', '.mdc'],
+      'claude-code-cli': ['.md', '.json'],
+      cursor: ['.md', '.json', '.mdc'],
       'github-copilot': ['.json', '.yml', '.yaml', '.md'],
-      'windsurf': ['.xml', '.md', '.json'],
-      'generic-ai': ['.md', '.txt', '.json', '.yml']
+      windsurf: ['.xml', '.md', '.json'],
+      'generic-ai': ['.md', '.txt', '.json', '.yml'],
     }
 
     const extensions = relevantExtensions[contextType] || ['.md', '.txt']
     const fileExt = path.extname(file.name).toLowerCase()
-    
+
     return extensions.includes(fileExt)
   }
 
@@ -564,13 +584,13 @@ export class MigrationDetector {
    */
   getSourceName(contextType) {
     const sourceMap = {
-      'claude-code': 'Claude Code',
-      'cursor': 'Cursor',
+      'claude-code-cli': 'Claude Code CLI',
+      cursor: 'Cursor',
       'github-copilot': 'GitHub Copilot',
-      'windsurf': 'Windsurf',
-      'generic-ai': 'Generic AI'
+      windsurf: 'Windsurf',
+      'generic-ai': 'Generic AI',
     }
-    
+
     return sourceMap[contextType] || 'Unknown'
   }
 
@@ -581,18 +601,18 @@ export class MigrationDetector {
    */
   dedupAndPrioritizeContexts(contexts) {
     // Remove contexts with 'none' confidence
-    const validContexts = contexts.filter(ctx => ctx.confidence !== 'none')
-    
+    const validContexts = contexts.filter((ctx) => ctx.confidence !== 'none')
+
     // Sort by confidence and type priority
-    const priorityOrder = ['claude-code', 'cursor', 'windsurf', 'github-copilot', 'generic-ai']
+    const priorityOrder = ['claude-code-cli', 'cursor', 'windsurf', 'github-copilot', 'generic-ai']
     const confidenceOrder = ['high', 'medium', 'low']
-    
+
     return validContexts.sort((a, b) => {
       // First sort by confidence
       const confA = confidenceOrder.indexOf(a.confidence)
       const confB = confidenceOrder.indexOf(b.confidence)
       if (confA !== confB) return confA - confB
-      
+
       // Then by type priority
       const prioA = priorityOrder.indexOf(a.type)
       const prioB = priorityOrder.indexOf(b.type)

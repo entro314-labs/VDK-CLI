@@ -1,8 +1,15 @@
 /**
- * Cursor AI Integration Module
- * ---------------------------
- * Provides enhanced integration with Cursor AI Editor, including
- * .cursorignore support, AI model configurations, and Cursor-specific workflows.
+ * Cursor Context Platform Integration Module
+ * ------------------------------------------
+ * Context Platform Integration: Cursor IDE
+ *
+ * Cursor is an AI-native IDE (VS Code fork) with multi-model support (Claude, GPT, etc.).
+ * It creates and manages its own context format (.cursor/rules/ with MDC format) that is
+ * model-agnostic - the same rules work regardless of which AI model is active.
+ *
+ * Context Format: Cursor MDC format (.cursor/rules/)
+ * Multi-Model: Claude, GPT, and other AI backends
+ * Priority: HIGH (Context-creating platform)
  */
 
 import fs from 'node:fs'
@@ -14,9 +21,9 @@ import { BaseIntegration } from './base-integration.js'
 /**
  * Cursor AI Editor configuration and integration utilities
  */
-export class CursorIntegration extends BaseIntegration {
+export class CursorContextIntegration extends BaseIntegration {
   constructor(projectPath = process.cwd()) {
-    super('Cursor AI', projectPath)
+    super('Cursor', projectPath)
     this.cursorConfigPath = path.join(projectPath, '.cursor')
     this.globalCursorConfigPath = path.join(os.homedir(), '.cursor')
   }
@@ -43,62 +50,37 @@ export class CursorIntegration extends BaseIntegration {
    * @returns {Object} Detection result with details
    */
   detectUsage() {
-    const detection = {
-      isUsed: false,
-      confidence: 'none', // none, low, medium, high
-      indicators: [],
-      recommendations: [],
-    }
+    const detection = this.createDetectionResult()
+    const paths = this.getConfigPaths()
 
-    // 1. Check for .cursor directory structure
-    if (this.directoryExists(this.cursorConfigPath)) {
-      detection.indicators.push('Project has .cursor directory')
-      detection.confidence = 'high'
-      detection.isUsed = true
+    // 1. Check for .cursor directory and key files
+    this.checkPaths(
+      detection,
+      {
+        'Project has .cursor directory': this.cursorConfigPath,
+        'Found .cursor/settings.json': paths.projectConfig,
+        'Found .cursor/settings.local.json': paths.projectLocalConfig,
+        'Found .cursor/extensions.json': paths.extensionsConfig,
+        'Found .cursor/mcp.json': paths.projectMcp,
+        'Found .cursorignore file': paths.cursorIgnore,
+        'Found .cursor/rules directory': paths.rulesDirectory,
+      },
+      'high'
+    )
 
-      // Check for specific Cursor files
-      const cursorFiles = ['settings.json', 'settings.local.json', 'extensions.json', 'mcp.json']
-
-      cursorFiles.forEach((file) => {
-        const filePath = path.join(this.cursorConfigPath, file)
-        if (this.fileExists(filePath)) {
-          detection.indicators.push(`Found .cursor/${file}`)
-          if (file === 'settings.json' || file === 'mcp.json') {
-            detection.confidence = 'high'
-          }
-        }
-      })
-    }
-
-    // 2. Check for .cursorignore file
-    const cursorIgnorePath = path.join(this.projectPath, '.cursorignore')
-    if (this.fileExists(cursorIgnorePath)) {
-      detection.indicators.push('Found .cursorignore file')
-      detection.isUsed = true
-      if (detection.confidence === 'none') {
-        detection.confidence = 'medium'
-      }
-    }
-
-    // 3. Check for global Cursor installation
+    // 2. Check for global Cursor installation
     const platformPaths = this.getPlatformPaths()
-    const cursorPaths = [
-      platformPaths.applications ? path.join(platformPaths.applications, 'Cursor.app') : null,
-      platformPaths.home ? path.join(platformPaths.home, '.cursor') : null,
-      platformPaths.config ? path.join(platformPaths.config, 'Cursor') : null,
-      platformPaths.appData ? path.join(platformPaths.appData, 'Cursor') : null,
-    ].filter(Boolean)
+    const globalPaths = {
+      'Cursor.app (macOS)': platformPaths.applications ? path.join(platformPaths.applications, 'Cursor.app') : null,
+      'Global .cursor directory': platformPaths.home ? path.join(platformPaths.home, '.cursor') : null,
+      'Cursor config directory': platformPaths.config ? path.join(platformPaths.config, 'Cursor') : null,
+    }
 
-    cursorPaths.forEach((cursorPath) => {
-      if (this.directoryExists(cursorPath)) {
-        detection.indicators.push(`Cursor installation found at ${cursorPath}`)
-        if (detection.confidence === 'none') {
-          detection.confidence = 'low'
-        }
-      }
-    })
+    // Filter out null paths and check
+    const filteredGlobalPaths = Object.fromEntries(Object.entries(globalPaths).filter(([, path]) => path !== null))
+    this.checkPaths(detection, filteredGlobalPaths, 'low')
 
-    // 4. Check for Cursor command availability
+    // 3. Check for Cursor command availability
     if (this.commandExists('cursor')) {
       detection.indicators.push('Cursor CLI command is available')
       if (detection.confidence === 'none') {
@@ -111,68 +93,27 @@ export class CursorIntegration extends BaseIntegration {
       }
     }
 
-    // 5. Check for Cursor-specific workspace indicators
-    const workspaceIndicators = [
-      '.cursor/',
-      '.cursor/rules/', // Native Cursor rules location
-      '.cursorignore',
-    ]
+    // 4. Check for recent activity in .cursor directory
+    this.checkRecentActivity(detection, this.cursorConfigPath, 'Recent .cursor activity')
 
-    workspaceIndicators.forEach((indicator) => {
-      const indicatorPath = path.join(this.projectPath, indicator)
-      if (this.directoryExists(indicatorPath) || this.fileExists(indicatorPath)) {
-        detection.indicators.push(`Workspace has ${indicator}`)
-        detection.isUsed = true
-        if (detection.confidence === 'none' || detection.confidence === 'low') {
-          detection.confidence = 'medium'
-        }
-        // Native .cursor/rules/ directory indicates high confidence
-        if (indicator === '.cursor/rules/') {
-          detection.confidence = 'high'
-        }
-      }
-    })
-
-    // 6. Check .gitignore for Cursor patterns
+    // 5. Check .gitignore for Cursor patterns
     const gitignorePatterns = this.checkGitignore(['.cursor', '.cursorignore'])
     if (gitignorePatterns.length > 0) {
       detection.indicators.push(`Cursor paths found in .gitignore: ${gitignorePatterns.join(', ')}`)
     }
 
-    // 7. Check for recent Cursor activity
+    // 6. Check for recent Cursor log activity
     const cursorLogPaths = [
       platformPaths.logs ? path.join(platformPaths.logs, 'Cursor') : null,
       platformPaths.home ? path.join(platformPaths.home, '.cursor', 'logs') : null,
     ].filter(Boolean)
 
     cursorLogPaths.forEach((logPath) => {
-      const recentLogs = this.getRecentActivity(logPath, 7)
-      if (recentLogs.length > 0) {
-        detection.indicators.push(`Recent Cursor activity (${recentLogs.length} log files)`)
-        detection.isUsed = true
-        detection.confidence = 'high'
-      }
+      this.checkRecentActivity(detection, logPath, 'Recent Cursor logs', 7)
     })
 
-    // 8. Generate recommendations based on detection
-    if (detection.confidence === 'none') {
-      detection.recommendations.push('Cursor AI not detected. Install from: https://cursor.sh')
-    } else if (detection.confidence === 'low') {
-      detection.recommendations.push(
-        'Cursor AI may be installed but not configured for this project'
-      )
-      detection.recommendations.push(
-        'Run: vdk init --ide-integration to configure Cursor integration'
-      )
-    } else if (detection.confidence === 'medium') {
-      detection.recommendations.push('Cursor AI appears to be configured')
-      detection.recommendations.push('Consider optimizing .ai/rules for better AI assistance')
-    } else if (detection.confidence === 'high') {
-      detection.recommendations.push('Cursor AI is actively configured and being used')
-      detection.recommendations.push(
-        'Consider creating custom AI rules for your specific project patterns'
-      )
-    }
+    // 7. Add standard recommendations based on confidence level
+    this.addStandardRecommendations(detection, 'Cursor AI', 'https://cursor.sh')
 
     return detection
   }
@@ -303,7 +244,7 @@ temp/
 *.temp
 
 # VDK specific (comment out if you want AI to see these)
-# .ai/rules/
+# .vdk/rules/
 # vdk.config.json
 `
 
@@ -471,7 +412,7 @@ Reference this rule with @vdk-integration when working with VDK CLI.
 
 ## Integration Features
 - **Automatic Detection**: VDK CLI detects Cursor configuration
-- **Rule Generation**: Creates Cursor-compatible .ai/rules
+- **Rule Generation**: Creates Cursor-compatible .vdk/rules
 - **MDC Format**: Proper metadata for rule activation
 - **Cross-IDE Compatibility**: Works with multiple AI assistants
 

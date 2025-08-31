@@ -61,14 +61,10 @@ async function previewRule() {
     console.log(chalk.cyan.bold('Metadata:\n'))
 
     console.log(chalk.cyan('Title: ') + chalk.white(frontMatter.title || 'Not specified'))
-    console.log(
-      chalk.cyan('Description: ') + chalk.white(frontMatter.description || 'Not specified')
-    )
+    console.log(chalk.cyan('Description: ') + chalk.white(frontMatter.description || 'Not specified'))
     console.log(chalk.cyan('Version: ') + chalk.white(frontMatter.version || 'Not specified'))
     console.log(chalk.cyan('Author: ') + chalk.white(frontMatter.author || 'Not specified'))
-    console.log(
-      chalk.cyan('Last Updated: ') + chalk.white(frontMatter.lastUpdated || 'Not specified')
-    )
+    console.log(chalk.cyan('Last Updated: ') + chalk.white(frontMatter.lastUpdated || 'Not specified'))
 
     if (frontMatter.tags && frontMatter.tags.length > 0) {
       console.log(chalk.cyan('Tags: ') + chalk.white(frontMatter.tags.join(', ')))
@@ -84,29 +80,15 @@ async function previewRule() {
       console.log(chalk.cyan('Compatible With:'))
 
       if (frontMatter.compatibleWith.ides && frontMatter.compatibleWith.ides.length > 0) {
-        console.log(
-          chalk.cyan('  IDEs: ') + chalk.white(frontMatter.compatibleWith.ides.join(', '))
-        )
+        console.log(chalk.cyan('  IDEs: ') + chalk.white(frontMatter.compatibleWith.ides.join(', ')))
       }
 
-      if (
-        frontMatter.compatibleWith.aiAssistants &&
-        frontMatter.compatibleWith.aiAssistants.length > 0
-      ) {
-        console.log(
-          chalk.cyan('  AI Assistants: ') +
-            chalk.white(frontMatter.compatibleWith.aiAssistants.join(', '))
-        )
+      if (frontMatter.compatibleWith.aiAssistants && frontMatter.compatibleWith.aiAssistants.length > 0) {
+        console.log(chalk.cyan('  AI Assistants: ') + chalk.white(frontMatter.compatibleWith.aiAssistants.join(', ')))
       }
 
-      if (
-        frontMatter.compatibleWith.frameworks &&
-        frontMatter.compatibleWith.frameworks.length > 0
-      ) {
-        console.log(
-          chalk.cyan('  Frameworks: ') +
-            chalk.white(frontMatter.compatibleWith.frameworks.join(', '))
-        )
+      if (frontMatter.compatibleWith.frameworks && frontMatter.compatibleWith.frameworks.length > 0) {
+        console.log(chalk.cyan('  Frameworks: ') + chalk.white(frontMatter.compatibleWith.frameworks.join(', ')))
       }
     }
 
@@ -328,8 +310,7 @@ async function openHtmlPreview(frontMatter, content) {
             }
 
             ${
-              frontMatter.compatibleWith.aiAssistants &&
-              frontMatter.compatibleWith.aiAssistants.length > 0
+              frontMatter.compatibleWith.aiAssistants && frontMatter.compatibleWith.aiAssistants.length > 0
                 ? `
               <div class="metadata-item">
                 <span class="label">AI Assistants:</span>
@@ -340,8 +321,7 @@ async function openHtmlPreview(frontMatter, content) {
             }
 
             ${
-              frontMatter.compatibleWith.frameworks &&
-              frontMatter.compatibleWith.frameworks.length > 0
+              frontMatter.compatibleWith.frameworks && frontMatter.compatibleWith.frameworks.length > 0
                 ? `
               <div class="metadata-item">
                 <span class="label">Frameworks:</span>

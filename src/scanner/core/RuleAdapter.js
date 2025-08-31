@@ -3,17 +3,20 @@
  *
  * Transforms standardized VDK rules into IDE-native formats and locations.
  * Each IDE gets rules in the format that makes the most sense for that platform.
- * 
- * TODO: Integration with RuleGenerator
- * - RuleGenerator needs to extract and pass platformConfig from blueprint frontmatter
- * - Currently receives empty platformConfig={} in most calls
- * - Platform-specific features (globs, characterLimit, priority, etc.) not being utilized
+ *
+ * Platform Configuration Integration - FIXED ✅
+ * - RuleGenerator extracts and passes platformConfig from blueprint frontmatter ✅
+ * - Platform-specific features (globs, characterLimit, priority, etc.) now available ✅
+ * - Empty platformConfig={} calls should now receive proper configuration ✅
  */
 
+import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
 import chalk from 'chalk'
+
+import { generateCursorFilename } from '../../utils/filename-generator.js'
 
 export class RuleAdapter {
   constructor(options = {}) {
@@ -63,18 +66,17 @@ export class RuleAdapter {
         summary: {
           generated: 0,
           skipped: rules.length,
-          reason: 'Platform not compatible'
-        }
+          reason: 'Platform not compatible',
+        },
       }
     }
 
     switch (targetIDE.toLowerCase()) {
       case 'claude':
-      case 'claude-code':
+      case 'claude-code-cli':
         return await this.adaptForClaude(rules, projectContext, platformConfig)
 
       case 'cursor':
-      case 'cursor-ai':
         return await this.adaptForCursor(rules, projectContext, platformConfig)
 
       case 'windsurf':
@@ -122,9 +124,7 @@ export class RuleAdapter {
 
     if (this.verbose) {
       console.warn(
-        chalk.yellow(
-          `Content truncated for ${ideType} (${content.length} → ${truncatedContent.length} chars)`
-        )
+        chalk.yellow(`Content truncated for ${ideType} (${content.length} → ${truncatedContent.length} chars)`)
       )
     }
 
@@ -170,9 +170,9 @@ export class RuleAdapter {
   }
 
   /**
-   * Adapt rules for Claude Code's memory system with proper hierarchy
+   * Adapt rules for Claude Code CLI's memory system with VDK-native intelligence
    * @param {Array} rules - Standardized rules
-   * @param {Object} projectContext - Project context
+   * @param {Object} projectContext - Full VDK analysis data (projectStructure, technologyData, patterns)
    * @param {Object} platformConfig - Claude-specific configuration
    * @returns {Object} Claude-native memory files and commands
    */
@@ -195,7 +195,11 @@ export class RuleAdapter {
       return {
         paths: [],
         rules: [],
-        summary: { generated: 0, skipped: rules.length, reason: 'Memory disabled in platform config' }
+        summary: {
+          generated: 0,
+          skipped: rules.length,
+          reason: 'Memory disabled in platform config',
+        },
       }
     }
 
@@ -222,23 +226,95 @@ export class RuleAdapter {
       })
     }
 
-    // 2. Main project memory (team-shared conventions) - Deploy to ./CLAUDE.md
-    const coreRules = rules.filter(
+    // 2. Main project memory with VDK-native intelligence - Deploy to ./CLAUDE.md
+    const projectName = path.basename(this.projectPath)
+    const technologyData = projectContext.technologyData || projectContext.technology || {}
+    const projectType = this.determineProjectType(projectContext)
+    const packageManager = await this.detectPackageManager(projectContext)
+
+    // Get technology-specific rules for smart guidelines
+    const technologyRules = rules.filter(
       (rule) =>
-        rule.frontmatter?.category === 'core' ||
-        (rule.frontmatter?.alwaysApply === true && rule.frontmatter?.category !== 'core')
+        rule.frontmatter?.category === 'technology' ||
+        rule.frontmatter?.category === 'technologies' ||
+        rule.frontmatter?.category === 'framework' ||
+        rule.frontmatter?.category === 'language' ||
+        rule.frontmatter?.category === 'languages' ||
+        rule.frontmatter?.category === 'stack' ||
+        rule.frontmatter?.category === 'stacks'
     )
 
-    if (coreRules.length > 0) {
-      const claudeMainContent = this.generateClaudeMainMemory(coreRules, projectContext)
-      adaptedFiles.push({
-        path: path.join(this.projectPath, 'CLAUDE.md'),
-        content: claudeMainContent,
-        type: 'memory',
-        scope: 'project',
-        hierarchyLevel: 'project',
-      })
-    }
+    const technologyGuidelines = await this.extractVDKTechnologyGuidelines(technologyRules, projectContext)
+
+    const claudeMainContent = `# ${projectName} - Claude Code CLI Memory
+
+## Project Overview
+
+This is a **${projectType}** project.
+
+### Key Information
+- **Project Type**: ${projectType}
+- **Primary Language**: ${technologyData.primaryLanguages?.join(', ') || 'Not detected'}
+- **Frameworks**: ${technologyData.frameworks?.join(', ') || 'Not detected'}
+- **Libraries**: ${technologyData.libraries?.slice(0, 3).join(', ') || 'Standard libraries'}
+
+## Coding Preferences
+
+### Code Style
+- Use 2-space indentation for JavaScript/TypeScript
+- Prefer ${technologyData.primaryLanguages?.includes('TypeScript') ? 'TypeScript strict mode' : 'modern JavaScript'}
+- Follow project conventions
+
+### Project Structure
+- Follow standard module structure
+- Follow conventional directory structures
+
+### Testing
+- Use jest for testing
+- Write tests for all business logic, use descriptive test names
+
+## Development Environment
+
+### Tools & Setup
+- Package manager: ${packageManager}
+- Build tool: npm scripts
+- Primary IDE: Claude Code CLI
+- AI Assistant: Claude Code CLI
+
+### Development Commands
+- \`${packageManager} run dev\` - Start development server
+- \`${packageManager} run test\` - Run tests
+- \`${packageManager} run build\` - Build for production
+
+## Technology-Specific Guidelines
+
+${technologyGuidelines}
+
+## Workflow Preferences
+
+### Development Workflow
+- Start with failing tests when appropriate
+- Run tests before committing
+- Use feature flags for incomplete features
+- Plan for rollback strategies
+
+### Communication
+- Over-communicate in remote environments
+- Document decisions and reasoning
+- Share knowledge through code comments and docs
+- Ask for clarification when requirements are unclear
+
+---
+*Generated by VDK CLI - Enhanced for Claude Code CLI*
+*Technology rules: ${technologyRules.length} rules integrated*`
+
+    adaptedFiles.push({
+      path: path.join(this.projectPath, 'CLAUDE.md'),
+      content: claudeMainContent,
+      type: 'memory',
+      scope: 'project',
+      hierarchyLevel: 'project',
+    })
 
     // 3. Technology-specific memory files with import structure
     const techRules = rules.filter(
@@ -248,26 +324,20 @@ export class RuleAdapter {
         rule.frontmatter?.category === 'language'
     )
 
+    // 3. Technology patterns are integrated into main CLAUDE.md, not separate files
+    // Claude Code CLI reads CLAUDE.md as the primary project memory
+
+    // 4. Optional: Generate CLAUDE.local.md for private/local context (gitignored)
     if (techRules.length > 0) {
-      const claudeTechContent = this.generateClaudeTechMemory(techRules, projectContext)
+      const localTechContent = this.generateClaudeLocalMemory(techRules, projectContext)
       adaptedFiles.push({
-        path: path.join(this.projectPath, 'CLAUDE-patterns.md'),
-        content: claudeTechContent,
+        path: path.join(this.projectPath, 'CLAUDE.local.md'),
+        content: localTechContent,
         type: 'memory',
-        scope: 'project',
-        hierarchyLevel: 'technology',
+        scope: 'local',
+        hierarchyLevel: 'local',
       })
     }
-
-    // 4. Personal preferences import file
-    const personalPrefsContent = this.generateClaudePersonalPrefsImport()
-    adaptedFiles.push({
-      path: path.join(this.projectPath, 'CLAUDE-personal.md'),
-      content: personalPrefsContent,
-      type: 'memory',
-      scope: 'import',
-      hierarchyLevel: 'personal',
-    })
 
     // 5. Project commands (namespace: /project:)
     const taskRules = rules.filter((rule) => rule.frontmatter?.category === 'task')
@@ -288,8 +358,7 @@ export class RuleAdapter {
 
     // 6. User commands (namespace: /user:) - Deploy to ~/.claude/commands/
     const personalRules = rules.filter(
-      (rule) =>
-        rule.frontmatter?.category === 'assistant' || rule.frontmatter?.category === 'workflow'
+      (rule) => rule.frontmatter?.category === 'assistant' || rule.frontmatter?.category === 'workflow'
     )
 
     for (const rule of personalRules) {
@@ -308,6 +377,7 @@ export class RuleAdapter {
 
     return {
       files: adaptedFiles,
+      directories: [globalDir, commandsDir, userCommandsDir].filter(Boolean), // Add directories array
       summary: {
         memoryFiles: adaptedFiles.filter((f) => f.type === 'memory').length,
         commands: adaptedFiles.filter((f) => f.type === 'command').length,
@@ -325,7 +395,7 @@ export class RuleAdapter {
   async adaptForCursor(rules, projectContext, platformConfig = {}) {
     const adaptedFiles = []
     const rulesDir = path.join(this.projectPath, '.cursor', 'rules')
-    
+
     // Extract platform-specific settings
     const activation = platformConfig.activation || 'auto-attached'
     const globs = platformConfig.globs || []
@@ -452,24 +522,12 @@ ${cleanContent}`
   }
 
   /**
-   * Get Cursor file name (FIXED IMPLEMENTATION)
+   * Get Cursor file name using centralized filename generator
    * @param {Object} rule - Rule object
    * @returns {string} File name
    */
   getCursorFileName(rule) {
-    const category = rule.frontmatter?.category || 'general'
-    const framework = rule.frontmatter?.framework || ''
-    const description = rule.frontmatter?.description || ''
-
-    let baseName = framework || category
-    if (description) {
-      baseName = description
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '')
-        .replace(/\s+/g, '-')
-    }
-
-    return `${baseName.toLowerCase().replace(/[^a-z0-9-]/g, '')}.md`
+    return generateCursorFilename(rule)
   }
 
   /**
@@ -578,9 +636,7 @@ ${cleanContent}`
       // Ensure character limit compliance (6K per file)
       if (windsurfContent.length > 6000) {
         if (this.verbose) {
-          console.warn(
-            chalk.yellow(`Rule ${rule.frontmatter?.description} exceeds 6K limit, truncating...`)
-          )
+          console.warn(chalk.yellow(`Rule ${rule.frontmatter?.description} exceeds 6K limit, truncating...`))
         }
         windsurfContent = `${windsurfContent.substring(0, 5900)}\n\n*Truncated due to character limit*`
       }
@@ -600,10 +656,7 @@ ${cleanContent}`
 
     // 3. Project rule file (.windsurfrules.md) - Alternative single-file approach
     if (workspaceRules.length > 0) {
-      const consolidatedContent = this.generateConsolidatedWindsurfRules(
-        workspaceRules,
-        projectContext
-      )
+      const consolidatedContent = this.generateConsolidatedWindsurfRules(workspaceRules, projectContext)
 
       // Check if consolidated approach is better (fewer files, under limits)
       if (consolidatedContent.length <= 6000 && workspaceRules.length > 3) {
@@ -625,9 +678,7 @@ ${cleanContent}`
 
     if (totalChars > 12000) {
       if (this.verbose) {
-        console.warn(
-          chalk.yellow(`⚠️ Windsurf workspace rules exceed 12K total limit (${totalChars} chars)`)
-        )
+        console.warn(chalk.yellow(`⚠️ Windsurf workspace rules exceed 12K total limit (${totalChars} chars)`))
       }
 
       // Truncate files proportionally to stay under limit
@@ -703,7 +754,7 @@ ${guidelines
 
 ## Alternative Options
 For file-based AI rule management, consider:
-- **Claude Code**: Memory files and slash commands
+- **Claude Code CLI**: Memory files and slash commands
 - **Cursor**: .cursor/rules/ directory with MDC format
 - **Windsurf**: .windsurf/rules/ directory with XML grouping
 
@@ -730,15 +781,15 @@ For file-based AI rule management, consider:
     }
   }
 
-  // === Claude Code Memory Generators ===
+  // === Claude Code CLI Memory Generators ===
 
   /**
-   * Generate Claude Code global memory for cross-project preferences
+   * Generate Claude Code CLI global memory for cross-project preferences
    * @param {Array} globalRules - Global core rules
    * @returns {string} Global memory content
    */
   generateClaudeGlobalMemory(_globalRules) {
-    return `# Claude Code User Memory
+    return `# Claude Code CLI User Memory
 
 ## Coding Preferences
 
@@ -764,7 +815,7 @@ For file-based AI rule management, consider:
 ## Development Environment
 
 ### Tools & Setup
-- Primary IDE: Claude Code
+- Primary IDE: Claude Code CLI
 - Package manager: pnpm (primary), npm (fallback)
 - Use TypeScript for new JavaScript projects
 - Use ESLint + Prettier for code formatting
@@ -784,14 +835,14 @@ For file-based AI rule management, consider:
 - Implement monitoring and observability
 
 ---
-*Global Claude Code preferences - Applied across all projects*`
+*Global Claude Code CLI preferences - Applied across all projects*`
   }
 
   generateClaudeMainMemory(_coreRules, projectContext) {
     const projectName = path.basename(this.projectPath)
     const techStack = projectContext.techStack || {}
 
-    const content = `# ${projectName} - Claude Code Memory
+    const content = `# ${projectName} - Claude Code CLI Memory
 
 ## Project Overview
 
@@ -809,7 +860,7 @@ This project uses VDK CLI for AI assistant integration and follows specific patt
 @CLAUDE-personal.md
 
 ## Important Conventions
-- All AI rules are stored in \`.ai/rules/\` directory
+- All AI rules are stored in \`.vdk/rules/\` directory
 - Rules follow unified YAML frontmatter format
 - Project follows VDK CLI naming conventions
 - Memory persistence is enabled for context continuity
@@ -826,7 +877,7 @@ This project uses VDK CLI for AI assistant integration and follows specific patt
   }
 
   /**
-   * Generate Claude Code personal preferences import file
+   * Generate Claude Code CLI personal preferences import file
    * @returns {string} Personal preferences import content
    */
   generateClaudePersonalPrefsImport() {
@@ -862,11 +913,7 @@ This file contains technology and framework-specific patterns for this project.
 
       for (const rule of rules) {
         const cleanContent = this.stripFrontmatter(rule.content)
-        content += this.extractKeySections(cleanContent, [
-          'patterns',
-          'best practices',
-          'conventions',
-        ])
+        content += this.extractKeySections(cleanContent, ['patterns', 'best practices', 'conventions'])
         content += '\n'
       }
 
@@ -875,6 +922,46 @@ This file contains technology and framework-specific patterns for this project.
 
     content += `---
 *Generated by VDK CLI - Technology patterns for ${projectName}*`
+
+    return content
+  }
+
+  /**
+   * Generate CLAUDE.local.md content for local/private project context
+   */
+  generateClaudeLocalMemory(techRules, projectContext) {
+    const projectName = path.basename(this.projectPath)
+    let content = `# ${projectName} - Local Development Context
+
+## Technology-Specific Patterns
+`
+
+    // Group rules by framework/technology
+    const rulesByTech = {}
+    for (const rule of techRules) {
+      const tech = rule.frontmatter?.framework || rule.frontmatter?.technology || 'General'
+      if (!rulesByTech[tech]) {
+        rulesByTech[tech] = []
+      }
+      rulesByTech[tech].push(rule)
+    }
+
+    // Generate sections for each technology
+    for (const [tech, rules] of Object.entries(rulesByTech)) {
+      content += `\n### ${tech}\n`
+      for (const rule of rules) {
+        const cleanContent = this.stripFrontmatter(rule.content)
+        content += `${cleanContent}\n\n`
+      }
+    }
+
+    content += `
+## Local Development Notes
+- Add your personal development notes here
+- This file is gitignored and won't be shared with the team
+
+---
+*Local context - not version controlled*`
 
     return content
   }
@@ -895,7 +982,7 @@ This file contains technology and framework-specific patterns for this project.
 
 ### Integration Patterns
 - VDK CLI manages AI assistant rules across multiple platforms
-- Claude Code provides memory persistence and slash commands
+- Claude Code CLI provides memory persistence and slash commands
 - Project rules are automatically synchronized with team preferences
 - Memory hierarchy: Project → Local → User preferences
 
@@ -979,12 +1066,7 @@ ${cleanContent}
     const category = rule.frontmatter?.category || 'general'
     const xmlTag = this.getWindsurfXMLTag(category)
 
-    const keyContent = this.extractKeySections(content, [
-      'principles',
-      'guidelines',
-      'patterns',
-      'best practices',
-    ])
+    const keyContent = this.extractKeySections(content, ['principles', 'guidelines', 'patterns', 'best practices'])
 
     return `<${xmlTag}>
 ${this.formatForWindsurf(keyContent)}
@@ -1015,7 +1097,25 @@ ${this.formatForWindsurf(keyContent)}
 
   getWindsurfFileName(rule) {
     const framework = rule.frontmatter?.framework || rule.frontmatter?.category || 'general'
-    return `${framework.toLowerCase().replace(/[^a-z0-9]/g, '-')}.md`
+    const id = rule.frontmatter?.id || ''
+
+    // Create a unique filename combining available identifiers
+    let baseName = framework
+    if (id && id !== framework) {
+      baseName = `${framework}-${id}`
+    }
+
+    // Clean up the name: preserve meaningful separators, replace others with hyphens
+    const cleanName = baseName
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9-_]/g, '-') // Replace non-alphanumeric (except hyphens/underscores) with hyphens
+      .replace(/[-_]+/g, '-') // Replace multiple consecutive separators with single hyphen
+      .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+
+    // Ensure we have a valid filename
+    const finalName = cleanName || `windsurf-rule-${Date.now()}`
+    return `${finalName}.md`
   }
 
   /**
@@ -1166,8 +1266,7 @@ ${this.formatForWindsurf(keyContent)}
   }
 
   generateCopilotGuideline(rule, _projectContext) {
-    const title =
-      this.extractTitle(this.stripFrontmatter(rule.content)) || rule.frontmatter?.description
+    const title = this.extractTitle(this.stripFrontmatter(rule.content)) || rule.frontmatter?.description
     const description = this.generateCopilotDescription(rule)
     const paths = rule.frontmatter?.globs || []
 
@@ -1317,16 +1416,20 @@ This directory contains GitHub Copilot Enterprise coding guidelines generated by
     const collaborative = platformConfig.collaborative !== false // Default: true
     const performance = platformConfig.performance || 'high' // high, medium, low
 
-    const baseDir = mode === 'global' 
-      ? path.join(os.homedir(), '.config', 'zed')
-      : path.join(this.projectPath, '.zed')
-    
+    const baseDir = mode === 'global' ? path.join(os.homedir(), '.config', 'zed') : path.join(this.projectPath, '.zed')
+
     const aiRulesDir = path.join(baseDir, 'ai-rules')
 
     for (const rule of rules) {
       const ruleContent = this.stripFrontmatter(rule.content)
       const title = rule.frontmatter?.title || this.extractTitle(rule.content)
-      const filename = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.md`
+      const cleanTitle = title
+        .trim()
+        .replace(/[^a-z0-9-]/gi, '-') // Replace non-alphanumeric (except hyphens) with hyphens
+        .replace(/-+/g, '-') // Replace multiple consecutive hyphens with single hyphen
+        .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+        .toLowerCase()
+      const filename = cleanTitle ? `${cleanTitle}.md` : `rule-${Date.now()}.md`
 
       adaptedFiles.push({
         path: path.join(aiRulesDir, filename),
@@ -1335,7 +1438,7 @@ This directory contains GitHub Copilot Enterprise coding guidelines generated by
         scope: mode,
         aiFeatures: aiFeatures && rule.frontmatter?.aiFeatures !== false,
         collaborative: collaborative && rule.frontmatter?.collaborative !== false,
-        performance
+        performance,
       })
     }
 
@@ -1346,8 +1449,8 @@ This directory contains GitHub Copilot Enterprise coding guidelines generated by
         mode,
         aiFeatures,
         collaborative,
-        performance
-      }
+        performance,
+      },
     }
   }
 
@@ -1364,25 +1467,31 @@ This directory contains GitHub Copilot Enterprise coding guidelines generated by
     const settings = platformConfig.settings || {}
     const commands = platformConfig.commands || []
     const mcpIntegration = platformConfig.mcpIntegration
-    
+
     // Determine config directory based on VS Code variant
     let configDir = '.vscode'
     if (platformConfig.configPath) {
       configDir = platformConfig.configPath
     }
-    
+
     const aiRulesDir = path.join(this.projectPath, configDir, 'ai-rules')
 
     // Generate rule files
     for (const rule of rules) {
       const ruleContent = this.stripFrontmatter(rule.content)
       const title = rule.frontmatter?.title || this.extractTitle(rule.content)
-      const filename = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.md`
+      const cleanTitle = title
+        .trim()
+        .replace(/[^a-z0-9-]/gi, '-') // Replace non-alphanumeric (except hyphens) with hyphens
+        .replace(/-+/g, '-') // Replace multiple consecutive hyphens with single hyphen
+        .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+        .toLowerCase()
+      const filename = cleanTitle ? `${cleanTitle}.md` : `rule-${Date.now()}.md`
 
       adaptedFiles.push({
         path: path.join(aiRulesDir, filename),
         content: ruleContent,
-        type: 'ai-rule'
+        type: 'ai-rule',
       })
     }
 
@@ -1390,13 +1499,13 @@ This directory contains GitHub Copilot Enterprise coding guidelines generated by
     if (mcpIntegration) {
       const mcpConfig = {
         servers: {},
-        globalShortcuts: settings
+        globalShortcuts: settings,
       }
-      
+
       adaptedFiles.push({
         path: path.join(this.projectPath, configDir, 'mcp.json'),
         content: JSON.stringify(mcpConfig, null, 2),
-        type: 'mcp-config'
+        type: 'mcp-config',
       })
     }
 
@@ -1406,8 +1515,8 @@ This directory contains GitHub Copilot Enterprise coding guidelines generated by
         generated: adaptedFiles.length,
         extension,
         mcpIntegration,
-        configDir
-      }
+        configDir,
+      },
     }
   }
 
@@ -1420,10 +1529,10 @@ This directory contains GitHub Copilot Enterprise coding guidelines generated by
    */
   async adaptForGeneric(rules, projectContext, platformConfig = {}) {
     const adaptedFiles = []
-    const configPath = platformConfig.configPath || '.ai'
-    const rulesPath = platformConfig.rulesPath || '.ai/rules'
+    const configPath = platformConfig.configPath || '.vdk'
+    const rulesPath = platformConfig.rulesPath || '.vdk/rules'
     const priority = platformConfig.priority || 5
-    
+
     const baseDir = path.join(this.projectPath, configPath)
     const rulesDir = path.join(this.projectPath, rulesPath)
 
@@ -1438,13 +1547,19 @@ This directory contains GitHub Copilot Enterprise coding guidelines generated by
     for (const rule of prioritizedRules) {
       const ruleContent = this.stripFrontmatter(rule.content)
       const title = rule.frontmatter?.title || this.extractTitle(rule.content)
-      const filename = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.md`
+      const cleanTitle = title
+        .trim()
+        .replace(/[^a-z0-9-]/gi, '-') // Replace non-alphanumeric (except hyphens) with hyphens
+        .replace(/-+/g, '-') // Replace multiple consecutive hyphens with single hyphen
+        .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+        .toLowerCase()
+      const filename = cleanTitle ? `${cleanTitle}.md` : `rule-${Date.now()}.md`
 
       adaptedFiles.push({
         path: path.join(rulesDir, filename),
         content: ruleContent,
         type: 'ai-rule',
-        priority: rule.frontmatter?.priority || priority
+        priority: rule.frontmatter?.priority || priority,
       })
     }
 
@@ -1455,20 +1570,20 @@ This directory contains GitHub Copilot Enterprise coding guidelines generated by
       rules: {
         directory: rulesPath,
         priority,
-        count: adaptedFiles.length
+        count: adaptedFiles.length,
       },
       project: {
         name: path.basename(this.projectPath),
         technologies: projectContext.technologies || [],
-        framework: projectContext.framework || null
+        framework: projectContext.framework || null,
       },
-      generatedAt: new Date().toISOString()
+      generatedAt: new Date().toISOString(),
     }
 
     adaptedFiles.push({
       path: path.join(baseDir, 'config.json'),
       content: JSON.stringify(genericConfig, null, 2),
-      type: 'config'
+      type: 'config',
     })
 
     return {
@@ -1478,8 +1593,325 @@ This directory contains GitHub Copilot Enterprise coding guidelines generated by
         config: 1,
         priority,
         configPath,
-        rulesPath
+        rulesPath,
+      },
+    }
+  }
+
+  // ============================================================================
+  // VDK-Native Intelligence Methods (Universal for all platforms)
+  // ============================================================================
+
+  /**
+   * Determine project type from VDK technology analysis
+   * @param {Object} vdkAnalysis - VDK analysis data
+   * @returns {string} Human-readable project type
+   */
+  determineProjectType(projectContext) {
+    const technologyData = projectContext.technologyData || projectContext.technology || {}
+    const frameworks = technologyData.frameworks || []
+    const languages = technologyData.primaryLanguages || []
+    const stacks = technologyData.stacks || []
+    const projectStructure = projectContext.projectStructure || projectContext.structure || {}
+
+    // Check for CLI tool indicators FIRST (highest priority)
+    if (this.isCLIProject(projectContext)) {
+      return 'Node.js CLI Application'
+    }
+
+    // Check for documentation/content sites
+    if (stacks.includes('Astro Content Stack') && frameworks.includes('Starlight')) {
+      return 'Astro Starlight Documentation Site'
+    }
+
+    // Check for web frameworks (only if not a CLI)
+    if (frameworks.includes('Astro')) {
+      return 'Astro Application'
+    }
+    if (frameworks.includes('Next.js') && frameworks.includes('Supabase')) {
+      return 'Next.js + Supabase Full-Stack Application'
+    }
+    if (frameworks.includes('Next.js')) {
+      return 'Next.js Application'
+    }
+    if (frameworks.includes('React')) {
+      return 'React Application'
+    }
+    if (frameworks.includes('Vue.js')) {
+      return 'Vue.js Application'
+    }
+    if (languages.includes('TypeScript')) {
+      return 'TypeScript Application'
+    }
+    if (languages.includes('JavaScript')) {
+      return 'JavaScript Application'
+    }
+
+    return 'Software Project'
+  }
+
+  /**
+   * Check if this is a CLI project based on package.json and structure
+   */
+  isCLIProject(projectContext) {
+    const technologyData = projectContext.technologyData || projectContext.technology || {}
+    const projectStructure = projectContext.projectStructure || projectContext.structure || {}
+
+    // Check for CLI indicators in package.json
+    if (technologyData.packageInfo) {
+      const pkg = technologyData.packageInfo
+
+      // Has bin field in package.json
+      if (pkg.bin) {
+        return true
       }
+
+      // Has CLI-related keywords
+      const keywords = pkg.keywords || []
+      const cliKeywords = ['cli', 'command-line', 'terminal', 'tool', 'utility']
+      if (cliKeywords.some((keyword) => keywords.includes(keyword))) {
+        return true
+      }
+
+      // Has CLI-related dependencies
+      const deps = [...(pkg.dependencies || []), ...(pkg.devDependencies || [])]
+      const cliDeps = ['commander', 'yargs', 'inquirer', 'chalk', 'ora', 'boxen']
+      if (cliDeps.some((dep) => deps.includes(dep))) {
+        return true
+      }
+    }
+
+    // Check for executable files in project root
+    const rootFiles = projectStructure.files || []
+    const hasExecutable = rootFiles.some(
+      (file) =>
+        file.name === 'cli.js' ||
+        file.name === 'cli.ts' ||
+        file.name.startsWith('bin/') ||
+        (file.executable && file.name.match(/\.(js|ts)$/))
+    )
+
+    if (hasExecutable) {
+      return true
+    }
+
+    return false
+  }
+
+  /**
+   * Extract VDK technology-specific guidelines from blueprint rules
+   * @param {Array} technologyRules - Technology-related blueprint rules
+   * @param {Object} vdkAnalysis - VDK analysis data
+   * @returns {string} Formatted technology guidelines
+   */
+  async extractVDKTechnologyGuidelines(technologyRules, projectContext) {
+    if (!technologyRules || technologyRules.length === 0) {
+      return `### General Guidelines
+- Follow established patterns in the codebase
+- Maintain consistency with existing code  
+- Use project-specific conventions`
+    }
+
+    const technologyData = projectContext.technologyData || projectContext.technology || {}
+    const frameworks = technologyData.frameworks || []
+    const languages = technologyData.primaryLanguages || []
+    const libraries = technologyData.libraries || []
+
+    if (this.verbose) {
+      console.log(`🔍 Processing ${technologyRules.length} technology rules for VDK-native guidelines`)
+    }
+
+    const guidelines = []
+
+    // Extract framework-specific guidelines
+    for (const framework of frameworks) {
+      const frameworkRules = this.findMatchingRules(technologyRules, framework)
+      if (frameworkRules.length > 0) {
+        guidelines.push(`### ${framework} Guidelines`)
+        for (const rule of frameworkRules.slice(0, 3)) {
+          const extractedContent = this.extractActionableContent(rule.content, projectContext)
+          if (extractedContent) {
+            guidelines.push(extractedContent)
+          }
+        }
+        guidelines.push('')
+      }
+    }
+
+    // Extract language-specific guidelines
+    for (const language of languages) {
+      const languageRules = this.findMatchingRules(technologyRules, language)
+      if (languageRules.length > 0) {
+        guidelines.push(`### ${language} Guidelines`)
+        for (const rule of languageRules.slice(0, 2)) {
+          const extractedContent = this.extractActionableContent(rule.content, projectContext)
+          if (extractedContent) {
+            guidelines.push(extractedContent)
+          }
+        }
+        guidelines.push('')
+      }
+    }
+
+    // Extract library-specific guidelines
+    for (const library of libraries.slice(0, 3)) {
+      // Limit to top 3 libraries
+      const libraryRules = this.findMatchingRules(technologyRules, library)
+      if (libraryRules.length > 0) {
+        guidelines.push(`### ${library} Guidelines`)
+        for (const rule of libraryRules.slice(0, 2)) {
+          const extractedContent = this.extractActionableContent(rule.content, projectContext)
+          if (extractedContent) {
+            guidelines.push(extractedContent)
+          }
+        }
+        guidelines.push('')
+      }
+    }
+
+    return guidelines.length > 0
+      ? guidelines.join('\n')
+      : `### Project-Specific Guidelines
+- Follow patterns established in this ${frameworks.join('/')} codebase
+- Maintain consistency with existing ${languages.join('/')} code
+- Reference VDK blueprints: ${technologyRules.length} rules available`
+  }
+
+  /**
+   * Find blueprint rules matching a technology name
+   * @param {Array} rules - Blueprint rules to search
+   * @param {string} technology - Technology name to match
+   * @returns {Array} Matching rules
+   */
+  findMatchingRules(rules, technology) {
+    const techLower = technology.toLowerCase()
+    const aliases = {
+      'tailwind css': ['tailwind', 'tailwindcss'],
+      'next.js': ['nextjs'],
+      'shadcn/ui': ['shadcn', 'shadcnui'],
+    }
+
+    const searchTerms = [techLower]
+    if (aliases[techLower]) {
+      searchTerms.push(...aliases[techLower])
+    }
+
+    return rules.filter((rule) =>
+      searchTerms.some((term) => rule.name?.toLowerCase().includes(term) || rule.path?.toLowerCase().includes(term))
+    )
+  }
+
+  /**
+   * Extract actionable content from blueprint rules
+   * @param {string} content - Rule content
+   * @param {Object} vdkAnalysis - VDK analysis for context
+   * @returns {string} Extracted actionable guidelines
+   */
+  extractActionableContent(content, projectContext) {
+    if (!content) return null
+
+    try {
+      // Remove frontmatter
+      const withoutFrontmatter = this.stripFrontmatter(content)
+      const lines = withoutFrontmatter.split('\n')
+      const relevantLines = []
+
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed) continue
+
+        // Look for actionable guidelines (bullet points with action words)
+        if ((trimmed.startsWith('- ') || trimmed.startsWith('* ')) && this.isActionableGuideline(trimmed)) {
+          relevantLines.push(trimmed)
+        }
+        // Capture numbered lists that are guidelines
+        else if (trimmed.match(/^\d+\.\s/) && this.isActionableGuideline(trimmed)) {
+          const content = trimmed.replace(/^\d+\.\s/, '')
+          relevantLines.push(`- ${content}`)
+        }
+
+        // Limit content extraction
+        if (relevantLines.length >= 8) break
+      }
+
+      return relevantLines.length > 0 ? relevantLines.join('\n') : null
+    } catch (error) {
+      if (this.verbose) {
+        console.warn(`Failed to extract content from rule: ${error.message}`)
+      }
+      return null
+    }
+  }
+
+  /**
+   * Check if a line contains actionable guidelines
+   * @param {string} line - Line to check
+   * @returns {boolean} True if actionable
+   */
+  isActionableGuideline(line) {
+    const actionableWords = [
+      'use',
+      'avoid',
+      'prefer',
+      'should',
+      'must',
+      'always',
+      'never',
+      'implement',
+      'ensure',
+      'configure',
+      'follow',
+      'apply',
+      'keep',
+      'optimize',
+      'test',
+      'validate',
+      'structure',
+      'organize',
+    ]
+
+    return actionableWords.some((word) => line.toLowerCase().includes(word)) && line.length > 20
+  }
+
+  /**
+   * Detect package manager from VDK analysis
+   * @param {Object} vdkAnalysis - VDK analysis data
+   * @returns {Promise<string>} Package manager name
+   */
+  async detectPackageManager(projectContext) {
+    const projectPath = projectContext.projectStructure?.root || projectContext.structure?.root || this.projectPath
+
+    try {
+      // Check for lock files in order of preference
+      if (await this.fileExists(path.join(projectPath, 'pnpm-lock.yaml'))) {
+        return 'pnpm'
+      }
+      if (await this.fileExists(path.join(projectPath, 'yarn.lock'))) {
+        return 'yarn'
+      }
+      if (await this.fileExists(path.join(projectPath, 'bun.lockb'))) {
+        return 'bun'
+      }
+      if (await this.fileExists(path.join(projectPath, 'package-lock.json'))) {
+        return 'npm'
+      }
+      return 'npm'
+    } catch {
+      return 'npm'
+    }
+  }
+
+  /**
+   * Helper to check if file exists
+   * @param {string} filePath - File path to check
+   * @returns {Promise<boolean>} True if file exists
+   */
+  async fileExists(filePath) {
+    try {
+      await fs.access(filePath)
+      return true
+    } catch {
+      return false
     }
   }
 }

@@ -1,8 +1,16 @@
 /**
- * Windsurf Integration Module
- * ---------------------------
- * Provides enhanced integration with Windsurf AI Editor,
- * including Codeium AI features, Windsurf-specific configurations, and optimized workflows.
+ * Windsurf Context Platform Integration Module
+ * --------------------------------------------
+ * Context Platform Integration: Windsurf IDE
+ *
+ * Windsurf is Codeium's AI-native IDE with multi-model support (Claude, GPT, etc.).
+ * Like Cursor, it creates and manages its own context format (.windsurf/rules/) that is
+ * model-agnostic - the same rules work regardless of which AI model is active.
+ *
+ * Context Format: Windsurf-native format (.windsurf/rules/)
+ * Multi-Model: Claude, GPT, and other AI backends
+ * Priority: HIGH (Context-creating platform)
+ * Plugin: Also available as extension for VS Code/JetBrains with same context format
  */
 
 import fs from 'node:fs'
@@ -14,7 +22,7 @@ import { BaseIntegration } from './base-integration.js'
 /**
  * Windsurf AI Editor configuration and integration utilities
  */
-export class WindsurfIntegration extends BaseIntegration {
+export class WindsurfContextIntegration extends BaseIntegration {
   constructor(projectPath = process.cwd()) {
     super('Windsurf', projectPath)
     this.windsurfConfigPath = path.join(projectPath, '.windsurf')
@@ -36,13 +44,7 @@ export class WindsurfIntegration extends BaseIntegration {
 
       // Native Windsurf memories system
       globalMemories: path.join(os.homedir(), '.codeium', 'windsurf', 'memories'),
-      globalRulesFile: path.join(
-        os.homedir(),
-        '.codeium',
-        'windsurf',
-        'memories',
-        'global_rules.md'
-      ),
+      globalRulesFile: path.join(os.homedir(), '.codeium', 'windsurf', 'memories', 'global_rules.md'),
 
       // Global configurations
       globalConfig: path.join(this.globalWindsurfConfigPath, 'config.json'),
@@ -57,71 +59,37 @@ export class WindsurfIntegration extends BaseIntegration {
    * @returns {Object} Detection result with details
    */
   detectUsage() {
-    const detection = {
-      isUsed: false,
-      confidence: 'none', // none, low, medium, high
-      indicators: [],
-      recommendations: [],
-    }
+    const detection = this.createDetectionResult()
+    const paths = this.getConfigPaths()
 
-    // 1. Check for .windsurf directory structure
-    if (this.directoryExists(this.windsurfConfigPath)) {
-      detection.indicators.push('Project has .windsurf directory')
-      detection.confidence = 'high'
-      detection.isUsed = true
+    // 1. Check for .windsurf directory and key files
+    this.checkPaths(
+      detection,
+      {
+        'Project has .windsurf directory': this.windsurfConfigPath,
+        'Found .windsurf/config.json': paths.projectConfig,
+        'Found .windsurf/settings.json': paths.projectSettings,
+        'Found .windsurf/workspace.json': paths.workspaceConfig,
+        'Found .windsurf/ai_settings.json': paths.aiConfig,
+        'Found .windsurf/rules directory': paths.rulesDirectory,
+        'Found .windsurf/mcp_config.json': paths.projectMcp,
+        'Global Windsurf memories': paths.globalMemories,
+      },
+      'high'
+    )
 
-      // Check for specific Windsurf files
-      const windsurfFiles = [
-        'config.json',
-        'settings.json',
-        'workspace.json',
-        'mcp_config.json',
-        'ai_settings.json',
-      ]
-
-      windsurfFiles.forEach((file) => {
-        const filePath = path.join(this.windsurfConfigPath, file)
-        if (this.fileExists(filePath)) {
-          detection.indicators.push(`Found .windsurf/${file}`)
-          if (file === 'config.json' || file === 'ai_settings.json') {
-            detection.confidence = 'high'
-          }
-        }
-      })
-
-      // Check for rules directory and memories system
-      const rulesPath = path.join(this.windsurfConfigPath, 'rules')
-      if (this.directoryExists(rulesPath)) {
-        detection.indicators.push('Found .windsurf/rules directory')
-        detection.confidence = 'high'
-      }
-
-      // Check for native memories system
-      const memoriesPath = path.join(os.homedir(), '.codeium', 'windsurf', 'memories')
-      if (this.directoryExists(memoriesPath)) {
-        detection.indicators.push('Found Windsurf native memories directory')
-        detection.confidence = 'high'
-      }
-    }
-
-    // 2. Check for global Codeium/Windsurf installation
+    // 2. Check for global Windsurf/Codeium installation
     const platformPaths = this.getPlatformPaths()
-    const windsurfPaths = [
-      platformPaths.applications ? path.join(platformPaths.applications, 'Windsurf.app') : null,
-      platformPaths.applications ? path.join(platformPaths.applications, 'Codeium.app') : null,
-      platformPaths.home ? path.join(platformPaths.home, '.codeium') : null,
-      platformPaths.appData ? path.join(platformPaths.appData, 'Codeium') : null,
-      platformPaths.appData ? path.join(platformPaths.appData, 'Windsurf') : null,
-    ].filter(Boolean)
+    const globalPaths = {
+      'Windsurf.app (macOS)': platformPaths.applications ? path.join(platformPaths.applications, 'Windsurf.app') : null,
+      'Codeium.app (macOS)': platformPaths.applications ? path.join(platformPaths.applications, 'Codeium.app') : null,
+      'Global .codeium directory': platformPaths.home ? path.join(platformPaths.home, '.codeium') : null,
+      'Codeium AppData (Windows)': platformPaths.appData ? path.join(platformPaths.appData, 'Codeium') : null,
+      'Windsurf AppData (Windows)': platformPaths.appData ? path.join(platformPaths.appData, 'Windsurf') : null,
+    }
 
-    windsurfPaths.forEach((windsurfPath) => {
-      if (this.directoryExists(windsurfPath)) {
-        detection.indicators.push(`Windsurf/Codeium installation found at ${windsurfPath}`)
-        if (detection.confidence === 'none') {
-          detection.confidence = 'low'
-        }
-      }
-    })
+    const filteredGlobalPaths = Object.fromEntries(Object.entries(globalPaths).filter(([, path]) => path !== null))
+    this.checkPaths(detection, filteredGlobalPaths, 'low')
 
     // 3. Check for Windsurf command availability
     const commands = ['windsurf', 'codeium']
@@ -169,12 +137,10 @@ export class WindsurfIntegration extends BaseIntegration {
     // 6. Check .gitignore for Windsurf patterns
     const gitignorePatterns = this.checkGitignore(['.windsurf', '.codeium'])
     if (gitignorePatterns.length > 0) {
-      detection.indicators.push(
-        `Windsurf paths found in .gitignore: ${gitignorePatterns.join(', ')}`
-      )
+      detection.indicators.push(`Windsurf paths found in .gitignore: ${gitignorePatterns.join(', ')}`)
     }
 
-    // 7. Check for recent Windsurf activity
+    // 6. Check for recent Windsurf log activity
     const windsurfLogPaths = [
       platformPaths.logs ? path.join(platformPaths.logs, 'Windsurf') : null,
       platformPaths.logs ? path.join(platformPaths.logs, 'Codeium') : null,
@@ -182,35 +148,11 @@ export class WindsurfIntegration extends BaseIntegration {
     ].filter(Boolean)
 
     windsurfLogPaths.forEach((logPath) => {
-      const recentLogs = this.getRecentActivity(logPath, 7)
-      if (recentLogs.length > 0) {
-        detection.indicators.push(`Recent Windsurf activity (${recentLogs.length} log files)`)
-        detection.isUsed = true
-        detection.confidence = 'high'
-      }
+      this.checkRecentActivity(detection, logPath, 'Recent Windsurf logs', 7)
     })
 
-    // 8. Generate recommendations based on detection
-    if (detection.confidence === 'none') {
-      detection.recommendations.push(
-        'Windsurf not detected. Install from: https://codeium.com/windsurf'
-      )
-    } else if (detection.confidence === 'low') {
-      detection.recommendations.push(
-        'Windsurf may be installed but not configured for this project'
-      )
-      detection.recommendations.push(
-        'Run: vdk init --ide-integration to configure Windsurf integration'
-      )
-    } else if (detection.confidence === 'medium') {
-      detection.recommendations.push('Windsurf appears to be configured')
-      detection.recommendations.push('Consider optimizing AI rules for better Codeium assistance')
-    } else if (detection.confidence === 'high') {
-      detection.recommendations.push('Windsurf is actively configured and being used')
-      detection.recommendations.push(
-        'Consider leveraging Codeium supercomplete features with custom rules'
-      )
-    }
+    // 7. Add standard recommendations based on confidence level
+    this.addStandardRecommendations(detection, 'Windsurf', 'https://codeium.com/windsurf')
 
     return detection
   }
@@ -317,7 +259,7 @@ export class WindsurfIntegration extends BaseIntegration {
       },
       projectAwareness: {
         enabled: true,
-        includeFiles: ['README.md', 'package.json', '*.config.*', '.ai/rules/**'],
+        includeFiles: ['README.md', 'package.json', '*.config.*', '.vdk/rules/**'],
         excludePatterns: ['node_modules/**', 'dist/**', '*.log', '.git/**'],
       },
     }

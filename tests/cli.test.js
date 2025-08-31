@@ -42,9 +42,7 @@ describe('CLI Functionality', () => {
       expect(result.stdout.trim().length).toBeGreaterThan(0)
 
       // Check version matches package.json
-      const packageJson = JSON.parse(
-        await fs.readFile(path.join(global.TEST_ROOT, 'package.json'), 'utf8')
-      )
+      const packageJson = JSON.parse(await fs.readFile(path.join(global.TEST_ROOT, 'package.json'), 'utf8'))
       expect(result.stdout).toContain(packageJson.version)
     })
 

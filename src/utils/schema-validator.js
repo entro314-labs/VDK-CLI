@@ -41,7 +41,7 @@ async function validatePlatformsObject(platformsData, schema, errors) {
   if (!schema.definitions) return
 
   const schemaProperties = schema.properties.platforms.properties || {}
-  
+
   for (const [platformName, platformConfig] of Object.entries(platformsData)) {
     if (typeof platformConfig !== 'object') {
       errors.push(`Platform '${platformName}' configuration must be an object`)
@@ -113,14 +113,14 @@ async function validatePlatformsObject(platformsData, schema, errors) {
  */
 function validateRelationships(data, errors) {
   const relationshipFields = ['requires', 'suggests', 'conflicts', 'supersedes']
-  
+
   for (const field of relationshipFields) {
     if (data[field] && Array.isArray(data[field])) {
       // Check for self-references
       if (data.id && data[field].includes(data.id)) {
         errors.push(`Blueprint cannot reference itself in ${field}`)
       }
-      
+
       // Check for duplicates within each array
       const uniqueItems = new Set(data[field])
       if (uniqueItems.size !== data[field].length) {
@@ -131,7 +131,7 @@ function validateRelationships(data, errors) {
 
   // Check for conflicts between relationship fields
   if (data.requires && data.conflicts) {
-    const conflicts = data.requires.filter(id => data.conflicts.includes(id))
+    const conflicts = data.requires.filter((id) => data.conflicts.includes(id))
     if (conflicts.length > 0) {
       errors.push(`Cannot both require and conflict with: ${conflicts.join(', ')}`)
     }
@@ -256,9 +256,7 @@ export async function validateSchema(data, schemaName) {
             if (subValue !== undefined && subSchema.type) {
               const subType = Array.isArray(subValue) ? 'array' : typeof subValue
               if (subType !== subSchema.type) {
-                errors.push(
-                  `Object '${field}.${subField}' should be ${subSchema.type}, got ${subType}`
-                )
+                errors.push(`Object '${field}.${subField}' should be ${subSchema.type}, got ${subType}`)
               }
             }
           }
@@ -270,11 +268,11 @@ export async function validateSchema(data, schemaName) {
   // Additional validation for blueprints
   if (schemaName === 'blueprint-schema') {
     validateRelationships(data, errors)
-    
+
     // Validate platforms has at least one compatible platform
     if (data.platforms) {
-      const hasCompatiblePlatform = Object.values(data.platforms).some(platform => 
-        platform && platform.compatible === true
+      const hasCompatiblePlatform = Object.values(data.platforms).some(
+        (platform) => platform && platform.compatible === true
       )
       if (!hasCompatiblePlatform) {
         errors.push('Blueprint must have at least one compatible platform')

@@ -1,7 +1,7 @@
 /**
  * Migration Adapter
  * -----------------
- * Adapts existing AI contexts to VDK blueprint format using existing 
+ * Adapts existing AI contexts to VDK blueprint format using existing
  * VDK schema structures and templating systems.
  */
 
@@ -12,30 +12,30 @@ export class MigrationAdapter {
   constructor() {
     // VDK category mapping for different context types
     this.categoryMapping = {
-      'claude-code': {
+      'claude-code-cli': {
         memory: 'core',
-        commands: 'assistant', 
+        commands: 'assistant',
         rules: 'core',
-        tools: 'tool'
+        tools: 'tool',
       },
-      'cursor': {
+      cursor: {
         rules: 'core',
         patterns: 'language',
-        workflows: 'task'
+        workflows: 'task',
       },
       'github-copilot': {
         review: 'task',
-        security: 'security', 
-        guidelines: 'core'
+        security: 'security',
+        guidelines: 'core',
       },
-      'windsurf': {
+      windsurf: {
         agent: 'assistant',
         context: 'core',
-        flows: 'task'
+        flows: 'task',
       },
       'generic-ai': {
-        default: 'core'
-      }
+        default: 'core',
+      },
     }
   }
 
@@ -49,7 +49,7 @@ export class MigrationAdapter {
     const results = {
       successful: [],
       failed: [],
-      skipped: []
+      skipped: [],
     }
 
     for (const context of contexts) {
@@ -60,13 +60,13 @@ export class MigrationAdapter {
         } else {
           results.skipped.push({
             context,
-            reason: 'No adaptation strategy available'
+            reason: 'No adaptation strategy available',
           })
         }
       } catch (error) {
         results.failed.push({
           context,
-          error: error.message
+          error: error.message,
         })
       }
     }
@@ -96,8 +96,8 @@ export class MigrationAdapter {
         originalSource: context.source,
         originalPath: context.relativePath,
         confidence: context.confidence,
-        migrationDate: new Date().toISOString()
-      }
+        migrationDate: new Date().toISOString(),
+      },
     }
   }
 
@@ -108,11 +108,11 @@ export class MigrationAdapter {
    */
   getAdaptationStrategy(context) {
     const strategies = {
-      'claude-code': this.adaptClaudeCode.bind(this),
-      'cursor': this.adaptCursor.bind(this),
+      'claude-code-cli': this.adaptClaudeCode.bind(this),
+      cursor: this.adaptCursor.bind(this),
       'github-copilot': this.adaptGitHubCopilot.bind(this),
-      'windsurf': this.adaptWindsurf.bind(this),
-      'generic-ai': this.adaptGenericAI.bind(this)
+      windsurf: this.adaptWindsurf.bind(this),
+      'generic-ai': this.adaptGenericAI.bind(this),
     }
 
     return strategies[context.type] || null
@@ -145,51 +145,48 @@ export class MigrationAdapter {
       platforms: this.generatePlatforms(context),
       tags: this.extractTags(context, projectContext),
       author: `Migrated from ${context.source}`,
-      contentSections: context.sections?.map(s => s.title) || []
+      contentSections: context.sections?.map((s) => s.title) || [],
     }
   }
 
   /**
-   * Adapt Claude Code contexts
-   * @param {Object} context Claude Code context
+   * Adapt Claude Code CLI contexts
+   * @param {Object} context Claude Code CLI context
    * @param {Object} projectContext Project data
    * @returns {Object} Adapted blueprint
    */
   async adaptClaudeCode(context, projectContext) {
     const { claudeSpecific } = context
-    
+
     // Determine if this should be a command or blueprint
-    const isCommand = claudeSpecific?.hasSlashCommands || 
-                     context.fileName.includes('command') ||
-                     context.hasCommands
+    const isCommand = claudeSpecific?.hasSlashCommands || context.fileName.includes('command') || context.hasCommands
 
     if (isCommand) {
       return this.adaptAsCommand(context, {
-        target: 'claude-code',
+        target: 'claude-code-cli',
         commandType: claudeSpecific?.hasSlashCommands ? 'slash' : 'custom-slash',
         features: {
           mcpIntegration: claudeSpecific?.hasMCPReferences,
           fileReferences: claudeSpecific?.hasFileReferences,
-          toolReferences: claudeSpecific?.hasToolReferences
-        }
+          toolReferences: claudeSpecific?.hasToolReferences,
+        },
       })
     }
 
     // Memory or blueprint adaptation
-    const isMemory = context.fileName === 'CLAUDE.md' || 
-                    context.relativePath.includes('memory')
+    const isMemory = context.fileName === 'CLAUDE.md' || context.relativePath.includes('memory')
 
     return {
       category: isMemory ? 'core' : this.inferCategory(context, projectContext),
       content: this.organizeContent(context),
       platforms: {
-        'claude-code': {
+        'claude-code-cli': {
           compatible: true,
           memory: true,
           mcpIntegration: claudeSpecific?.hasMCPReferences,
-          allowedTools: this.extractAllowedTools(context)
-        }
-      }
+          allowedTools: this.extractAllowedTools(context),
+        },
+      },
     }
   }
 
@@ -208,17 +205,17 @@ export class MigrationAdapter {
       scope: isCursorRules ? 'project' : 'component',
       content: this.organizeContent(context),
       platforms: {
-        'cursor': {
+        cursor: {
           compatible: true,
           activation: isCursorRules ? 'always' : 'auto-attached',
           globs: cursorSpecific?.hasFileGlobs ? this.extractGlobs(context) : ['**/*'],
-          priority: isCursorRules ? 'high' : 'medium'
+          priority: isCursorRules ? 'high' : 'medium',
         },
-        'claude-code': {
+        'claude-code-cli': {
           compatible: true,
-          memory: true
-        }
-      }
+          memory: true,
+        },
+      },
     }
   }
 
@@ -230,8 +227,7 @@ export class MigrationAdapter {
    */
   async adaptGitHubCopilot(context, projectContext) {
     const { copilotSpecific } = context
-    const category = copilotSpecific?.hasSecurityRules ? 'security' :
-                    copilotSpecific?.hasReviewRules ? 'task' : 'core'
+    const category = copilotSpecific?.hasSecurityRules ? 'security' : copilotSpecific?.hasReviewRules ? 'task' : 'core'
 
     return {
       category,
@@ -240,14 +236,17 @@ export class MigrationAdapter {
         'github-copilot': {
           compatible: true,
           priority: copilotSpecific?.hasSecurityRules ? 9 : 7,
-          reviewType: copilotSpecific?.hasSecurityRules ? 'security' :
-                     copilotSpecific?.hasReviewRules ? 'code-quality' : 'style'
+          reviewType: copilotSpecific?.hasSecurityRules
+            ? 'security'
+            : copilotSpecific?.hasReviewRules
+              ? 'code-quality'
+              : 'style',
         },
-        'claude-code': {
+        'claude-code-cli': {
           compatible: true,
-          memory: true
-        }
-      }
+          memory: true,
+        },
+      },
     }
   }
 
@@ -264,17 +263,17 @@ export class MigrationAdapter {
       category: windsurfSpecific?.hasAgentRules ? 'assistant' : 'core',
       content: this.organizeContent(context),
       platforms: {
-        'windsurf': {
+        windsurf: {
           compatible: true,
           mode: 'workspace',
           xmlTag: this.extractXMLTag(context),
-          characterLimit: Math.max(context.wordCount * 6, 1000) // Estimate character count
+          characterLimit: Math.max(context.wordCount * 6, 1000), // Estimate character count
         },
-        'claude-code': {
+        'claude-code-cli': {
           compatible: true,
-          memory: true
-        }
-      }
+          memory: true,
+        },
+      },
     }
   }
 
@@ -289,16 +288,16 @@ export class MigrationAdapter {
       category: this.inferCategory(context, projectContext),
       content: this.organizeContent(context),
       platforms: {
-        'claude-code': {
+        'claude-code-cli': {
           compatible: true,
-          memory: true
+          memory: true,
         },
-        'cursor': {
+        cursor: {
           compatible: true,
           activation: 'manual',
-          priority: 'low'
-        }
-      }
+          priority: 'low',
+        },
+      },
     }
   }
 
@@ -319,15 +318,17 @@ export class MigrationAdapter {
         slashCommand: this.extractSlashCommand(context),
         arguments: {
           supports: this.hasArguments(context),
-          placeholder: '$ARGUMENTS'
+          placeholder: '$ARGUMENTS',
         },
         fileReferences: {
-          supports: commandOptions.features?.fileReferences
+          supports: commandOptions.features?.fileReferences,
         },
-        mcpIntegration: commandOptions.features?.mcpIntegration ? {
-          requiredServers: this.extractMCPServers(context)
-        } : undefined
-      }
+        mcpIntegration: commandOptions.features?.mcpIntegration
+          ? {
+              requiredServers: this.extractMCPServers(context),
+            }
+          : undefined,
+      },
     }
   }
 
@@ -340,8 +341,8 @@ export class MigrationAdapter {
       .replace(/[^a-z0-9]/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '')
-    
-    const sourcePrefix = context.type.split('-')[0] // e.g., 'claude' from 'claude-code'
+
+    const sourcePrefix = context.type.split('-')[0] // e.g., 'claude' from 'claude-code-cli'
     return `${sourcePrefix}-${sanitized}` || `migrated-${Date.now()}`
   }
 
@@ -362,8 +363,9 @@ export class MigrationAdapter {
 
     // Use filename as fallback
     const baseName = path.basename(context.fileName, path.extname(context.fileName))
-    return baseName.replace(/[-_]/g, ' ')
-      .replace(/\b\w/g, l => l.toUpperCase())
+    return baseName
+      .replace(/[-_]/g, ' ')
+      .replace(/\b\w/g, (l) => l.toUpperCase())
       .replace(/^(Claude|Cursor|Copilot|Windsurf)\s*/i, '') // Remove platform prefixes
   }
 
@@ -381,7 +383,7 @@ export class MigrationAdapter {
     }
 
     // Use first meaningful paragraph
-    const lines = content.split('\n').filter(line => line.trim())
+    const lines = content.split('\n').filter((line) => line.trim())
     for (let i = 0; i < Math.min(lines.length, 5); i++) {
       const line = lines[i].trim()
       if (line && !line.startsWith('#') && !line.includes(':') && line.length > 20) {
@@ -423,14 +425,14 @@ export class MigrationAdapter {
 
   inferSubcategory(context) {
     const content = (context.bodyContent || context.content || '').toLowerCase()
-    
+
     if (content.includes('react')) return 'react'
     if (content.includes('typescript')) return 'typescript'
     if (content.includes('next.js')) return 'nextjs'
     if (content.includes('testing')) return 'testing'
     if (content.includes('styling')) return 'styling'
-    
-    return 
+
+    return
   }
 
   inferComplexity(context) {
@@ -445,42 +447,42 @@ export class MigrationAdapter {
 
   inferScope(context) {
     const content = (context.bodyContent || context.content || '').toLowerCase()
-    
+
     if (content.includes('project') || content.includes('global')) return 'project'
-    if (content.includes('system') || content.includes('architecture')) return 'system'  
+    if (content.includes('system') || content.includes('architecture')) return 'system'
     if (content.includes('feature') || content.includes('module')) return 'feature'
     if (content.includes('component') || context.relativePath.includes('component')) return 'component'
-    
+
     return 'file'
   }
 
   generatePlatforms(context) {
     const platforms = {}
-    
-    // Always include Claude Code compatibility for migration
-    platforms['claude-code'] = {
+
+    // Always include Claude Code CLI compatibility for migration
+    platforms['claude-code-cli'] = {
       compatible: true,
-      memory: true
+      memory: true,
     }
-    
+
     // Add original platform with high compatibility
     const platformMap = {
-      'claude-code': 'claude-code',
-      'cursor': 'cursor', 
+      'claude-code-cli': 'claude-code-cli',
+      cursor: 'cursor',
       'github-copilot': 'github-copilot',
-      'windsurf': 'windsurf'
+      windsurf: 'windsurf',
     }
-    
+
     const originalPlatform = platformMap[context.type]
-    if (originalPlatform && originalPlatform !== 'claude-code') {
+    if (originalPlatform && originalPlatform !== 'claude-code-cli') {
       platforms[originalPlatform] = {
         compatible: true,
         ...(originalPlatform === 'cursor' && { activation: 'always' }),
         ...(originalPlatform === 'github-copilot' && { priority: 8 }),
-        ...(originalPlatform === 'windsurf' && { mode: 'workspace' })
+        ...(originalPlatform === 'windsurf' && { mode: 'workspace' }),
       }
     }
-    
+
     return platforms
   }
 
@@ -491,7 +493,7 @@ export class MigrationAdapter {
 
     // Add source tag
     tags.push(`migrated-from-${context.type.replace('-', '')}`)
-    
+
     // Add technology tags from project context
     if (techData) {
       if (techData.primaryLanguages) tags.push(...techData.primaryLanguages.slice(0, 3))
@@ -509,12 +511,10 @@ export class MigrationAdapter {
 
   organizeContent(context) {
     let content = context.bodyContent || context.content || ''
-    
+
     // If we have sections, reorganize content
     if (context.sections && context.sections.length > 0) {
-      content = context.sections
-        .map(section => `## ${section.title}\n\n${section.content.join('\n')}\n`)
-        .join('\n')
+      content = context.sections.map((section) => `## ${section.title}\n\n${section.content.join('\n')}\n`).join('\n')
     }
 
     // Add migration notice
@@ -544,12 +544,12 @@ export class MigrationAdapter {
   extractAllowedTools(context) {
     const content = context.bodyContent || context.content || ''
     const tools = []
-    
+
     const toolPatterns = ['Read', 'Write', 'Edit', 'Bash', 'Grep', 'Glob']
     for (const tool of toolPatterns) {
       if (content.includes(tool)) tools.push(tool)
     }
-    
+
     return tools
   }
 

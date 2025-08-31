@@ -1,0 +1,1960 @@
+#!/usr/bin/env node
+
+/**
+ * VDK CLI
+ * -----------------------
+ * This is the main entry point for the VDK command-line interface.
+ * It orchestrates commands for initializing projects, managing rules, and deploying to the VDK Hub.
+ *
+ * Repository: https://github.com/entro314-labs/VDK-CLI
+ */
+
+import fs from 'node:fs/promises'
+import { createRequire } from 'node:module'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+import { Command } from 'commander'
+import dotenv from 'dotenv'
+import chalk from 'chalk'
+
+import { 
+  downloadRule, 
+  fetchRuleList,
+  fetchBlueprintsWithMetadata,
+  searchBlueprints,
+  analyzeBlueprintDependencies,
+  getBlueprintsForPlatform,
+  getBlueprintStatistics
+} from './src/blueprints-client.js'
+import { initializeHub, quickHubOperations, isHubAvailable } from './src/hub/index.js'
+import { runScanner } from './src/scanner/index.js'
+import { MigrationManager } from './src/migration/migration-manager.js'
+import {
+  banner,
+  boxes,
+  colors,
+  format,
+  headers,
+  spinners,
+  status,
+  tables,
+} from './src/utils/cli-styles.js'
+
+// Get the directory where cli.js is located (VDK CLI directory)
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// Try loading .env.local first from CLI directory, then fall back to .env
+dotenv.config({ path: path.join(__dirname, '.env.local') })
+dotenv.config({ path: path.join(__dirname, '.env') })
+
+const require = createRequire(import.meta.url)
+const pkg = require('./package.json')
+
+const program = new Command()
+
+program
+  .name('vdk')
+  .description("VDK CLI: The world's first Vibe Development Kit - One Context, All AI Assistants")
+  .version(pkg.version)
+
+program
+  .command('init')
+  .description('Initialize VDK and generate project-aware AI rules by scanning the project')
+  .option('-p, --projectPath <path>', 'Path to the project to scan', process.cwd())
+  .option('-o, --outputPath <path>', 'Path where generated rules should be saved', './.vdk/rules')
+  .option('-d, --deep', 'Enable deep scanning for more thorough pattern detection', false)
+  .option('-i, --ignorePattern <patterns...>', 'Glob patterns to ignore', [
+    '**/node_modules/**',
+    '**/dist/**',
+    '**/build/**',
+  ])
+  .option(
+    '--use-gitignore',
+    'Automatically parse .gitignore files for additional ignore patterns',
+    true
+  )
+  .option('-t, --template <name>', 'Name of the rule template to use', 'default')
+  .option('--overwrite', 'Overwrite existing rule files without prompting', false)
+  .option('--ide-integration', 'Enable IDE integration setup', true)
+  .option('--no-ide-integration', 'Disable IDE integration setup')
+  .option('--watch', 'Enable watch mode for continuous IDE integration updates', false)
+  .option('-v, --verbose', 'Enable verbose output for debugging', false)
+  .option(
+    '--categories <categories...>',
+    'Specific command categories to fetch (e.g., development, testing, workflow)'
+  )
+  .option(
+    '--preset <preset>',
+    'Preset command collection (minimal, full, development, production)',
+    'auto'
+  )
+  .option('--interactive', 'Enable interactive category selection', false)
+  .action(async (options) => {
+    try {
+      // Initialize Hub integration for enhanced functionality
+      let hubOps = null
+      try {
+        const hub = await initializeHub()
+        hubOps = await quickHubOperations()
+        
+        // Track command start
+        const sessionId = hubOps.trackCommand('init', {
+          projectPath: options.projectPath,
+          startTime: Date.now()
+        })
+        options._sessionId = sessionId
+        
+        // Check for updates and recommendations if Hub is available
+        const connectivity = await hubOps.testConnection()
+        if (connectivity.success) {
+          console.log(status.info('🌐 Connected to VDK Hub for enhanced features'))
+        }
+      } catch (error) {
+        console.log(status.warning('⚠️  Hub integration unavailable, using local features'))
+      }
+      
+      const results = await runScanner(options)
+
+      // Create the VDK configuration file
+      const configPath = path.join(options.projectPath, 'vdk.config.json')
+      const config = {
+        project: {
+          name: results.projectName,
+        },
+        ide: results.detectedPrimaryIDE || results.initializedIDEs[0] || 'generic',
+        rulesPath: options.outputPath,
+        lastUpdated: new Date().toISOString(),
+      }
+
+      await fs.writeFile(configPath, JSON.stringify(config, null, 2))
+      console.log(status.success(`VDK configuration created at ${format.path(configPath)}`))
+      
+      // Track successful completion with Hub
+      if (hubOps && options._sessionId) {
+        hubOps.trackCommand('init', {
+          sessionId: options._sessionId,
+          success: true,
+          executionTime: Date.now() - (options._startTime || Date.now()),
+          blueprintsGenerated: results.generatedFiles?.length || 0,
+          integrations: results.initializedIDEs || []
+        })
+      }
+
+      // Handle watch mode
+      if (options.watch && results.ideIntegration) {
+        console.log(status.info('Watch mode enabled. Press Ctrl+C to exit.'))
+        process.on('SIGINT', () => {
+          results.ideIntegration.shutdown()
+          process.exit(0)
+        })
+        // Keep the process running in watch mode
+        await new Promise(() => {})
+      }
+    } catch (error) {
+      // Track error with Hub if available
+      if (hubOps && options._sessionId) {
+        hubOps.trackError('init', error, {
+          sessionId: options._sessionId,
+          projectPath: options.projectPath
+        })
+      }
+      // The scanner engine already logs errors, so we just exit to prevent double logging
+      process.exit(1)
+    }
+  })
+
+
+program
+  .command('sync')
+  .description('Sync blueprints from VDK Hub and repository')
+  .option('-o, --outputPath <path>', 'Path to the blueprints directory', './.vdk/rules')
+  .option('--force', 'Force full sync instead of incremental', false)
+  .option('--category <category>', 'Sync specific category only')
+  .option('--hub-only', 'Sync only from Hub, not repository', false)
+  .option('--repo-only', 'Sync only from repository, not Hub', false)
+  .action(async (options) => {
+    try {
+      console.log(headers.section('VDK Blueprint Sync'))
+      const startTime = Date.now()
+      
+      // Initialize Hub integration
+      let hubOps = null
+      let sessionId = null
+      try {
+        hubOps = await quickHubOperations()
+        sessionId = hubOps.trackCommand('sync')
+      } catch (error) {
+        console.log(status.warning('Hub integration unavailable, using repository only'))
+      }
+      
+      const rulesDir = path.resolve(options.outputPath)
+      await fs.mkdir(rulesDir, { recursive: true })
+      
+      let totalSynced = 0
+      let hubSynced = 0
+      let repoSynced = 0
+      
+      // Sync from Hub if available and not disabled
+      if (hubOps && !options.repoOnly) {
+        const spinner = spinners.updating('Syncing from VDK Hub...')
+        spinner.start()
+        
+        try {
+          const hubResult = await hubOps.syncBlueprints({
+            force: options.force,
+            category: options.category
+          })
+          
+          hubSynced = hubResult.blueprints.length
+          totalSynced += hubSynced
+          
+          // Save Hub blueprints
+          for (const blueprint of hubResult.blueprints) {
+            const fileName = `${blueprint.slug || blueprint.id}.hub.md`
+            const filePath = path.join(rulesDir, fileName)
+            await fs.writeFile(filePath, blueprint.content)
+          }
+          
+          spinner.succeed(`Synced ${hubSynced} blueprints from Hub`)
+          
+          if (hubResult.changes.added.length > 0) {
+            console.log(status.progress(`+ ${hubResult.changes.added.length} new`))
+          }
+          if (hubResult.changes.updated.length > 0) {
+            console.log(status.progress(`↻ ${hubResult.changes.updated.length} updated`))
+          }
+          
+        } catch (error) {
+          spinner.fail('Hub sync failed')
+          console.log(status.warning(`Hub error: ${error.message}`))
+        }
+      }
+      
+      // Sync from repository if not disabled
+      if (!options.hubOnly) {
+        const spinner = spinners.updating('Syncing from VDK-Blueprints repository...')
+        spinner.start()
+        
+        const remoteRules = await fetchRuleList()
+        if (remoteRules.length === 0) {
+          spinner.fail('No blueprints found in repository or failed to connect')
+        } else {
+          const localRules = await fs.readdir(rulesDir).catch(() => [])
+          let updatedCount = 0
+          let newCount = 0
+          
+          for (const remoteRule of remoteRules) {
+            const ruleContent = await downloadRule(remoteRule.download_url)
+            if (ruleContent) {
+              const fileName = remoteRule.name.endsWith('.repo.md') ? remoteRule.name : `${remoteRule.name.replace(/\.md$/, '')}.repo.md`
+              const localPath = path.join(rulesDir, fileName)
+              
+              if (localRules.includes(fileName)) {
+                await fs.writeFile(localPath, ruleContent)
+                updatedCount++
+              } else {
+                await fs.writeFile(localPath, ruleContent)
+                newCount++
+              }
+            }
+          }
+          
+          repoSynced = newCount + updatedCount
+          totalSynced += repoSynced
+          
+          spinner.succeed(`Synced ${repoSynced} blueprints from repository`)
+          if (newCount > 0) {
+            console.log(status.progress(`+ ${newCount} new`))
+          }
+          if (updatedCount > 0) {
+            console.log(status.progress(`↻ ${updatedCount} updated`))
+          }
+        }
+      }
+      
+      // Track completion
+      if (hubOps && sessionId) {
+        hubOps.trackCommand('sync', {
+          sessionId,
+          success: true,
+          executionTime: Date.now() - startTime,
+          blueprintsGenerated: totalSynced,
+          metadata: {
+            hub_synced: hubSynced,
+            repo_synced: repoSynced,
+            force: options.force
+          }
+        })
+      }
+      
+      if (totalSynced > 0) {
+        console.log(status.success(`Total: ${totalSynced} blueprints synced`))
+      } else {
+        console.log(status.success('All blueprints are up to date'))
+      }
+      
+    } catch (error) {
+      console.error(boxes.error(`Sync failed: ${error.message}`))
+      process.exit(1)
+    }
+  })
+
+// Legacy update command (redirect to sync)
+program
+  .command('update')
+  .description('Update VDK blueprints from the VDK-Blueprints repository (legacy, use sync instead)')
+  .option('-o, --outputPath <path>', 'Path to the rules directory', './.vdk/rules')
+  .action(async (options) => {
+    console.log(status.warning('The "update" command is deprecated. Use "vdk sync" instead.'))
+    console.log(status.info('Redirecting to sync command...'))
+    
+    // Call the sync command with repo-only flag
+    const { Command } = await import('commander')
+    const syncCommand = program.commands.find(cmd => cmd.name() === 'sync')
+    if (syncCommand) {
+      await syncCommand.action({ ...options, repoOnly: true })
+    }
+  })
+
+// Community commands
+program
+  .command('browse')
+  .description('Browse and discover community blueprints')
+  .option('--community', 'Show community-contributed blueprints', false)
+  .option('--trending', 'Show trending blueprints', false)
+  .option('--category <category>', 'Filter by category')
+  .option('--framework <framework>', 'Filter by framework')
+  .option('--platform <platform>', 'Filter by platform compatibility')
+  .option('--limit <number>', 'Limit results', '20')
+  .option('--source <source>', 'Source: hub, repository, or both', 'both')
+  .action(async (options) => {
+    try {
+      console.log(headers.section('VDK Blueprint Discovery'))
+      
+      if (options.community || options.trending) {
+        // Use Hub API for community features
+        const hubOps = await quickHubOperations()
+        
+        let results
+        if (options.trending) {
+          results = await hubOps.getTrendingBlueprints({
+            limit: parseInt(options.limit),
+            timeframe: '7d'
+          })
+        } else {
+          const { VDKHubClient } = await import('./src/hub/VDKHubClient.js')
+          const hubClient = new VDKHubClient()
+          results = await hubClient.searchBlueprints({
+            category: options.category,
+            framework: options.framework,
+            platform: options.platform,
+            limit: parseInt(options.limit)
+          })
+        }
+        
+        console.log(`\n🌟 ${options.trending ? 'Trending' : 'Community'} Blueprints`)
+        if (results.blueprints && results.blueprints.length > 0) {
+          results.blueprints.forEach((blueprint, index) => {
+            console.log(``)
+            console.log(`📝 ${blueprint.title} by @${blueprint.author || 'community'}`)
+            console.log(`   ${blueprint.description || 'No description'}`)
+            console.log(`   📈 Used ${blueprint.usageCount || 0} times | ⭐ ${blueprint.rating || 'N/A'} rating`)
+            console.log(`   🚀 Deploy: ${colors.primary(`vdk deploy ${blueprint.id}`)}`)
+          })
+        } else {
+          console.log(status.info('No community blueprints found. Try adjusting your filters.'))
+        }
+        
+      } else {
+        // Use repository browsing for standard blueprints
+        const { fetchBlueprintsWithMetadata, searchBlueprints } = await import('./src/blueprints-client.js')
+        
+        const spinner = spinners.scanning('Fetching blueprints...')
+        spinner.start()
+        
+        let blueprints
+        if (options.category || options.framework || options.platform) {
+          blueprints = await searchBlueprints({
+            category: options.category,
+            platform: options.platform,
+            framework: options.framework
+          })
+        } else {
+          blueprints = await fetchBlueprintsWithMetadata()
+        }
+        
+        spinner.succeed(`Found ${blueprints.length} blueprints`)
+        
+        const limit = parseInt(options.limit)
+        const displayBlueprints = blueprints.slice(0, limit)
+        
+        console.log('')
+        displayBlueprints.forEach((blueprint, index) => {
+          const metadata = blueprint.metadata
+          console.log(`${index + 1}. ${colors.primary(metadata.title || 'Untitled')}`)
+          console.log(`   ${metadata.description || 'No description'}`)
+          console.log(`   Category: ${metadata.category || 'General'} | Complexity: ${metadata.complexity || 'Unknown'}`)
+          
+          if (metadata.platforms) {
+            const platforms = Object.keys(metadata.platforms).filter(p => metadata.platforms[p]?.compatible)
+            console.log(`   Platforms: ${platforms.join(', ') || 'All'}`)
+          }
+          
+          console.log(`   Deploy: ${colors.primary(`vdk deploy ${metadata.id}`)}`)
+          console.log('')
+        })
+        
+        if (blueprints.length > limit) {
+          console.log(status.info(`Showing ${limit} of ${blueprints.length} blueprints. Use --limit to see more.`))
+        }
+      }
+      
+      console.log('')
+      console.log(status.info('💡 Tips:'))
+      console.log(status.info('   • Use --community for user-contributed blueprints'))
+      console.log(status.info('   • Use --trending to see popular blueprints'))
+      console.log(status.info('   • Filter by --framework, --category, or --platform'))
+      
+    } catch (error) {
+      console.error(boxes.error(`Browse failed: ${error.message}`))
+      process.exit(1)
+    }
+  })
+
+program
+  .command('deploy')
+  .description('Deploy blueprints to your project')
+  .argument('[blueprint-id]', 'Blueprint or rule ID to deploy (e.g., rule:abc123, nextjs-patterns)')
+  .option('-p, --project-path <path>', 'Path to the project', process.cwd())
+  .option('--preview', 'Preview deployment without applying changes', false)
+  .option('--allow-major-changes', 'Allow significant adaptations for compatibility', false)
+  .option('--source <source>', 'Source: community, repository, or auto', 'auto')
+  .option('-v, --verbose', 'Enable verbose output', false)
+  .action(async (blueprintId, options) => {
+    try {
+      if (!blueprintId) {
+        // If no blueprint ID provided, show available deploy options
+        console.log(headers.section('VDK Blueprint Deployment'))
+        console.log('')
+        console.log(colors.cyan('📋 Deploy Options:'))
+        console.log('')
+        console.log('1. Deploy Community Blueprint:')
+        console.log(`   ${colors.primary('vdk deploy rule:abc123')}     # Deploy community rule by ID`)
+        console.log(`   ${colors.primary('vdk deploy nextjs-patterns')} # Deploy by name or slug`)
+        console.log('')
+        console.log('2. Deploy Repository Blueprint:')
+        console.log(`   ${colors.primary('vdk deploy typescript-strict')} # Deploy from VDK-Blueprints repository`)
+        console.log('')
+        console.log('3. Browse Available Blueprints:')
+        console.log(`   ${colors.primary('vdk browse')}              # Browse repository blueprints`)
+        console.log(`   ${colors.primary('vdk browse --community')}   # Browse community blueprints`)
+        console.log(`   ${colors.primary('vdk browse --trending')}    # Browse trending blueprints`)
+        console.log('')
+        console.log('4. Preview Before Deploying:')
+        console.log(`   ${colors.primary('vdk deploy rule:abc123 --preview')} # See what would be deployed`)
+        console.log('')
+        return
+      }
+      
+      console.log(headers.section('VDK Blueprint Deployment'))
+      
+      // Determine if this is a community rule or repository blueprint
+      const isCommunityRule = blueprintId.startsWith('rule:') || options.source === 'community'
+      const isRepositoryBlueprint = !isCommunityRule && (options.source === 'repository' || options.source === 'auto')
+      
+      if (isCommunityRule || options.source === 'community') {
+        // Deploy community blueprint using CommunityDeployer
+        const { CommunityDeployer } = await import('./src/community/CommunityDeployer.js')
+        const deployer = new CommunityDeployer(options.projectPath || process.cwd())
+        
+        const normalizedId = blueprintId.startsWith('rule:') ? blueprintId.slice(5) : blueprintId
+        
+        if (options.preview) {
+          const preview = await deployer.previewDeployment(normalizedId)
+          console.log('')
+          console.log(colors.cyan('📋 Community Blueprint Preview:'))
+          console.log(`Blueprint: ${preview.blueprint.title} by @${preview.blueprint.author || 'community'}`)
+          console.log(`Description: ${preview.blueprint.description || 'No description'}`)
+          console.log(`Project Context: ${preview.projectContext}`)
+          console.log(`Compatibility: ${preview.adaptationPlan.compatibilityScore}/10`)
+          console.log(`Estimated Files: ${preview.estimatedFiles}`)
+          
+          if (preview.adaptationPlan.changes.length > 0) {
+            console.log('')
+            console.log(colors.cyan('Planned Adaptations:'))
+            preview.adaptationPlan.changes.forEach(change => {
+              console.log(`  • ${change.description}`)
+            })
+          }
+          
+          if (preview.adaptationPlan.warnings.length > 0) {
+            console.log('')
+            console.log(colors.yellow('Warnings:'))
+            preview.adaptationPlan.warnings.forEach(warning => {
+              console.log(colors.yellow(`  ⚠️  ${warning}`))
+            })
+          }
+          
+          console.log('')
+          console.log(colors.primary('Run without --preview to deploy'))
+          return
+        }
+        
+        const result = await deployer.deploy(normalizedId, {
+          allowMajorChanges: options.allowMajorChanges,
+          verbose: options.verbose
+        })
+        
+        console.log('')
+        console.log(status.success(`✅ Deployed: ${result.blueprintTitle}`))
+        console.log(status.info(`📊 Compatibility: ${result.compatibilityScore}/10`))
+        console.log(status.info(`🚀 Applied to: ${result.platforms.join(', ')}`))
+        
+      } else if (isRepositoryBlueprint) {
+        // Deploy repository blueprint using existing system
+        const { fetchBlueprintsWithMetadata, searchBlueprints } = await import('./src/blueprints-client.js')
+        
+        const spinner = spinners.scanning(`Looking for blueprint: ${blueprintId}`)
+        spinner.start()
+        
+        // Search for blueprint by ID or name
+        const searchResults = await searchBlueprints({ query: blueprintId, exactMatch: true })
+        let blueprint = searchResults.find(b => 
+          b.metadata.id === blueprintId || 
+          b.metadata.title?.toLowerCase().includes(blueprintId.toLowerCase())
+        )
+        
+        if (!blueprint && searchResults.length > 0) {
+          blueprint = searchResults[0] // Take first fuzzy match
+          spinner.warn(`Exact match not found, using: ${blueprint.metadata.title}`)
+        } else if (!blueprint) {
+          spinner.fail(`Blueprint '${blueprintId}' not found`)
+          console.log('')
+          console.log(status.info('💡 Try:'))
+          console.log(status.info(`   vdk browse --category <category>`))
+          console.log(status.info(`   vdk browse --community`))
+          return
+        } else {
+          spinner.succeed(`Found: ${blueprint.metadata.title}`)
+        }
+        
+        if (options.preview) {
+          console.log('')
+          console.log(colors.cyan('📋 Repository Blueprint Preview:'))
+          console.log(`Title: ${blueprint.metadata.title}`)
+          console.log(`Description: ${blueprint.metadata.description || 'No description'}`)
+          console.log(`Category: ${blueprint.metadata.category || 'General'}`)
+          console.log(`Complexity: ${blueprint.metadata.complexity || 'Unknown'}`)
+          
+          if (blueprint.platforms) {
+            const platforms = Object.keys(blueprint.platforms).filter(p => blueprint.platforms[p]?.compatible)
+            console.log(`Platforms: ${platforms.join(', ') || 'All'}`)
+          }
+          
+          console.log('')
+          console.log(colors.primary('Run without --preview to deploy'))
+          return
+        }
+        
+        // Deploy using existing integration system
+        const { createIntegrationManager } = await import('./src/integrations/index.js')
+        const integrationManager = createIntegrationManager(options.projectPath || process.cwd())
+        
+        await integrationManager.discoverIntegrations({ verbose: options.verbose })
+        await integrationManager.scanAll({ verbose: options.verbose })
+        
+        const rules = [{
+          id: blueprint.metadata.id,
+          title: blueprint.metadata.title,
+          content: blueprint.content,
+          metadata: blueprint.metadata
+        }]
+        
+        const deployResult = await integrationManager.initializeActive({
+          rules: rules,
+          overwrite: true,
+          verbose: options.verbose
+        })
+        
+        const platforms = integrationManager.getActiveIntegrations?.()?.map(i => i.name) || ['deployed']
+        
+        console.log('')
+        console.log(status.success(`✅ Deployed: ${blueprint.metadata.title}`))
+        console.log(status.info(`🚀 Applied to: ${platforms.join(', ')}`))
+        
+        if (deployResult.errors && deployResult.errors.length > 0) {
+          console.log('')
+          console.log(colors.yellow('Warnings:'))
+          deployResult.errors.forEach(error => {
+            console.log(colors.yellow(`  ⚠️  ${error}`))
+          })
+        }
+      }
+      
+    } catch (error) {
+      console.error(boxes.error(`Deployment failed: ${error.message}`))
+      if (options.verbose) {
+        console.error(error.stack)
+      }
+      process.exit(1)
+    }
+  })
+
+// Hub-specific commands
+program
+  .command('hub')
+  .description('VDK Hub operations and management')
+  .addCommand(
+    new Command('status')
+      .description('Check VDK Hub connection and status')
+      .action(async () => {
+        try {
+          console.log(headers.section('VDK Hub Status'))
+          
+          const hubOps = await quickHubOperations()
+          const status = hubOps.getStatus()
+          const session = hubOps.getSession()
+          
+          console.log(`Hub Integration: ${status.initialized ? colors.green('✓ Initialized') : colors.red('✗ Not Initialized')}`)
+          console.log(`Hub Connected: ${status.hubConnected ? colors.green('✓ Connected') : colors.red('✗ Disconnected')}`)
+          console.log(`Telemetry: ${status.telemetryEnabled ? colors.green('✓ Enabled') : colors.yellow('✗ Disabled')}`)
+          console.log(`Session ID: ${session.sessionId}`)
+          console.log(`Uptime: ${Math.round(session.uptime / 1000)}s`)
+          
+          const connectivity = await hubOps.testConnection()
+          if (connectivity.success) {
+            console.log(`Connection: ${colors.green('✓ Connected')} (${connectivity.latency}ms)`)
+            console.log(`Hub Version: ${connectivity.version}`)
+          } else {
+            console.log(`Connection: ${colors.red('✗ Failed')} (${connectivity.error})`)
+          }
+          
+        } catch (error) {
+          console.error(boxes.error(`Hub status check failed: ${error.message}`))
+        }
+      })
+  )
+  .addCommand(
+    new Command('generate')
+      .description('Generate custom blueprint package from Hub')
+      .option('--stack <stacks...>', 'Technology stacks (react, nextjs, typescript, etc.)')
+      .option('--language <languages...>', 'Programming languages')
+      .option('--tools <tools...>', 'Development tools (eslint, prettier, jest, etc.)')
+      .option('--ai <assistants...>', 'AI assistants (claude-code, cursor, windsurf, etc.)')
+      .option('--format <format>', 'Output format (bash, zip, config)', 'bash')
+      .option('--requirements <text>', 'Custom requirements or preferences')
+      .option('-o, --output <path>', 'Output file path')
+      .action(async (options) => {
+        try {
+          console.log(headers.section('Generate Custom Package'))
+          
+          const hubOps = await quickHubOperations()
+          const spinner = spinners.scanning('Generating package from Hub...')
+          spinner.start()
+          
+          // Build analysis data from options
+          const analysisData = {
+            frameworks: options.stack || [],
+            languages: options.language || [],
+            tools: options.tools || [],
+            projectType: 'custom'
+          }
+          
+          const generateOptions = {
+            outputFormat: options.format,
+            customRequirements: options.requirements,
+            integrations: (options.ai || []).map(ai => ({ type: ai }))
+          }
+          
+          const packageResult = await hubOps.generatePackage(analysisData, generateOptions)
+          spinner.succeed('Package generated successfully')
+          
+          console.log(`Package ID: ${packageResult.packageId}`)
+          console.log(`Type: ${packageResult.packageType}`)
+          console.log(`Blueprints: ${packageResult.ruleCount}`)
+          console.log(`Size: ${Math.round(packageResult.fileSize / 1024)}KB`)
+          
+          // Download the package
+          if (options.output || options.format !== 'bash') {
+            spinner.start('Downloading package...')
+            const packageContent = await hubOps.downloadPackage(packageResult.packageId)
+            
+            const outputPath = options.output || `vdk-package-${packageResult.packageId}.${packageResult.packageType}`
+            
+            if (typeof packageContent.content === 'string') {
+              await fs.writeFile(outputPath, packageContent.content)
+            } else {
+              await fs.writeFile(outputPath, Buffer.from(packageContent.content))
+            }
+            
+            spinner.succeed(`Package saved to ${outputPath}`)
+          } else {
+            console.log(`\nDownload URL: ${packageResult.downloadUrl}`)
+            console.log(`Expires: ${new Date(packageResult.expiresAt).toLocaleString()}`)
+          }
+          
+        } catch (error) {
+          console.error(boxes.error(`Package generation failed: ${error.message}`))
+        }
+      })
+  )
+  .addCommand(
+    new Command('recommendations')
+      .description('Get blueprint recommendations from Hub')
+      .option('-p, --project-path <path>', 'Path to analyze', process.cwd())
+      .action(async (options) => {
+        try {
+          console.log(headers.section('Blueprint Recommendations'))
+          
+          const hubOps = await quickHubOperations()
+          const spinner = spinners.scanning('Analyzing project and fetching recommendations...')
+          spinner.start()
+          
+          // Simple project analysis for recommendations
+          const projectAnalysis = {
+            path: options.projectPath,
+            languages: [], // TODO: Extract from project
+            frameworks: [],
+            projectType: 'unknown'
+          }
+          
+          const recommendations = await hubOps.getRecommendations(projectAnalysis)
+          spinner.succeed(`Found ${recommendations.length} recommendations`)
+          
+          if (recommendations.length === 0) {
+            console.log(status.info('No specific recommendations found. Try generating a custom package.'))
+            return
+          }
+          
+          const recTable = tables.basic()
+          recTable.push([
+            colors.primary('Name'),
+            colors.primary('Description'),
+            colors.primary('Category'),
+            colors.primary('Compatibility')
+          ])
+          
+          recommendations.forEach(rec => {
+            recTable.push([
+              rec.name || 'Unknown',
+              (rec.description || '').substring(0, 40) + '...',
+              rec.category || 'Unknown',
+              `${Math.round((rec.compatibilityScore || 0) * 100)}%`
+            ])
+          })
+          
+          console.log(recTable.toString())
+          console.log(`\nUse 'vdk sync' to download recommended blueprints`)
+          
+        } catch (error) {
+          console.error(boxes.error(`Recommendations failed: ${error.message}`))
+        }
+      })
+  )
+  .addCommand(
+    new Command('analytics')
+      .description('View Hub analytics and usage statistics')
+      .option('--timeframe <period>', 'Time period (day, week, month)', 'week')
+      .option('--command <command>', 'Filter by specific command')
+      .option('--platform <platform>', 'Filter by platform')
+      .action(async (options) => {
+        try {
+          console.log(headers.section('VDK Hub Analytics'))
+          
+          const hubOps = await quickHubOperations()
+          const spinner = spinners.scanning('Fetching analytics...')
+          spinner.start()
+          
+          const analytics = await hubOps.getAnalytics({
+            timeframe: options.timeframe,
+            command: options.command,
+            platform: options.platform
+          })
+          
+          spinner.succeed('Analytics retrieved')
+          
+          console.log(`\n📈 Usage Statistics (${analytics.timeframe})`)
+          console.log(`Period: ${analytics.period.startDate} to ${analytics.period.endDate}`)
+          console.log(`Total Events: ${analytics.usage.totalEvents}`)
+          console.log(`Success Rate: ${analytics.usage.successRate}%`)
+          console.log(`Avg Execution Time: ${Math.round(analytics.usage.avgExecutionTime)}ms`)
+          
+          if (analytics.usage.topCommands.length > 0) {
+            console.log(`\n🔝 Top Commands:`)
+            analytics.usage.topCommands.forEach(cmd => {
+              console.log(`  ${cmd.command}: ${cmd.count} uses`)
+            })
+          }
+          
+          if (analytics.usage.platformDistribution.length > 0) {
+            console.log(`\n🖥️ Platform Distribution:`)
+            analytics.usage.platformDistribution.forEach(platform => {
+              console.log(`  ${platform.platform}: ${platform.count} uses`)
+            })
+          }
+          
+        } catch (error) {
+          console.error(boxes.error(`Analytics failed: ${error.message}`))
+        }
+      })
+  )
+  .addCommand(
+    new Command('publish')
+      .description('Publish blueprints to VDK Hub for team collaboration')
+      .option('-p, --project-path <path>', 'Path to the project', process.cwd())
+      .option('-t, --team <team>', 'Team name for deployment')
+      .option('--blueprints-dir <path>', 'Directory containing blueprints', './.vdk/rules')
+      .option('--preview', 'Preview deployment without actually deploying', false)
+      .option('-v, --verbose', 'Enable verbose output', false)
+      .action(async (options) => {
+        try {
+          console.log(headers.section('VDK Hub Publishing'))
+          
+          const hubOps = await quickHubOperations()
+          const sessionId = hubOps.trackCommand('hub-publish', { projectPath: options.projectPath })
+          
+          // Test Hub connectivity
+          const connectivity = await hubOps.testConnection()
+          if (!connectivity.success) {
+            throw new Error('Cannot connect to VDK Hub. Please check your connection and configuration.')
+          }
+          
+          const spinner = spinners.scanning('Preparing publication...')
+          spinner.start()
+          
+          // Scan project for metadata
+          const projectData = {
+            name: path.basename(path.resolve(options.projectPath)),
+            signature: {
+              frameworks: [], // TODO: Extract from project analysis
+              languages: [],
+              complexity: 'medium',
+              projectSize: 'medium'
+            }
+          }
+          
+          // Read blueprints from directory
+          const blueprintsDir = path.resolve(options.blueprintsDir)
+          const blueprintFiles = await fs.readdir(blueprintsDir).catch(() => [])
+          const blueprints = []
+          
+          for (const file of blueprintFiles) {
+            if (file.endsWith('.md') || file.endsWith('.mdc')) {
+              const content = await fs.readFile(path.join(blueprintsDir, file), 'utf8')
+              const stats = await fs.stat(path.join(blueprintsDir, file))
+              blueprints.push({
+                name: file.replace(/\.(md|mdc)$/, ''),
+                content: content,
+                path: path.join(options.blueprintsDir, file),
+                size: stats.size
+              })
+            }
+          }
+          
+          if (blueprints.length === 0) {
+            spinner.fail('No blueprints found to publish')
+            return
+          }
+          
+          spinner.text = `Found ${blueprints.length} blueprints to publish`
+          
+          if (options.preview) {
+            spinner.succeed('Publication preview ready')
+            console.log(`\n📋 Publication Preview:`)
+            console.log(`Project: ${projectData.name}`)
+            console.log(`Team: ${options.team || 'Default'}`)
+            console.log(`Blueprints: ${blueprints.length}`)
+            blueprints.forEach(bp => {
+              console.log(`  - ${bp.name} (${bp.size} bytes)`)
+            })
+            console.log(`\nRun without --preview to publish to Hub`)
+            return
+          }
+          
+          // Publish to Hub
+          spinner.text = 'Publishing to VDK Hub...'
+          const result = await hubOps.deployBlueprints(projectData, blueprints, {
+            team: options.team
+          })
+          
+          spinner.succeed(`Published ${result.blueprintsCount} blueprints to Hub`)
+          console.log(status.success(`Hub URL: ${result.hubUrl}`))
+          console.log(status.info(`Publication ID: ${result.deploymentId}`))
+          
+          // Track successful publication
+          hubOps.trackCommand('hub-publish', {
+            sessionId,
+            success: true,
+            blueprintsGenerated: result.blueprintsCount,
+            metadata: { deploymentId: result.deploymentId }
+          })
+          
+        } catch (error) {
+          console.error(boxes.error(`Publication failed: ${error.message}`))
+          if (options.verbose) {
+            console.error(error.stack)
+          }
+          process.exit(1)
+        }
+      })
+  )
+
+program
+  .command('migrate')
+  .description('Migrate existing AI contexts to VDK format')
+  .option('-p, --projectPath <path>', 'Path to the project to scan', process.cwd())
+  .option('-o, --outputPath <path>', 'Path where VDK rules should be saved', './.vdk/rules')
+  .option('--migrationOutput <path>', 'Path for migration files', './vdk-migration')
+  .option('--dry-run', 'Preview migration without creating files', false)
+  .option('--no-deploy', 'Skip deployment to IDE integrations')
+  .option('-v, --verbose', 'Enable verbose output', false)
+  .action(async (options) => {
+    try {
+      const migrationManager = new MigrationManager({
+        projectPath: options.projectPath,
+        outputPath: options.outputPath,
+        migrationOutputPath: options.migrationOutput,
+        verbose: options.verbose
+      })
+
+      await migrationManager.migrate({
+        dryRun: options.dryRun,
+        deployToIdes: options.deploy !== false
+      })
+    } catch (error) {
+      console.error(boxes.error(`Migration failed:\n${error.message}`))
+      if (options.verbose) {
+        console.error(error.stack)
+      }
+      process.exit(1)
+    }
+  })
+
+program
+  .command('import')
+  .description('Auto-detect and import existing AI assistant rules')
+  .option('-p, --project-path <path>', 'Path to the project', process.cwd())
+  .option('--preview', 'Show what would be imported without applying changes', false)
+  .option('--clean', 'Remove import files after successful import', false)
+  .option('--force', 'Overwrite existing VDK configurations', false)
+  .option('--override-personal', 'Override personal preferences during adaptation', false)
+  .option('-v, --verbose', 'Enable verbose output', false)
+  .action(async (options) => {
+    try {
+      console.log(headers.section('VDK Auto-Import'))
+      
+      const { AutoMigrator } = await import('./src/migration/AutoMigrator.js')
+      const projectPath = options.projectPath || process.cwd()
+      const migrator = new AutoMigrator(projectPath)
+      
+      const result = await migrator.migrate({
+        preview: options.preview,
+        clean: options.clean,
+        force: options.force,
+        overridePersonal: options.overridePersonal,
+        verbose: options.verbose
+      })
+      
+      if (result.success && result.suggestions?.publishWorthy) {
+        console.log('')
+        console.log(chalk.cyan('💡 Your adapted rules look great! Consider sharing with the community:'))
+        console.log(chalk.gray('   vdk publish .claude/CLAUDE.md'))
+      }
+      
+    } catch (error) {
+      console.error(boxes.error(`Import failed:\n${error.message}`))
+      if (options.verbose) {
+        console.error(error.stack)
+      }
+      process.exit(1)
+    }
+  })
+
+program
+  .command('publish')
+  .description('Publish your VDK rules to the community')
+  .argument('<rule-file>', 'Rule file to publish (.mdc, .md, .json, .xml, .cursorrules)')
+  .option('--github', 'Publish via GitHub PR instead of VDK Hub (no registration required)', false)
+  .option('--private', 'Create private share link (Hub only)', false)
+  .option('--name <name>', 'Custom name for the published rule')
+  .option('--preview', 'Preview what would be published without actually publishing', false)
+  .option('-v, --verbose', 'Enable verbose output', false)
+  .action(async (ruleFile, options) => {
+    try {
+      console.log(headers.section('VDK Community Publishing'))
+      
+      const { PublishManager } = await import('./src/publishing/PublishManager.js')
+      const publisher = new PublishManager(process.cwd())
+      
+      if (options.preview) {
+        const spinner = spinners.scanning('Generating publication preview...')
+        spinner.start()
+        
+        const preview = await publisher.previewPublication(ruleFile)
+        spinner.succeed('Preview generated')
+        
+        console.log('')
+        console.log(colors.cyan('📋 Publication Preview:'))
+        console.log(colors.gray(`   ${preview.summary}`))
+        console.log('')
+        
+        if (preview.validation.qualityScore) {
+          console.log(colors.cyan(`📊 Quality Score: ${preview.validation.qualityScore}/10`))
+        }
+        
+        if (preview.recommendations.length > 0) {
+          console.log('')
+          console.log(colors.yellow('💡 Recommendations:'))
+          preview.recommendations.forEach(rec => {
+            console.log(colors.gray(`   • ${rec}`))
+          })
+        }
+        
+        if (preview.validation.warnings.length > 0) {
+          console.log('')
+          console.log(colors.yellow('⚠️  Warnings:'))
+          preview.validation.warnings.forEach(warning => {
+            console.log(colors.yellow(`   • ${warning}`))
+          })
+        }
+        
+        return
+      }
+      
+      // Actual publishing
+      const result = await publisher.publish(ruleFile, {
+        github: options.github,
+        private: options.private,
+        name: options.name,
+        verbose: options.verbose
+      })
+      
+      if (result.success) {
+        console.log('')
+        console.log(colors.green('🎉 Rule published successfully!'))
+        
+        if (result.platform === 'hub') {
+          console.log('')
+          console.log(colors.cyan('🔗 Share your rule:'))
+          console.log(colors.gray(`   ${result.shareUrl}`))
+          console.log('')
+          console.log(colors.cyan('📧 Check your email to activate permanent sharing'))
+          console.log(colors.cyan('💡 Community can use with:'))
+          console.log(colors.gray(`   vdk sync`))
+        } else if (result.platform === 'github') {
+          console.log('')
+          console.log(colors.cyan('📝 GitHub PR created:'))
+          console.log(colors.gray(`   ${result.prUrl}`))
+          console.log('')
+          console.log(colors.cyan('⏳ After community review and merge:'))
+          console.log(colors.gray(`   vdk sync`))
+        }
+      }
+      
+    } catch (error) {
+      console.error(boxes.error(`Publishing failed:\n${error.message}`))
+      if (options.verbose) {
+        console.error(error.stack)
+      }
+      process.exit(1)
+    }
+  })
+
+program
+  .command('status')
+  .description('Check the status of your VDK setup and Hub integration')
+  .option('-c, --configPath <path>', 'Path to the VDK configuration file', './vdk.config.json')
+  .option('-o, --outputPath <path>', 'Path to the rules directory', './.vdk/rules')
+  .action(async (options) => {
+    console.log(headers.section('VDK Status Check'))
+
+    const configPath = path.resolve(options.configPath)
+    const rulesDir = path.resolve(options.outputPath)
+    const spinner = spinners.scanning('Checking VDK status...')
+    spinner.start()
+
+    const statusTable = tables.status()
+    let isConfigured = false
+
+    // 1. Check for VDK configuration file
+    try {
+      await fs.access(configPath)
+      const config = JSON.parse(await fs.readFile(configPath, 'utf8'))
+      statusTable.push([
+        'VDK Configuration',
+        status.success('Found'),
+        `${format.keyValue('Project', config.project.name)}\n${format.keyValue('IDE', config.ide)}`,
+      ])
+      
+      // Check for existing AI contexts that could be migrated
+      try {
+        const { MigrationManager } = await import('./src/migration/migration-manager.js')
+        const migrationManager = new MigrationManager({ projectPath: process.cwd() })
+        const projectScanner = migrationManager.projectScanner
+        const projectData = await projectScanner.scanProject(process.cwd())
+        const migrationDetector = migrationManager.migrationDetector
+        const contexts = await migrationDetector.detectAIContexts(projectData)
+        
+        if (contexts.length > 0) {
+          statusTable.push([
+            'Existing AI Contexts',
+            status.warning('Found'),
+            `${format.count(contexts.length)} contexts available for migration\nRun ${colors.primary('vdk migrate')} to convert them`,
+          ])
+        }
+      } catch (error) {
+        // Migration detection failed, skip silently
+      }
+      isConfigured = true
+    } catch (_error) {
+      statusTable.push([
+        'VDK Configuration',
+        status.warning('Missing'),
+        `Run ${colors.primary('vdk init')} to get started`,
+      ])
+    }
+
+    // 2. Check Hub integration and local/remote rules
+    try {
+      // Check Hub integration
+      let hubConnected = false
+      try {
+        const hubAvailable = await isHubAvailable()
+        if (hubAvailable) {
+          const hubOps = await quickHubOperations()
+          const hubStatus = hubOps.getStatus()
+          const connectivity = await hubOps.testConnection()
+          
+          statusTable.push([
+            'VDK Hub Integration',
+            connectivity.success ? status.success('Connected') : status.warning('Available'),
+            connectivity.success 
+              ? `Connected (${connectivity.latency}ms)\nVersion: ${connectivity.version}` 
+              : 'Hub available but connection failed'
+          ])
+          hubConnected = connectivity.success
+        } else {
+          statusTable.push([
+            'VDK Hub Integration',
+            status.error('Unavailable'),
+            'Cannot connect to VDK Hub'
+          ])
+        }
+      } catch (error) {
+        statusTable.push([
+          'VDK Hub Integration',
+          status.error('Error'),
+          error.message
+        ])
+      }
+      
+      const localRules = await fs.readdir(rulesDir).catch(() => [])
+      statusTable.push([
+        'Local Blueprints',
+        status.success('Found'),
+        `${format.count(localRules.length)} blueprints in ${format.path(rulesDir)}`,
+      ])
+
+      const remoteRules = await fetchRuleList()
+      if (remoteRules.length > 0) {
+        const remoteRuleNames = remoteRules.map((r) => r.name)
+        const newRules = remoteRuleNames.filter((r) => !localRules.includes(r))
+
+        if (newRules.length > 0) {
+          statusTable.push([
+            'VDK Repository',
+            status.warning('Updates Available'),
+            `${format.count(newRules.length)} new blueprints available\nRun ${colors.primary('vdk sync')} to update`,
+          ])
+        } else {
+          statusTable.push([
+            'VDK Repository',
+            status.success('Up to Date'),
+            `${format.count(remoteRules.length)} total blueprints in sync`,
+          ])
+        }
+      } else {
+        statusTable.push([
+          'VDK Repository',
+          status.error('Unreachable'),
+          'Could not connect to VDK-Blueprints repository',
+        ])
+      }
+    } catch (error) {
+      statusTable.push(['Blueprint Status', status.error('Error'), error.message])
+    }
+
+    // Check for IDE detection (always run, regardless of VDK configuration)
+    try {
+      const { createIntegrationManager } = await import('./src/integrations/index.js')
+      const integrationManager = createIntegrationManager(process.cwd())
+      
+      await integrationManager.discoverIntegrations({ verbose: false })
+      const scanResults = await integrationManager.scanAll({ verbose: false })
+      
+      const activeIntegrations = scanResults.active.filter(integration => 
+        integration.confidence === 'high' || integration.confidence === 'medium'
+      )
+      
+      if (activeIntegrations.length > 0) {
+        const ideList = activeIntegrations.map(integration => 
+          `${integration.name} (${integration.confidence} confidence)`
+        ).join('\n')
+        
+        statusTable.push([
+          'Detected IDEs/AI Tools',
+          status.success('Found'),
+          `${format.count(activeIntegrations.length)} active integrations:\n${ideList}`,
+        ])
+      } else {
+        statusTable.push([
+          'Detected IDEs/AI Tools',
+          status.warning('None'),
+          'No AI assistants or IDEs detected\nUse generic rules for maximum compatibility',
+        ])
+      }
+    } catch (error) {
+      // IDE detection failed, show error in debug mode, add basic status entry
+      if (process.env.VDK_DEBUG) {
+        console.error('IDE detection error:', error.message)
+      }
+      statusTable.push([
+        'Detected IDEs/AI Tools',
+        status.error('Error'),
+        'Could not scan for IDE integrations',
+      ])
+    }
+
+    spinner.stop()
+    console.log(statusTable.toString())
+
+    if (!isConfigured) {
+      console.log(
+        `\n${boxes.info(
+          `Get started by running:\n${colors.primary('vdk init')}\n\nThis will scan your project and create project-aware AI blueprints.\n\nOther useful commands:\n${colors.primary('vdk sync')} - Sync blueprints from Hub and repository\n${colors.primary('vdk hub status')} - Check Hub integration\n${colors.primary('vdk migrate')} - Convert existing AI contexts`,
+          'Quick Start'
+        )}`
+      )
+    }
+  })
+
+// Enhanced schema validation command
+program
+  .command('validate')
+  .description('Validate blueprint schema compatibility with AI Context Schema v2.1.0')
+  .option('-p, --path <path>', 'Path to blueprint/rule files', './.vdk/rules')
+  .option('-f, --file <file>', 'Validate specific blueprint file')
+  .option('--check-dependencies', 'Validate blueprint relationships and dependencies')
+  .option('--check-platforms', 'Validate platform-specific configurations')
+  .option('-v, --verbose', 'Show detailed validation results', false)
+  .action(async (options) => {
+    try {
+      const { validateBlueprint, validateCommand } = await import('./src/utils/schema-validator.js')
+      const path = await import('node:path')
+      const fs = await import('node:fs/promises')
+      const matter = (await import('gray-matter')).default
+
+      console.log(headers.section('Schema Validation'))
+      const spinner = spinners.scanning('Validating blueprints...')
+      spinner.start()
+
+      let filesToValidate = []
+      
+      if (options.file) {
+        filesToValidate.push(path.resolve(options.file))
+      } else {
+        const rulesDir = path.resolve(options.path)
+        try {
+          const files = await fs.readdir(rulesDir, { recursive: true })
+          filesToValidate = files
+            .filter(file => file.endsWith('.mdc') || file.endsWith('.md'))
+            .map(file => path.join(rulesDir, file))
+        } catch (error) {
+          spinner.fail(`Failed to read directory ${rulesDir}: ${error.message}`)
+          return
+        }
+      }
+
+      if (filesToValidate.length === 0) {
+        spinner.fail('No blueprint files found to validate')
+        return
+      }
+
+      spinner.text = `Validating ${filesToValidate.length} blueprint files...`
+
+      const results = []
+      let validCount = 0
+      let errorCount = 0
+
+      for (const filePath of filesToValidate) {
+        try {
+          const content = await fs.readFile(filePath, 'utf8')
+          const parsed = matter(content)
+          
+          // Determine validation type
+          const isCommand = parsed.data.commandType || parsed.data.target
+          const validation = isCommand 
+            ? await validateCommand(parsed.data)
+            : await validateBlueprint(parsed.data)
+
+          results.push({
+            file: path.relative(process.cwd(), filePath),
+            valid: validation.valid,
+            errors: validation.errors,
+            type: isCommand ? 'command' : 'blueprint'
+          })
+
+          if (validation.valid) {
+            validCount++
+          } else {
+            errorCount++
+          }
+        } catch (error) {
+          results.push({
+            file: path.relative(process.cwd(), filePath),
+            valid: false,
+            errors: [`Parse error: ${error.message}`],
+            type: 'unknown'
+          })
+          errorCount++
+        }
+      }
+
+      spinner.stop()
+
+      // Display results
+      const resultTable = tables.validation()
+      
+      results.forEach(result => {
+        const statusIcon = result.valid ? status.success('✓') : status.error('✗')
+        const errorsText = result.errors.length > 0 
+          ? (options.verbose ? result.errors.join('\n') : `${result.errors.length} error(s)`)
+          : 'Valid'
+        
+        resultTable.push([
+          result.file,
+          result.type,
+          statusIcon,
+          errorsText
+        ])
+      })
+
+      console.log(resultTable.toString())
+      console.log(`\n${validCount} valid, ${errorCount} errors`)
+
+      if (errorCount > 0 && !options.verbose) {
+        console.log(status.info('Use --verbose flag to see detailed error messages'))
+      }
+
+      if (options.checkDependencies) {
+        console.log(status.warning('Dependency validation feature is planned for implementation'))
+      }
+
+      if (options.checkPlatforms) {
+        console.log(status.warning('Platform configuration validation feature is planned for implementation'))
+      }
+
+      process.exit(errorCount > 0 ? 1 : 0)
+    } catch (error) {
+      console.error(boxes.error(`Validation failed: ${error.message}`))
+      process.exit(1)
+    }
+  })
+
+// Blueprint creation command with new schema support
+program
+  .command('create')
+  .description('Create a new blueprint with AI Context Schema v2.1.0 structure')
+  .option('-n, --name <name>', 'Blueprint name')
+  .option('-t, --title <title>', 'Blueprint title') 
+  .option('-d, --description <description>', 'Blueprint description')
+  .option('-c, --category <category>', 'Blueprint category', 'tool')
+  .option('-a, --author <author>', 'Blueprint author')
+  .option('--tags <tags...>', 'Blueprint tags (space-separated)')
+  .option('--complexity <level>', 'Complexity level (simple, medium, complex)', 'medium')
+  .option('--scope <scope>', 'Impact scope (file, component, feature, project, system)', 'project')
+  .option('--audience <audience>', 'Target audience (developer, architect, team-lead, junior, senior, any)', 'developer')
+  .option('--maturity <level>', 'Maturity level (experimental, beta, stable, deprecated)', 'beta')
+  .option('-o, --output <path>', 'Output file path', './.vdk/rules')
+  .option('--interactive', 'Interactive blueprint creation', false)
+  .action(async (options) => {
+    try {
+      const { select, input, multiselect, confirm } = await import('@clack/prompts')
+      const path = await import('node:path')
+      const fs = await import('node:fs/promises')
+
+      console.log(headers.section('Blueprint Creation'))
+
+      let blueprintData = {}
+
+      if (options.interactive) {
+        // Interactive mode
+        blueprintData.name = await input({
+          message: 'Blueprint name (kebab-case):',
+          placeholder: 'my-awesome-blueprint',
+          validate: (value) => {
+            if (!value) return 'Name is required'
+            if (!/^[a-z0-9-]+$/.test(value)) return 'Name must be kebab-case (lowercase, hyphens only)'
+            return
+          }
+        })
+
+        blueprintData.title = await input({
+          message: 'Blueprint title:',
+          placeholder: 'My Awesome Blueprint'
+        })
+
+        blueprintData.description = await input({
+          message: 'Description:',
+          placeholder: 'A brief description of what this blueprint does'
+        })
+
+        blueprintData.category = await select({
+          message: 'Category:',
+          options: [
+            { value: 'core', label: 'Core' },
+            { value: 'language', label: 'Language' },
+            { value: 'technology', label: 'Technology' },
+            { value: 'stack', label: 'Stack' },
+            { value: 'task', label: 'Task' },
+            { value: 'assistant', label: 'Assistant' },
+            { value: 'tool', label: 'Tool' },
+            { value: 'project', label: 'Project' },
+          ]
+        })
+
+        blueprintData.complexity = await select({
+          message: 'Complexity level:',
+          options: [
+            { value: 'simple', label: 'Simple' },
+            { value: 'medium', label: 'Medium' },
+            { value: 'complex', label: 'Complex' },
+          ]
+        })
+
+        blueprintData.scope = await select({
+          message: 'Impact scope:',
+          options: [
+            { value: 'file', label: 'File' },
+            { value: 'component', label: 'Component' },
+            { value: 'feature', label: 'Feature' },
+            { value: 'project', label: 'Project' },
+            { value: 'system', label: 'System' },
+          ]
+        })
+
+        blueprintData.audience = await select({
+          message: 'Target audience:',
+          options: [
+            { value: 'developer', label: 'Developer' },
+            { value: 'architect', label: 'Architect' },
+            { value: 'team-lead', label: 'Team Lead' },
+            { value: 'junior', label: 'Junior' },
+            { value: 'senior', label: 'Senior' },
+            { value: 'any', label: 'Any' },
+          ]
+        })
+
+        blueprintData.maturity = await select({
+          message: 'Maturity level:',
+          options: [
+            { value: 'experimental', label: 'Experimental' },
+            { value: 'beta', label: 'Beta' },
+            { value: 'stable', label: 'Stable' },
+            { value: 'deprecated', label: 'Deprecated' },
+          ]
+        })
+
+        const tagsInput = await input({
+          message: 'Tags (comma-separated):',
+          placeholder: 'javascript, react, typescript'
+        })
+        blueprintData.tags = tagsInput ? tagsInput.split(',').map(t => t.trim().toLowerCase()) : []
+
+        blueprintData.author = await input({
+          message: 'Author:',
+          placeholder: 'Your name or organization'
+        })
+
+        const addPlatforms = await confirm({
+          message: 'Configure platform-specific settings?',
+          initialValue: false
+        })
+
+        if (addPlatforms) {
+          const selectedPlatforms = await multiselect({
+            message: 'Select target platforms:',
+            options: [
+              { value: 'claude-code', label: 'Claude Code' },
+              { value: 'cursor', label: 'Cursor' },
+              { value: 'windsurf', label: 'Windsurf' },
+              { value: 'zed', label: 'Zed' },
+              { value: 'vscode', label: 'VS Code' },
+              { value: 'github-copilot', label: 'GitHub Copilot' },
+            ]
+          })
+
+          blueprintData.platforms = {}
+          for (const platform of selectedPlatforms) {
+            blueprintData.platforms[platform] = { compatible: true }
+          }
+        } else {
+          blueprintData.platforms = {
+            'claude-code': { compatible: true },
+            cursor: { compatible: true },
+            windsurf: { compatible: true },
+          }
+        }
+      } else {
+        // Non-interactive mode using command line options
+        if (!options.name) {
+          console.error(status.error('Blueprint name is required. Use --name or --interactive'))
+          process.exit(1)
+        }
+
+        blueprintData = {
+          name: options.name,
+          title: options.title || options.name,
+          description: options.description || `${options.title || options.name} blueprint`,
+          category: options.category,
+          complexity: options.complexity,
+          scope: options.scope,
+          audience: options.audience,
+          maturity: options.maturity,
+          author: options.author,
+          tags: options.tags || [],
+          platforms: {
+            'claude-code': { compatible: true },
+            cursor: { compatible: true },
+            windsurf: { compatible: true },
+          }
+        }
+      }
+
+      // Add required fields
+      blueprintData.id = blueprintData.name
+      blueprintData.version = '1.0.0'
+      blueprintData.created = new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+      blueprintData.lastUpdated = new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+
+      // Create blueprint file content
+      const frontmatter = Object.keys(blueprintData)
+        .map(key => {
+          const value = blueprintData[key]
+          if (Array.isArray(value)) {
+            return `${key}: [${value.map(v => `"${v}"`).join(', ')}]`
+          } else if (typeof value === 'object' && value !== null) {
+            return `${key}:\n${JSON.stringify(value, null, 2).split('\n').map(line => `  ${line}`).join('\n')}`
+          } else {
+            return `${key}: "${value}"`
+          }
+        })
+        .join('\n')
+
+      const blueprintContent = `---
+${frontmatter}
+---
+
+# ${blueprintData.title}
+
+## Description
+
+${blueprintData.description}
+
+## Implementation
+
+Add your implementation details here...
+
+## Usage
+
+Describe how to use this blueprint...
+
+## Examples
+
+Provide examples of the blueprint in action...
+
+---
+
+*Generated with VDK CLI - AI Context Schema v2.1.0*
+`
+
+      // Write the blueprint file
+      const outputPath = path.resolve(options.output)
+      await fs.mkdir(outputPath, { recursive: true })
+      const filePath = path.join(outputPath, `${blueprintData.name}.mdc`)
+      
+      await fs.writeFile(filePath, blueprintContent)
+      
+      console.log(status.success(`Blueprint created: ${format.path(filePath)}`))
+      console.log(status.info(`Run ${colors.primary('vdk validate --file ' + filePath)} to validate the blueprint`))
+
+    } catch (error) {
+      console.error(boxes.error(`Blueprint creation failed: ${error.message}`))
+      process.exit(1)
+    }
+  })
+
+// Schema migration command
+program
+  .command('schema-migrate')
+  .description('Migrate existing blueprints to AI Context Schema v2.1.0 format')
+  .option('-i, --input <path>', 'Input directory containing blueprints', './.vdk/rules')
+  .option('-o, --output <path>', 'Output directory for migrated blueprints')
+  .option('--force', 'Force migration even if already in v2.1.0 format', false)
+  .option('--dry-run', 'Preview migration without making changes', false)
+  .option('-v, --verbose', 'Show detailed migration progress', false)
+  .action(async (options) => {
+    try {
+      const { SchemaMigrator } = await import('./src/migration/converters/schema-migrator.js')
+      const path = await import('node:path')
+
+      console.log(headers.section('Schema Migration to v2.1.0'))
+
+      const inputPath = path.resolve(options.input)
+      const outputPath = options.output ? path.resolve(options.output) : inputPath + '_v2'
+
+      if (options.dryRun) {
+        console.log(status.info('DRY RUN: No files will be modified'))
+      }
+
+      console.log(`Input:  ${format.path(inputPath)}`)
+      console.log(`Output: ${format.path(outputPath)}`)
+
+      const spinner = spinners.scanning('Analyzing blueprints for migration...')
+      spinner.start()
+
+      const migrator = new SchemaMigrator({ verbose: options.verbose })
+      
+      if (options.dryRun) {
+        // For dry run, just analyze without writing
+        const files = await migrator.findBlueprintFiles(inputPath)
+        spinner.text = `Analyzing ${files.length} blueprint files...`
+        
+        let needsMigration = 0
+        let alreadyMigrated = 0
+        
+        for (const filePath of files) {
+          try {
+            const fs = await import('node:fs/promises')
+            const matter = (await import('gray-matter')).default
+            
+            const content = await fs.readFile(filePath, 'utf8')
+            const parsed = matter(content)
+            
+            if (migrator.isAlreadyMigrated(parsed.data)) {
+              alreadyMigrated++
+            } else {
+              needsMigration++
+            }
+          } catch (error) {
+            // Skip problematic files for dry run
+          }
+        }
+        
+        spinner.succeed('Analysis complete')
+        
+        console.log(`\\nMigration Preview:`)
+        console.log(`- Files found: ${files.length}`)
+        console.log(`- Need migration: ${needsMigration}`)
+        console.log(`- Already migrated: ${alreadyMigrated}`)
+        
+        if (needsMigration > 0) {
+          console.log(status.info(`Run without --dry-run to perform migration`))
+        } else {
+          console.log(status.success('All blueprints are already in v2.1.0 format'))
+        }
+        
+      } else {
+        // Perform actual migration
+        const results = await migrator.migrateBlueprints(inputPath, outputPath, {
+          force: options.force,
+          verbose: options.verbose
+        })
+        
+        spinner.succeed('Migration complete')
+        
+        console.log(`\\nResults:`)
+        console.log(`- Processed: ${results.processed}`)
+        console.log(`- Migrated: ${results.migrated}`)
+        console.log(`- Skipped: ${results.skipped}`)
+        console.log(`- Errors: ${results.errors}`)
+        
+        if (results.migrated > 0) {
+          console.log(status.success(`${results.migrated} blueprints migrated to v2.1.0`))
+          console.log(status.info(`Run ${colors.primary('vdk validate --path ' + outputPath)} to verify migrations`))
+        }
+        
+        if (results.errors > 0) {
+          console.log(status.warning(`${results.errors} files had errors during migration`))
+          if (options.verbose) {
+            results.files
+              .filter(f => f.error)
+              .forEach(f => console.log(`  ${status.error('✗')} ${f.file}: ${f.error}`))
+          }
+        }
+      }
+
+    } catch (error) {
+      console.error(boxes.error(`Schema migration failed: ${error.message}`))
+      process.exit(1)
+    }
+  })
+
+// Enhanced repository commands for schema v2.1.0
+program
+  .command('search')
+  .description('Search VDK-Blueprints repository using AI Context Schema v2.1.0 metadata')
+  .option('-q, --query <text>', 'Search query for name/title/description')
+  .option('-p, --platform <platform>', 'Filter by platform compatibility (claude-code, cursor, windsurf, etc.)')
+  .option('-c, --category <category>', 'Filter by category (core, language, technology, etc.)')
+  .option('--complexity <level>', 'Filter by complexity (simple, medium, complex)')
+  .option('--scope <scope>', 'Filter by scope (file, component, feature, project, system)')
+  .option('--audience <audience>', 'Filter by audience (developer, architect, team-lead, etc.)')
+  .option('--maturity <maturity>', 'Filter by maturity (experimental, beta, stable, deprecated)')
+  .option('--tags <tags...>', 'Filter by tags (space-separated)')
+  .option('--limit <number>', 'Limit number of results', '20')
+  .option('-v, --verbose', 'Show detailed blueprint information', false)
+  .action(async (options) => {
+    try {
+      console.log(headers.section('Blueprint Search'))
+      
+      const criteria = {}
+      if (options.query) criteria.query = options.query
+      if (options.platform) criteria.platform = options.platform
+      if (options.category) criteria.category = options.category
+      if (options.complexity) criteria.complexity = options.complexity
+      if (options.scope) criteria.scope = options.scope
+      if (options.audience) criteria.audience = options.audience
+      if (options.maturity) criteria.maturity = options.maturity
+      if (options.tags) criteria.tags = options.tags
+
+      console.log('Search criteria:', Object.keys(criteria).length > 0 ? criteria : 'All blueprints')
+      
+      const results = await searchBlueprints(criteria)
+      const limitedResults = results.slice(0, parseInt(options.limit))
+      
+      if (limitedResults.length === 0) {
+        console.log(status.warning('No blueprints found matching your criteria'))
+        return
+      }
+
+      const searchTable = tables.basic()
+      searchTable.push([
+        colors.primary('Name'),
+        colors.primary('Title'),
+        colors.primary('Category'),
+        colors.primary('Complexity'),
+        colors.primary('Maturity'),
+        colors.primary('Platforms')
+      ])
+
+      limitedResults.forEach(blueprint => {
+        const platforms = Object.keys(blueprint.platforms)
+          .filter(p => blueprint.platforms[p].compatible)
+          .slice(0, 3)
+          .join(', ')
+        
+        searchTable.push([
+          blueprint.metadata.name || 'Unknown',
+          (blueprint.metadata.title || blueprint.metadata.name || 'Untitled').substring(0, 30),
+          blueprint.metadata.category || 'Unknown',
+          blueprint.complexity || 'Unknown',
+          blueprint.maturity || 'Unknown',
+          platforms + (Object.keys(blueprint.platforms).length > 3 ? '...' : '')
+        ])
+      })
+
+      console.log(searchTable.toString())
+      console.log(`\nFound ${results.length} blueprints${results.length > parseInt(options.limit) ? ` (showing ${options.limit})` : ''}`)
+
+      if (options.verbose && limitedResults.length > 0) {
+        console.log('\n' + status.info('Use --verbose with specific blueprint name for detailed info'))
+      }
+
+    } catch (error) {
+      console.error(boxes.error(`Search failed: ${error.message}`))
+      process.exit(1)
+    }
+  })
+
+program
+  .command('repo-stats')
+  .description('Show VDK-Blueprints repository statistics and schema v2.1.0 compliance')
+  .action(async () => {
+    try {
+      console.log(headers.section('VDK-Blueprints Repository Statistics'))
+      
+      const stats = await getBlueprintStatistics()
+      
+      console.log(`\n📊 Repository Overview:`)
+      console.log(`- Total Blueprints: ${stats.total}`)
+      console.log(`- Schema v2.1.0 Valid: ${stats.valid} (${Math.round(stats.valid/stats.total*100)}%)`)
+      console.log(`- Invalid: ${stats.invalid}`)
+      
+      if (Object.keys(stats.byCategory).length > 0) {
+        console.log(`\n📂 By Category:`)
+        Object.entries(stats.byCategory)
+          .sort(([,a], [,b]) => b - a)
+          .forEach(([category, count]) => {
+            console.log(`- ${category}: ${count}`)
+          })
+      }
+      
+      if (Object.keys(stats.byComplexity).length > 0) {
+        console.log(`\n⚙️ By Complexity:`)
+        Object.entries(stats.byComplexity)
+          .sort(([,a], [,b]) => b - a)
+          .forEach(([complexity, count]) => {
+            console.log(`- ${complexity}: ${count}`)
+          })
+      }
+      
+      if (Object.keys(stats.byMaturity).length > 0) {
+        console.log(`\n🎯 By Maturity:`)
+        Object.entries(stats.byMaturity)
+          .sort(([,a], [,b]) => b - a)
+          .forEach(([maturity, count]) => {
+            console.log(`- ${maturity}: ${count}`)
+          })
+      }
+      
+      console.log(`\n🔗 Relationships:`)
+      console.log(`- With Dependencies: ${stats.relationships.withDependencies}`)
+      console.log(`- With Conflicts: ${stats.relationships.withConflicts}`)
+      
+      if (Object.keys(stats.platformSupport).length > 0) {
+        console.log(`\n🎮 Platform Support (Top 10):`)
+        Object.entries(stats.platformSupport)
+          .sort(([,a], [,b]) => b - a)
+          .slice(0, 10)
+          .forEach(([platform, count]) => {
+            console.log(`- ${platform}: ${count}`)
+          })
+      }
+
+    } catch (error) {
+      console.error(boxes.error(`Failed to fetch repository statistics: ${error.message}`))
+      process.exit(1)
+    }
+  })
+
+program
+  .command('analyze')
+  .description('Analyze blueprint dependencies and relationships')
+  .argument('<blueprint-id>', 'Blueprint ID to analyze')
+  .action(async (blueprintId) => {
+    try {
+      console.log(headers.section(`Blueprint Analysis: ${blueprintId}`))
+      
+      const analysis = await analyzeBlueprintDependencies(blueprintId)
+      
+      console.log(`\n📋 Blueprint: ${analysis.blueprint.title || analysis.blueprint.name}`)
+      console.log(`Description: ${analysis.blueprint.description}`)
+      console.log(`Category: ${analysis.blueprint.category}`)
+      console.log(`Complexity: ${analysis.blueprint.complexity}`)
+      console.log(`Maturity: ${analysis.blueprint.maturity}`)
+      
+      if (analysis.dependencies.required.length > 0) {
+        console.log(`\n✅ Required Dependencies:`)
+        analysis.dependencies.required.forEach(dep => {
+          console.log(`- ${dep.name}: ${dep.title || dep.description}`)
+        })
+      }
+      
+      if (analysis.dependencies.suggested.length > 0) {
+        console.log(`\n💡 Suggested Dependencies:`)
+        analysis.dependencies.suggested.forEach(dep => {
+          console.log(`- ${dep.name}: ${dep.title || dep.description}`)
+        })
+      }
+      
+      if (analysis.dependencies.missing.length > 0) {
+        console.log(`\n❌ Missing Dependencies:`)
+        analysis.dependencies.missing.forEach(depId => {
+          console.log(`- ${depId} (not found in repository)`)
+        })
+      }
+      
+      if (analysis.conflicts.length > 0) {
+        console.log(`\n⚠️  Conflicts With:`)
+        analysis.conflicts.forEach(conflict => {
+          console.log(`- ${conflict.name}: ${conflict.title || conflict.description}`)
+        })
+      }
+      
+      if (analysis.superseded.length > 0) {
+        console.log(`\n🔄 Supersedes:`)
+        analysis.superseded.forEach(superseded => {
+          console.log(`- ${superseded.name}: ${superseded.title || superseded.description}`)
+        })
+      }
+
+    } catch (error) {
+      console.error(boxes.error(`Analysis failed: ${error.message}`))
+      process.exit(1)
+    }
+  })
+
+program
+  .command('platform')
+  .description('List blueprints compatible with specific platform')
+  .argument('<platform>', 'Platform identifier (claude-code, cursor, windsurf, zed, vscode, etc.)')
+  .option('--limit <number>', 'Limit number of results', '20')
+  .action(async (platform, options) => {
+    try {
+      console.log(headers.section(`Blueprints for ${platform}`))
+      
+      const blueprints = await getBlueprintsForPlatform(platform)
+      const limitedBlueprints = blueprints.slice(0, parseInt(options.limit))
+      
+      if (limitedBlueprints.length === 0) {
+        console.log(status.warning(`No blueprints found compatible with ${platform}`))
+        return
+      }
+
+      const platformTable = tables.basic()
+      platformTable.push([
+        colors.primary('Name'),
+        colors.primary('Title'),
+        colors.primary('Category'),
+        colors.primary('Platform Config')
+      ])
+
+      limitedBlueprints.forEach(blueprint => {
+        const config = blueprint.platformConfig
+        let configSummary = 'Basic'
+        
+        if (config.globs) configSummary += ', Globs'
+        if (config.characterLimit) configSummary += ', CharLimit'
+        if (config.priority) configSummary += `, P${config.priority}`
+        if (config.memory) configSummary += ', Memory'
+        if (config.command) configSummary += ', Commands'
+        
+        platformTable.push([
+          blueprint.name || 'Unknown',
+          (blueprint.title || blueprint.name || 'Untitled').substring(0, 30),
+          blueprint.category || 'Unknown',
+          configSummary
+        ])
+      })
+
+      console.log(platformTable.toString())
+      console.log(`\nFound ${blueprints.length} compatible blueprints${blueprints.length > parseInt(options.limit) ? ` (showing ${options.limit})` : ''}`)
+
+    } catch (error) {
+      console.error(boxes.error(`Platform query failed: ${error.message}`))
+      process.exit(1)
+    }
+  })
+
+// Show banner when no arguments provided
+if (process.argv.slice(2).length === 0) {
+  console.log(banner())
+}
+
+program.parse(process.argv)
+
+if (process.argv.slice(2).length === 0) {
+  program.outputHelp()
+}

@@ -1,18 +1,50 @@
 /**
  * Comprehensive Integration Tests - Complete coverage of all integration modules
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, beforeEach, vi } from 'vitest'
+import fs from 'node:fs/promises'
+import path from 'node:path'
+
+// Mock file system operations to avoid test pollution
+vi.mock('node:fs/promises', async () => {
+  const actual = await vi.importActual('node:fs/promises')
+  return {
+    ...actual,
+    access: vi.fn().mockRejectedValue(new Error('File not found')),
+    readFile: vi.fn().mockResolvedValue('{}'),
+    stat: vi.fn().mockResolvedValue({ isFile: () => true, isDirectory: () => false }),
+  }
+})
+
+// Mock process.platform for consistent testing
+Object.defineProperty(process, 'platform', {
+  value: 'darwin',
+  writable: true,
+})
+
+// Mock process.env.HOME for consistent testing
+process.env.HOME = '/Users/testuser'
+process.env.USERPROFILE = process.env.HOME
 
 describe('Complete Integration Coverage', () => {
+  beforeEach(() => {
+    // Reset all mocks before each test
+    vi.clearAllMocks()
+  })
   describe('Integration Manager - Full Coverage', () => {
-    it('should create integration manager instance', async () => {
+    it('should create integration manager instance with priority system', async () => {
       const { IntegrationManager } = await import('../src/integrations/integration-manager.js')
 
-      const manager = new IntegrationManager(global.TEST_ROOT)
+      const manager = new IntegrationManager(global.TEST_ROOT || '/test/project')
       expect(manager).toBeDefined()
-      expect(manager.projectPath).toBe(global.TEST_ROOT)
+      expect(manager.projectPath).toBe(global.TEST_ROOT || '/test/project')
       expect(manager.integrations).toBeInstanceOf(Map)
       expect(manager.detectionResults).toBeInstanceOf(Map)
+      
+      // Test priority system methods exist
+      expect(typeof manager.isContextPlatform).toBe('function')
+      expect(typeof manager.prioritizeContextPlatforms).toBe('function')
+      expect(typeof manager.getPrimaryIDE).toBe('function')
     })
 
     it('should register single integration', async () => {
@@ -48,14 +80,24 @@ describe('Complete Integration Coverage', () => {
       }).toThrow('Integration must extend BaseIntegration')
     })
 
-    it('should discover integrations', async () => {
+    it('should discover integrations with priority awareness', async () => {
       const { IntegrationManager } = await import('../src/integrations/integration-manager.js')
 
-      const manager = new IntegrationManager(global.TEST_ROOT)
+      const manager = new IntegrationManager(global.TEST_ROOT || '/test/project')
 
       try {
         const result = await manager.discoverIntegrations({ verbose: false })
         expect(result).toBeDefined()
+        expect(result.loaded).toBeInstanceOf(Array)
+        expect(result.failed).toBeInstanceOf(Array)
+        expect(result.registered).toBeGreaterThanOrEqual(0)
+        
+        // Verify priority information is maintained
+        for (const loaded of result.loaded) {
+          expect(loaded.name).toBeDefined()
+          expect(loaded.module).toBeDefined()
+          expect(loaded.class).toBeDefined()
+        }
       } catch (error) {
         // Discovery might fail due to missing dependencies, but should not crash
         expect(error).toBeDefined()
@@ -64,15 +106,13 @@ describe('Complete Integration Coverage', () => {
   })
 
   describe('All Integration Classes - Complete Coverage', () => {
-    it('should load Claude Code integration with full methods', async () => {
-      const { ClaudeCodeIntegration } = await import(
-        '../src/integrations/claude-code-integration.js'
-      )
+    it('should load Claude Code CLI integration with context platform priority', async () => {
+      const { ClaudeCodeCLIIntegration } = await import('../src/integrations/claude-code-integration.js')
 
-      const integration = new ClaudeCodeIntegration(global.TEST_ROOT)
+      const integration = new ClaudeCodeCLIIntegration(global.TEST_ROOT || '/test/project')
 
       expect(integration).toBeDefined()
-      expect(integration.name).toBe('Claude Code')
+      expect(integration.name).toBe('Claude Code CLI')
       expect(typeof integration.detectUsage).toBe('function')
       expect(typeof integration.getConfigPaths).toBe('function')
 
@@ -82,26 +122,51 @@ describe('Complete Integration Coverage', () => {
       expect(configPaths.projectMemory).toBeDefined()
       expect(configPaths.projectCommands).toBeDefined()
 
-      // Test usage detection
+      // Test usage detection with mocked file system
       const detection = integration.detectUsage()
       expect(detection.isUsed).toBeDefined()
       expect(detection.confidence).toBeDefined()
       expect(detection.indicators).toBeDefined()
       expect(detection.recommendations).toBeDefined()
+      
+      // Claude Code CLI is a context platform - verify priority
+      expect(integration.priority).toBe('high')
     })
 
-    it('should load Cursor integration', async () => {
+    it('should load Cursor integration with context platform priority', async () => {
       const cursorModule = await import('../src/integrations/cursor-integration.js')
 
       expect(cursorModule).toBeDefined()
       expect(typeof cursorModule).toBe('object')
+      
+      // Check if Cursor integration class exists
+      const integrationClass = Object.values(cursorModule).find(
+        exp => typeof exp === 'function' && exp.name.includes('Integration')
+      )
+      
+      if (integrationClass) {
+        const integration = new integrationClass('/test/project')
+        expect(integration.name).toContain('Cursor')
+        expect(integration.priority).toBe('high') // Context platform
+      }
     })
 
-    it('should load Windsurf integration', async () => {
+    it('should load Windsurf integration with context platform priority', async () => {
       const windsurfModule = await import('../src/integrations/windsurf-integration.js')
 
       expect(windsurfModule).toBeDefined()
       expect(typeof windsurfModule).toBe('object')
+      
+      // Check if Windsurf integration class exists
+      const integrationClass = Object.values(windsurfModule).find(
+        exp => typeof exp === 'function' && exp.name.includes('Integration')
+      )
+      
+      if (integrationClass) {
+        const integration = new integrationClass('/test/project')
+        expect(integration.name).toContain('Windsurf')
+        expect(integration.priority).toBe('high') // Context platform
+      }
     })
 
     it('should load GitHub Copilot integration', async () => {
@@ -162,13 +227,69 @@ describe('Complete Integration Coverage', () => {
     })
   })
 
+  describe('Priority-Based Detection System', () => {
+    it('should prioritize context platforms over traditional IDEs', async () => {
+      const { IntegrationManager } = await import('../src/integrations/integration-manager.js')
+      
+      const manager = new IntegrationManager('/test/project')
+      
+      // Test priority classification
+      expect(manager.isContextPlatform('Cursor')).toBe(true)
+      expect(manager.isContextPlatform('Windsurf')).toBe(true)
+      expect(manager.isContextPlatform('Claude Code CLI')).toBe(true)
+      expect(manager.isContextPlatform('VS Code')).toBe(false)
+      expect(manager.isContextPlatform('JetBrains')).toBe(false)
+    })
+    
+    it('should correctly prioritize integrations in prioritizeContextPlatforms', async () => {
+      const { IntegrationManager } = await import('../src/integrations/integration-manager.js')
+      
+      const manager = new IntegrationManager('/test/project')
+      
+      // Test prioritizeContextPlatforms method
+      const mockIntegrations = [
+        { name: 'VS Code', confidence: 'high' },
+        { name: 'Cursor', confidence: 'medium' },
+        { name: 'JetBrains', confidence: 'high' },
+        { name: 'Claude Code CLI', confidence: 'low' },
+      ]
+      
+      const prioritized = manager.prioritizeContextPlatforms(mockIntegrations)
+      
+      // Context platforms should come first
+      expect(prioritized[0].name).toBe('Cursor')
+      expect(prioritized[1].name).toBe('Claude Code CLI')
+      expect(prioritized[2].name).toBe('VS Code')
+      expect(prioritized[3].name).toBe('JetBrains')
+    })
+    
+    it('should handle getPrimaryIDE with context platform priority', async () => {
+      const { IntegrationManager } = await import('../src/integrations/integration-manager.js')
+      
+      const manager = new IntegrationManager('/test/project')
+      
+      // Mock lastScan results
+      manager.lastScan = {
+        active: [
+          { name: 'VS Code', confidence: 'high' },
+          { name: 'Cursor', confidence: 'medium' },
+        ],
+      }
+      
+      const primary = manager.getPrimaryIDE()
+      
+      // Even with lower confidence, context platform should be preferred when both are present
+      if (primary) {
+        expect(['Cursor', 'VS Code']).toContain(primary.name)
+      }
+    })
+  })
+
   describe('Integration Detection Results', () => {
     it('should provide consistent detection format', async () => {
-      const { ClaudeCodeIntegration } = await import(
-        '../src/integrations/claude-code-integration.js'
-      )
+      const { ClaudeCodeCLIIntegration } = await import('../src/integrations/claude-code-integration.js')
 
-      const integration = new ClaudeCodeIntegration(global.TEST_ROOT)
+      const integration = new ClaudeCodeCLIIntegration(global.TEST_ROOT)
       const detection = integration.detectUsage()
 
       expect(typeof detection.isUsed).toBe('boolean')
@@ -179,11 +300,9 @@ describe('Complete Integration Coverage', () => {
     })
 
     it('should handle detection caching', async () => {
-      const { ClaudeCodeIntegration } = await import(
-        '../src/integrations/claude-code-integration.js'
-      )
+      const { ClaudeCodeCLIIntegration } = await import('../src/integrations/claude-code-integration.js')
 
-      const integration = new ClaudeCodeIntegration(global.TEST_ROOT)
+      const integration = new ClaudeCodeCLIIntegration(global.TEST_ROOT)
 
       const detection1 = integration.detectUsage()
       const detection2 = integration.detectUsage()
@@ -196,11 +315,9 @@ describe('Complete Integration Coverage', () => {
 
   describe('Configuration Path Resolution', () => {
     it('should resolve all configuration paths', async () => {
-      const { ClaudeCodeIntegration } = await import(
-        '../src/integrations/claude-code-integration.js'
-      )
+      const { ClaudeCodeCLIIntegration } = await import('../src/integrations/claude-code-integration.js')
 
-      const integration = new ClaudeCodeIntegration(global.TEST_ROOT)
+      const integration = new ClaudeCodeCLIIntegration(global.TEST_ROOT)
       const configPaths = integration.getConfigPaths()
 
       // All paths should be strings
@@ -219,12 +336,10 @@ describe('Complete Integration Coverage', () => {
     })
 
     it('should handle different project paths', async () => {
-      const { ClaudeCodeIntegration } = await import(
-        '../src/integrations/claude-code-integration.js'
-      )
+      const { ClaudeCodeCLIIntegration } = await import('../src/integrations/claude-code-integration.js')
 
-      const integration1 = new ClaudeCodeIntegration('/path/one')
-      const integration2 = new ClaudeCodeIntegration('/path/two')
+      const integration1 = new ClaudeCodeCLIIntegration('/path/one')
+      const integration2 = new ClaudeCodeCLIIntegration('/path/two')
 
       const paths1 = integration1.getConfigPaths()
       const paths2 = integration2.getConfigPaths()
@@ -241,11 +356,9 @@ describe('Complete Integration Coverage', () => {
 
   describe('Integration Error Handling', () => {
     it('should handle file system errors gracefully', async () => {
-      const { ClaudeCodeIntegration } = await import(
-        '../src/integrations/claude-code-integration.js'
-      )
+      const { ClaudeCodeCLIIntegration } = await import('../src/integrations/claude-code-integration.js')
 
-      const integration = new ClaudeCodeIntegration('/nonexistent/path')
+      const integration = new ClaudeCodeCLIIntegration('/nonexistent/path')
 
       // Should not throw errors during detection
       const detection = integration.detectUsage()

@@ -107,6 +107,11 @@ function determineProjectType(techData) {
   const frameworks = techData.frameworks || []
   const libraries = techData.libraries || []
 
+  // Check for CLI indicators first (highest priority)
+  if (isCLIProject(techData)) {
+    return 'CLI Application'
+  }
+
   if (frameworks.includes('React') || libraries.includes('react')) {
     return 'React App'
   }
@@ -132,6 +137,31 @@ function determineProjectType(techData) {
   return 'Application'
 }
 
+function isCLIProject(techData) {
+  const libraries = techData.libraries || []
+  const packageInfo = techData.packageInfo || {}
+
+  // Has bin field in package.json
+  if (packageInfo.bin) {
+    return true
+  }
+
+  // Has CLI-related dependencies
+  const cliDeps = ['commander', 'yargs', 'inquirer', 'chalk', 'ora', 'boxen']
+  if (cliDeps.some((dep) => libraries.includes(dep))) {
+    return true
+  }
+
+  // Has CLI-related keywords
+  const keywords = packageInfo.keywords || []
+  const cliKeywords = ['cli', 'command-line', 'terminal', 'tool', 'utility']
+  if (cliKeywords.some((keyword) => keywords.includes(keyword))) {
+    return true
+  }
+
+  return false
+}
+
 function hasTestDirectory(projectStructure) {
   const directories = projectStructure.directories || []
   return directories.some((dir) => /^(test|tests|__tests__|spec|specs)$/i.test(dir.name))
@@ -139,9 +169,7 @@ function hasTestDirectory(projectStructure) {
 
 function hasComponentsDirectory(projectStructure) {
   const directories = projectStructure.directories || []
-  return directories.some(
-    (dir) => /^(components|component)$/i.test(dir.name) || dir.path.includes('/components/')
-  )
+  return directories.some((dir) => /^(components|component)$/i.test(dir.name) || dir.path.includes('/components/'))
 }
 
 function hasDocsDirectory(projectStructure) {

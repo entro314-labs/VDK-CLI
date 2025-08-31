@@ -3,7 +3,7 @@
  * -----------------------
  * This module is responsible for all communication with the VDK-Blueprints repository,
  * which includes fetching rule lists, downloading rule files, and checking for updates.
- * 
+ *
  * Enhanced for AI Context Schema v2.1.0 support:
  * - Blueprint metadata parsing and validation
  * - Platform compatibility filtering
@@ -17,11 +17,15 @@ import matter from 'gray-matter'
 
 import { validateBlueprint } from './utils/schema-validator.js'
 
-const VDK_BLUEPRINTS_BASE_URL =
-  'https://api.github.com/repos/entro314-labs/VDK-Blueprints/contents/.ai'
+const VDK_BLUEPRINTS_BASE_URL = 'https://api.github.com/repos/entro314-labs/VDK-Blueprints/contents/blueprints'
 
 /**
- * Fetches the list of available blueprints from the VDK-Blueprints repository.
+ * Blueprint categories in the new repository structure
+ */
+const BLUEPRINT_CATEGORIES = ['assistants', 'core', 'languages', 'stacks', 'tasks', 'technologies', 'tools']
+
+/**
+ * Fetches the list of available blueprints from all categories in the new structure.
  * @returns {Promise<Array>} A promise that resolves to an array of blueprint file objects.
  */
 async function fetchRuleList() {
@@ -38,16 +42,34 @@ async function fetchRuleList() {
       spinner.warn('VDK_GITHUB_TOKEN not set. You may encounter rate limiting.')
     }
 
-    const response = await fetch(`${VDK_BLUEPRINTS_BASE_URL}/rules?ref=main`, { headers })
+    let allBlueprints = []
 
-    if (!response.ok) {
-      spinner.fail('Failed to connect to VDK-Blueprints repository.')
-      throw new Error(`Failed to fetch blueprint list. Status: ${response.status}`)
+    // Fetch blueprints from all categories
+    for (const category of BLUEPRINT_CATEGORIES) {
+      try {
+        spinner.text = `Fetching ${category} blueprints...`
+        const response = await fetch(`${VDK_BLUEPRINTS_BASE_URL}/vdk/rules/${category}?ref=main`, {
+          headers,
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          const blueprints = data
+            .filter((item) => item.type === 'file' && item.name.endsWith('.mdc'))
+            .map((blueprint) => ({
+              ...blueprint,
+              category: category,
+            }))
+          allBlueprints.push(...blueprints)
+        }
+      } catch (error) {
+        // Continue with other categories if one fails
+        console.warn(`Warning: Failed to fetch ${category} blueprints: ${error.message}`)
+      }
     }
 
-    const data = await response.json()
-    spinner.succeed('Successfully connected to VDK-Blueprints repository.')
-    return data.filter((item) => item.type === 'file' && item.name.endsWith('.mdc'))
+    spinner.succeed(`Successfully fetched ${allBlueprints.length} blueprints from VDK repository.`)
+    return allBlueprints
   } catch (error) {
     // Ora spinner might not be initialized if fetch fails, so check before using
     if (ora.isSpinning) {
@@ -83,23 +105,23 @@ async function downloadRule(downloadUrl) {
  */
 async function fetchBlueprintsWithMetadata(options = {}) {
   const spinner = ora('Fetching blueprints with metadata...').start()
-  
+
   try {
     const rawBlueprints = await fetchRuleList()
     const blueprintsWithMetadata = []
-    
+
     spinner.text = `Parsing ${rawBlueprints.length} blueprint files...`
-    
+
     for (const blueprint of rawBlueprints) {
       try {
         const content = await downloadRule(blueprint.download_url)
         if (content) {
           const parsed = matter(content)
           const metadata = parsed.data
-          
+
           // Validate against schema v2.1.0
           const validation = await validateBlueprint(metadata)
-          
+
           blueprintsWithMetadata.push({
             ...blueprint,
             metadata,
@@ -116,8 +138,8 @@ async function fetchBlueprintsWithMetadata(options = {}) {
               requires: metadata.requires || [],
               suggests: metadata.suggests || [],
               conflicts: metadata.conflicts || [],
-              supersedes: metadata.supersedes || []
-            }
+              supersedes: metadata.supersedes || [],
+            },
           })
         }
       } catch (error) {
@@ -127,10 +149,9 @@ async function fetchBlueprintsWithMetadata(options = {}) {
         }
       }
     }
-    
+
     spinner.succeed(`Loaded ${blueprintsWithMetadata.length} blueprints with metadata`)
     return blueprintsWithMetadata
-    
   } catch (error) {
     spinner.fail('Failed to fetch blueprints')
     throw error
@@ -144,64 +165,62 @@ async function fetchBlueprintsWithMetadata(options = {}) {
  */
 async function searchBlueprints(criteria = {}) {
   const allBlueprints = await fetchBlueprintsWithMetadata()
-  
-  return allBlueprints.filter(blueprint => {
+
+  return allBlueprints.filter((blueprint) => {
     // Platform compatibility filter
     if (criteria.platform && blueprint.platforms) {
       const platformConfig = blueprint.platforms[criteria.platform]
-      if (!platformConfig || !platformConfig.compatible) {
+      if (!platformConfig?.compatible) {
         return false
       }
     }
-    
+
     // Complexity filter
     if (criteria.complexity && blueprint.complexity !== criteria.complexity) {
       return false
     }
-    
+
     // Scope filter
     if (criteria.scope && blueprint.scope !== criteria.scope) {
       return false
     }
-    
+
     // Audience filter
     if (criteria.audience && blueprint.audience !== criteria.audience) {
       return false
     }
-    
+
     // Maturity filter
     if (criteria.maturity && blueprint.maturity !== criteria.maturity) {
       return false
     }
-    
+
     // Tag filter
     if (criteria.tags && Array.isArray(criteria.tags)) {
       const blueprintTags = blueprint.metadata.tags || []
-      const hasMatchingTag = criteria.tags.some(tag => blueprintTags.includes(tag))
+      const hasMatchingTag = criteria.tags.some((tag) => blueprintTags.includes(tag))
       if (!hasMatchingTag) {
         return false
       }
     }
-    
+
     // Category filter
     if (criteria.category && blueprint.metadata.category !== criteria.category) {
       return false
     }
-    
+
     // Text search (name, title, description)
     if (criteria.query) {
       const query = criteria.query.toLowerCase()
-      const searchText = [
-        blueprint.metadata.name,
-        blueprint.metadata.title,
-        blueprint.metadata.description
-      ].join(' ').toLowerCase()
-      
+      const searchText = [blueprint.metadata.name, blueprint.metadata.title, blueprint.metadata.description]
+        .join(' ')
+        .toLowerCase()
+
       if (!searchText.includes(query)) {
         return false
       }
     }
-    
+
     return true
   })
 }
@@ -213,28 +232,28 @@ async function searchBlueprints(criteria = {}) {
  */
 async function analyzeBlueprintDependencies(blueprintId) {
   const allBlueprints = await fetchBlueprintsWithMetadata()
-  const blueprint = allBlueprints.find(b => b.metadata.id === blueprintId)
-  
+  const blueprint = allBlueprints.find((b) => b.metadata.id === blueprintId)
+
   if (!blueprint) {
     throw new Error(`Blueprint '${blueprintId}' not found`)
   }
-  
+
   const analysis = {
     blueprint: blueprint.metadata,
     dependencies: {
       required: [],
       suggested: [],
       missing: [],
-      available: []
+      available: [],
     },
     conflicts: [],
-    superseded: []
+    superseded: [],
   }
-  
+
   // Find required dependencies
   if (blueprint.relationships.requires) {
     for (const requiredId of blueprint.relationships.requires) {
-      const dependency = allBlueprints.find(b => b.metadata.id === requiredId)
+      const dependency = allBlueprints.find((b) => b.metadata.id === requiredId)
       if (dependency) {
         analysis.dependencies.required.push(dependency.metadata)
         analysis.dependencies.available.push(dependency.metadata)
@@ -243,38 +262,38 @@ async function analyzeBlueprintDependencies(blueprintId) {
       }
     }
   }
-  
+
   // Find suggested dependencies
   if (blueprint.relationships.suggests) {
     for (const suggestedId of blueprint.relationships.suggests) {
-      const suggestion = allBlueprints.find(b => b.metadata.id === suggestedId)
+      const suggestion = allBlueprints.find((b) => b.metadata.id === suggestedId)
       if (suggestion) {
         analysis.dependencies.suggested.push(suggestion.metadata)
         analysis.dependencies.available.push(suggestion.metadata)
       }
     }
   }
-  
+
   // Find conflicts
   if (blueprint.relationships.conflicts) {
     for (const conflictId of blueprint.relationships.conflicts) {
-      const conflict = allBlueprints.find(b => b.metadata.id === conflictId)
+      const conflict = allBlueprints.find((b) => b.metadata.id === conflictId)
       if (conflict) {
         analysis.conflicts.push(conflict.metadata)
       }
     }
   }
-  
+
   // Find superseded blueprints
   if (blueprint.relationships.supersedes) {
     for (const supersededId of blueprint.relationships.supersedes) {
-      const superseded = allBlueprints.find(b => b.metadata.id === supersededId)
+      const superseded = allBlueprints.find((b) => b.metadata.id === supersededId)
       if (superseded) {
         analysis.superseded.push(superseded.metadata)
       }
     }
   }
-  
+
   return analysis
 }
 
@@ -285,15 +304,15 @@ async function analyzeBlueprintDependencies(blueprintId) {
  */
 async function getBlueprintsForPlatform(platform) {
   const allBlueprints = await fetchBlueprintsWithMetadata()
-  
+
   return allBlueprints
-    .filter(blueprint => {
+    .filter((blueprint) => {
       const platformConfig = blueprint.platforms[platform]
       return platformConfig && platformConfig.compatible === true
     })
-    .map(blueprint => ({
+    .map((blueprint) => ({
       ...blueprint.metadata,
-      platformConfig: blueprint.platforms[platform]
+      platformConfig: blueprint.platforms[platform],
     }))
 }
 
@@ -303,55 +322,55 @@ async function getBlueprintsForPlatform(platform) {
  */
 async function getBlueprintStatistics() {
   const allBlueprints = await fetchBlueprintsWithMetadata()
-  
+
   const stats = {
     total: allBlueprints.length,
-    valid: allBlueprints.filter(b => b.valid).length,
-    invalid: allBlueprints.filter(b => !b.valid).length,
+    valid: allBlueprints.filter((b) => b.valid).length,
+    invalid: allBlueprints.filter((b) => !b.valid).length,
     byCategory: {},
     byComplexity: {},
     byMaturity: {},
     byAudience: {},
     platformSupport: {},
     relationships: {
-      withDependencies: allBlueprints.filter(b => 
-        b.relationships.requires.length > 0 || b.relationships.suggests.length > 0
+      withDependencies: allBlueprints.filter(
+        (b) => b.relationships.requires.length > 0 || b.relationships.suggests.length > 0
       ).length,
-      withConflicts: allBlueprints.filter(b => b.relationships.conflicts.length > 0).length
-    }
+      withConflicts: allBlueprints.filter((b) => b.relationships.conflicts.length > 0).length,
+    },
   }
-  
+
   // Count by categories
-  allBlueprints.forEach(blueprint => {
+  allBlueprints.forEach((blueprint) => {
     const category = blueprint.metadata.category || 'unknown'
     stats.byCategory[category] = (stats.byCategory[category] || 0) + 1
-    
+
     const complexity = blueprint.complexity || 'unknown'
     stats.byComplexity[complexity] = (stats.byComplexity[complexity] || 0) + 1
-    
+
     const maturity = blueprint.maturity || 'unknown'
     stats.byMaturity[maturity] = (stats.byMaturity[maturity] || 0) + 1
-    
+
     const audience = blueprint.audience || 'unknown'
     stats.byAudience[audience] = (stats.byAudience[audience] || 0) + 1
-    
+
     // Count platform support
-    Object.keys(blueprint.platforms).forEach(platform => {
+    Object.keys(blueprint.platforms).forEach((platform) => {
       if (blueprint.platforms[platform].compatible) {
         stats.platformSupport[platform] = (stats.platformSupport[platform] || 0) + 1
       }
     })
   })
-  
+
   return stats
 }
 
-export { 
-  downloadRule, 
+export {
+  downloadRule,
   fetchRuleList,
   fetchBlueprintsWithMetadata,
   searchBlueprints,
   analyzeBlueprintDependencies,
   getBlueprintsForPlatform,
-  getBlueprintStatistics
+  getBlueprintStatistics,
 }

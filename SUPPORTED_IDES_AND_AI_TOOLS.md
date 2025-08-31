@@ -1,7 +1,7 @@
 # Supported IDEs and AI Tools
 
-> **Last Updated**: January 2025  
-> **VDK CLI Version**: 2.9.0+
+> **Last Updated**: August 2025
+> **VDK CLI Version**: 2.10.0+
 
 This document provides an exhaustive list of **33+ IDEs, editors, and AI assistants** supported by the VDK CLI framework for generating project-specific AI coding rules and integrations with enhanced schema support.
 
@@ -17,7 +17,7 @@ This document provides an exhaustive list of **33+ IDEs, editors, and AI assista
 - **Status**: **Fully Supported** ✅
 
 #### ✅ VS Code Insiders
-- **Configuration**: `.vscode-insiders/` folder  
+- **Configuration**: `.vscode-insiders/` folder
 - **AI Rules**: `.vscode-insiders/ai-rules/`
 - **MCP Support**: ✅ via `.vscode-insiders/mcp.json`
 - **Auto-detection**: Settings and extensions files
@@ -35,7 +35,7 @@ This document provides an exhaustive list of **33+ IDEs, editors, and AI assista
 
 #### ✅ Cursor AI
 - **Configuration**: `.cursor/` folder
-- **AI Rules**: `.ai/rules/` 
+- **AI Rules**: `.ai/rules/`
 - **MCP Support**: ✅ via `.cursor/mcp.json`
 - **Special Files**: `.cursorignore`
 - **Global Config**: `~/.cursor/mcp.json`
@@ -79,7 +79,7 @@ VDK provides individual detection and configuration for each JetBrains IDE with 
 - **Optimizations**: Java/Kotlin/Maven/Gradle integration
 
 #### ✅ WebStorm
-- **Configuration**: `.idea/` folder  
+- **Configuration**: `.idea/` folder
 - **AI Rules**: `.idea/ai-rules/`
 - **Detection**: `.idea/webServers.xml`, `package.json`, TypeScript configs
 - **MCP Support**: ✅ via `~/.cache/JetBrains/WebStorm*/mcp`
@@ -215,7 +215,7 @@ VDK provides individual detection and configuration for each JetBrains IDE with 
 ### Model Context Protocol (MCP) Support
 The following platforms support MCP for enhanced AI context:
 - ✅ VS Code (all variants: Stable, Insiders, VSCodium)
-- ✅ Cursor AI  
+- ✅ Cursor AI
 - ✅ Windsurf (all variants: Standard, Next)
 - ✅ JetBrains IDEs (all 11 IDEs with 2025.1+ versions)
 - ✅ Claude Desktop
@@ -224,7 +224,7 @@ The following platforms support MCP for enhanced AI context:
 ### Enhanced Auto-Detection Capabilities
 VDK CLI provides intelligent platform detection through:
 - **Configuration Folders**: `.vscode`, `.idea`, `.cursor`, `.zed`, etc.
-- **Settings Files**: `settings.json`, `workspace.xml`, IDE-specific configs  
+- **Settings Files**: `settings.json`, `workspace.xml`, IDE-specific configs
 - **Project Characteristics**: Language files, framework configs, build systems
 - **Confidence Scoring**: Intelligent ranking of detected IDEs by project fit
 - **Global Configuration**: User-level IDE settings and extensions
@@ -233,7 +233,7 @@ VDK CLI provides intelligent platform detection through:
 ### Rule Generation Features
 All supported platforms receive:
 - 📋 Project-specific coding rules
-- 🏗️ Architecture pattern detection  
+- 🏗️ Architecture pattern detection
 - 🔍 Technology stack analysis
 - 📚 Framework-specific guidelines
 - 🔒 Security best practices
@@ -256,7 +256,7 @@ To initialize VDK for your detected IDEs:
 # Auto-detect and initialize all IDEs in current project
 vdk init
 
-# Initialize specific IDE or platform  
+# Initialize specific IDE or platform
 vdk init --ide vscode
 vdk init --ide intellij
 vdk init --ide zed
@@ -304,7 +304,7 @@ vdk scan --dry-run
 
 ---
 
-**Need Support?** 
+**Need Support?**
 - 📖 [Documentation](https://github.com/your-repo/vdk-cli/docs)
 - 🐛 [Report Issues](https://github.com/your-repo/vdk-cli/issues)
 - 💬 [Community Discussions](https://github.com/your-repo/vdk-cli/discussions)

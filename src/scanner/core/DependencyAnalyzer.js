@@ -19,17 +19,7 @@ export class DependencyAnalyzer {
     this.inverseGraph = new Map() // Map of module -> Set(dependents)
     this.fileModuleMap = new Map() // Map of filePath -> logical module name
     this.moduleFileMap = new Map() // Map of logical module name -> filePath
-    this.ignoredExtensions = new Set([
-      '.json',
-      '.md',
-      '.txt',
-      '.css',
-      '.scss',
-      '.png',
-      '.jpg',
-      '.gif',
-      '.svg',
-    ])
+    this.ignoredExtensions = new Set(['.json', '.md', '.txt', '.css', '.scss', '.png', '.jpg', '.gif', '.svg'])
   }
 
   /**
@@ -61,9 +51,7 @@ export class DependencyAnalyzer {
 
       if (this.verbose) {
         console.log(
-          chalk.gray(
-            `Dependency graph built with ${this.dependencyGraph.size} modules and ${this.countEdges()} edges`
-          )
+          chalk.gray(`Dependency graph built with ${this.dependencyGraph.size} modules and ${this.countEdges()} edges`)
         )
       }
 
@@ -220,8 +208,7 @@ export class DependencyAnalyzer {
     // JavaScript/TypeScript import statements
     if (['.js', '.jsx', '.ts', '.tsx'].includes(fileExtension)) {
       // ES imports
-      const esImportRegex =
-        /import\s+(?:(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)\s+from\s+)?['"]([^'"]+)['"]/g
+      const esImportRegex = /import\s+(?:(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)\s+from\s+)?['"]([^'"]+)['"]/g
       let match
       while ((match = esImportRegex.exec(content)) !== null) {
         dependencies.add(match[1])
@@ -347,12 +334,7 @@ export class DependencyAnalyzer {
    */
   getLogicalModuleName(filePath, projectRoot) {
     // Validate inputs
-    if (
-      !filePath ||
-      typeof filePath !== 'string' ||
-      !projectRoot ||
-      typeof projectRoot !== 'string'
-    ) {
+    if (!filePath || typeof filePath !== 'string' || !projectRoot || typeof projectRoot !== 'string') {
       return null
     }
 
@@ -571,9 +553,7 @@ export class DependencyAnalyzer {
     const hasService = moduleNames.some((name) => name.includes('service'))
     const hasStore = moduleNames.some((name) => name.includes('store') || name.includes('redux'))
     const hasViewModel = moduleNames.some((name) => name.includes('viewmodel'))
-    const hasRepository = moduleNames.some(
-      (name) => name.includes('repository') || name.includes('dao')
-    )
+    const hasRepository = moduleNames.some((name) => name.includes('repository') || name.includes('dao'))
     const hasProvider = moduleNames.some((name) => name.includes('provider'))
     const hasComponent = moduleNames.some((name) => name.includes('component'))
 

@@ -49,9 +49,7 @@ class IDEIntegrationManager {
     const detectedIDEs = await this.detectIDEs(projectPath)
 
     if (detectedIDEs.length === 0) {
-      console.log(
-        chalk.yellow('No supported IDE configurations detected. Using generic integration.')
-      )
+      console.log(chalk.yellow('No supported IDE configurations detected. Using generic integration.'))
       detectedIDEs.push('generic')
     }
 
@@ -60,9 +58,7 @@ class IDEIntegrationManager {
       await this.initializeIntegration(ideId, projectPath)
     }
 
-    console.log(
-      chalk.green(`IDE integrations initialized: ${Object.keys(this.integrations).join(', ')}`)
-    )
+    console.log(chalk.green(`IDE integrations initialized: ${Object.keys(this.integrations).join(', ')}`))
 
     return Object.keys(this.integrations)
   }
@@ -77,9 +73,7 @@ class IDEIntegrationManager {
     const detectedConfigs = detectIDEConfigs(projectPath)
 
     // Filter by supported IDEs and return IDs only
-    return detectedConfigs
-      .filter((config) => this.options.supportedIDEs.includes(config.id))
-      .map((config) => config.id)
+    return detectedConfigs.filter((config) => this.options.supportedIDEs.includes(config.id)).map((config) => config.id)
   }
 
   /**
@@ -105,9 +99,7 @@ class IDEIntegrationManager {
     const rulePath = this.integrations[ideId].rulePath
     if (!fs.existsSync(rulePath)) {
       fs.mkdirSync(rulePath, { recursive: true })
-      console.log(
-        chalk.green(`Created rule directory for ${this.integrations[ideId].name}: ${rulePath}`)
-      )
+      console.log(chalk.green(`Created rule directory for ${this.integrations[ideId].name}: ${rulePath}`))
     }
 
     // If in watch mode, start file watchers for IDE config changes
@@ -116,9 +108,7 @@ class IDEIntegrationManager {
     }
 
     if (this.options.verbose) {
-      console.log(
-        chalk.gray(`Initialized ${this.integrations[ideId].name} integration at ${rulePath}`)
-      )
+      console.log(chalk.gray(`Initialized ${this.integrations[ideId].name} integration at ${rulePath}`))
     }
   }
 
@@ -255,14 +245,7 @@ class IDEIntegrationManager {
     // Launch the scanner process as a background task
     const scanner = spawn(
       'node',
-      [
-        path.join(process.cwd(), 'src', 'index.js'),
-        '--path',
-        projectPath,
-        '--output',
-        rulePath,
-        '--verbose',
-      ],
+      [path.join(process.cwd(), 'src', 'index.js'), '--path', projectPath, '--output', rulePath, '--verbose'],
       {
         detached: true,
         stdio: 'ignore',
@@ -325,7 +308,7 @@ class IDEIntegrationManager {
    */
   notifyClaude(rulePath, variant = 'claude') {
     // This would use Claude-specific mechanisms when implemented
-    const variantName = variant === 'claude-desktop' ? 'Claude Desktop' : 'Claude Code'
+    const variantName = variant === 'claude-desktop' ? 'Claude Desktop' : 'Claude Code CLI'
     console.log(chalk.gray(`[${variantName} notification] Rules updated at ${rulePath}`))
   }
 

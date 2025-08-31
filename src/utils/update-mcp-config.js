@@ -91,9 +91,7 @@ async function updateMCPConfig() {
 
   // Ensure the path exists and is a directory
   if (!(fs.existsSync(options.path) && fs.statSync(options.path).isDirectory())) {
-    console.error(
-      `${colors.red}Error: Path does not exist or is not a directory: ${options.path}${colors.reset}`
-    )
+    console.error(`${colors.red}Error: Path does not exist or is not a directory: ${options.path}${colors.reset}`)
     process.exit(1)
   }
 
@@ -101,9 +99,7 @@ async function updateMCPConfig() {
   const detectedIDEs = ideConfig.detectIDEs(options.path)
 
   if (detectedIDEs.length === 0 && !options.force) {
-    console.error(
-      `${colors.yellow}Warning: No IDE configurations detected in the project.${colors.reset}`
-    )
+    console.error(`${colors.yellow}Warning: No IDE configurations detected in the project.${colors.reset}`)
     console.error('Use --force to update configuration anyway.')
     process.exit(1)
   }
@@ -133,7 +129,7 @@ async function updateMCPConfig() {
   // Then, check common rule directories if none found from IDEs
   if (ruleDirectories.length === 0) {
     const commonPaths = [
-      '.ai/rules',
+      '.vdk/rules',
       '.vscode/ai-rules',
       '.vscode-insiders/ai-rules',
       '.vscode-oss/ai-rules',
@@ -144,7 +140,7 @@ async function updateMCPConfig() {
       '.windsurf-next/rules',
       '.zed/ai-rules',
       '.idea/ai-rules',
-      '.github/copilot/rules'
+      '.github/copilot/rules',
     ]
 
     commonPaths.forEach((rulePath) => {
@@ -164,7 +160,7 @@ async function updateMCPConfig() {
 
     // If force option is provided, use the default path
     if (options.force) {
-      const defaultPath = path.join(options.path, '.ai/rules')
+      const defaultPath = path.join(options.path, '.vdk/rules')
       console.log(`${colors.yellow}Creating default rule directory: ${defaultPath}${colors.reset}`)
 
       if (!fs.existsSync(defaultPath)) {
@@ -185,9 +181,7 @@ async function updateMCPConfig() {
   let successCount = 0
 
   for (const ruleDir of ruleDirectories) {
-    log(
-      `Updating MCP configuration in ${colors.cyan}${ruleDir.path}${colors.reset} (from ${ruleDir.source})...`
-    )
+    log(`Updating MCP configuration in ${colors.cyan}${ruleDir.path}${colors.reset} (from ${ruleDir.source})...`)
 
     // Check for the MCP configuration file
     const mcpFilePath = path.join(ruleDir.path, '03-mcp-configuration.mdc')
@@ -196,7 +190,7 @@ async function updateMCPConfig() {
       log(`${colors.yellow}MCP configuration file not found: ${mcpFilePath}${colors.reset}`)
 
       // Create file from template if it doesn't exist
-      const templatePath = path.join(__dirname, '../templates/rules/03-mcp-configuration.mdc')
+      const templatePath = path.join(__dirname, '../templates/03-mcp-configuration.mdc')
 
       if (fs.existsSync(templatePath)) {
         log(`${colors.yellow}Creating from template...${colors.reset}`)
@@ -243,9 +237,7 @@ This file documents the Model Context Protocol (MCP) servers available in your e
       `${colors.green}${colors.bright}MCP configuration updated successfully in ${successCount} directories.${colors.reset}`
     )
   } else {
-    console.error(
-      `${colors.red}${colors.bright}Failed to update MCP configuration in any directory.${colors.reset}`
-    )
+    console.error(`${colors.red}${colors.bright}Failed to update MCP configuration in any directory.${colors.reset}`)
     process.exit(1)
   }
 }

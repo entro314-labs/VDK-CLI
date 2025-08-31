@@ -65,8 +65,7 @@ export async function detectArchitecturalPatterns(projectStructure) {
     patterns.push({
       name: 'Hexagonal Architecture (Ports & Adapters)',
       confidence: hexagonalConfidence,
-      description:
-        'The codebase implements a hexagonal architecture with clear ports and adapters.',
+      description: 'The codebase implements a hexagonal architecture with clear ports and adapters.',
       locations: findHexagonalComponents(projectStructure),
     })
   }
@@ -96,9 +95,7 @@ function detectMVCPattern(projectStructure) {
 
   // Check for explicit MVC folders
   const dirNames = Array.isArray(directories)
-    ? directories.map((dir) =>
-        path.basename(typeof dir === 'string' ? dir : dir.path || dir.name || '').toLowerCase()
-      )
+    ? directories.map((dir) => path.basename(typeof dir === 'string' ? dir : dir.path || dir.name || '').toLowerCase())
     : Object.keys(directories || {})
   const hasMvcFolders =
     dirNames.includes('models') &&
@@ -237,12 +234,8 @@ function detectMicroservices(projectStructure) {
   // Check for common microservice files
   const hasDockerfnile = files.some((file) => path.basename(file.path) === 'Dockerfile')
   const hasDockerCompose = files.some((file) => path.basename(file.path) === 'docker-compose.yml')
-  const hasK8s = files.some(
-    (file) => file.path.includes('kubernetes') || file.path.endsWith('.yaml')
-  )
-  const hasApiGateway = files.some(
-    (file) => file.path.includes('gateway') || file.path.includes('proxy')
-  )
+  const hasK8s = files.some((file) => file.path.includes('kubernetes') || file.path.endsWith('.yaml'))
+  const hasApiGateway = files.some((file) => file.path.includes('gateway') || file.path.includes('proxy'))
 
   if (hasDockerfnile) {
     score += 0.15
@@ -341,12 +334,7 @@ function detectEventDrivenArchitecture(projectStructure) {
   // Check for message broker configuration
   const hasBrokerConfig = files.some((file) => {
     const name = path.basename(file.path).toLowerCase()
-    return (
-      name.includes('kafka') ||
-      name.includes('rabbitmq') ||
-      name.includes('activemq') ||
-      name.includes('eventbus')
-    )
+    return name.includes('kafka') || name.includes('rabbitmq') || name.includes('activemq') || name.includes('eventbus')
   })
 
   if (hasBrokerConfig) {
@@ -401,9 +389,7 @@ function checkForMvcFrameworks(projectStructure) {
   // Check for framework-specific directory patterns
   const hasControllers = files.some((file) => file.path.includes('/controllers/'))
   const hasModels = files.some((file) => file.path.includes('/models/'))
-  const hasViews = files.some(
-    (file) => file.path.includes('/views/') || file.path.includes('/templates/')
-  )
+  const hasViews = files.some((file) => file.path.includes('/views/') || file.path.includes('/templates/'))
 
   // Basic MVC pattern detection based on directory structure
   return hasControllers && hasModels && hasViews
@@ -458,9 +444,7 @@ function checkForMvvmFrameworks(projectStructure) {
       file.path.includes('/view-model') ||
       file.path.toLowerCase().includes('viewmodel')
   )
-  const hasViews = files.some(
-    (file) => file.path.includes('/views/') || file.path.includes('/components/')
-  )
+  const hasViews = files.some((file) => file.path.includes('/views/') || file.path.includes('/components/'))
 
   return hasViewModels && hasViews
 }
@@ -475,9 +459,7 @@ function findMVCComponents(projectStructure) {
 
   return {
     models: files.filter((file) => file.path.includes('/models/')),
-    views: files.filter(
-      (file) => file.path.includes('/views/') || file.path.includes('/templates/')
-    ),
+    views: files.filter((file) => file.path.includes('/views/') || file.path.includes('/templates/')),
     controllers: files.filter((file) => file.path.includes('/controllers/')),
   }
 }
@@ -492,9 +474,7 @@ function findMVVMComponents(projectStructure) {
 
   return {
     models: files.filter((file) => file.path.includes('/models/')),
-    views: files.filter(
-      (file) => file.path.includes('/views/') || file.path.includes('/components/')
-    ),
+    views: files.filter((file) => file.path.includes('/views/') || file.path.includes('/components/')),
     viewModels: files.filter(
       (file) =>
         file.path.includes('/viewmodel') ||
@@ -513,18 +493,10 @@ function findCleanArchComponents(projectStructure) {
   const { files } = projectStructure
 
   return {
-    entities: files.filter(
-      (file) => file.path.includes('/entities/') || file.path.includes('/domain/')
-    ),
-    useCases: files.filter(
-      (file) => file.path.includes('/usecases/') || file.path.includes('/application/')
-    ),
-    adapters: files.filter(
-      (file) => file.path.includes('/adapters/') || file.path.includes('/interfaces/')
-    ),
-    frameworks: files.filter(
-      (file) => file.path.includes('/frameworks/') || file.path.includes('/infrastructure/')
-    ),
+    entities: files.filter((file) => file.path.includes('/entities/') || file.path.includes('/domain/')),
+    useCases: files.filter((file) => file.path.includes('/usecases/') || file.path.includes('/application/')),
+    adapters: files.filter((file) => file.path.includes('/adapters/') || file.path.includes('/interfaces/')),
+    frameworks: files.filter((file) => file.path.includes('/frameworks/') || file.path.includes('/infrastructure/')),
   }
 }
 
@@ -539,10 +511,7 @@ function findMicroserviceComponents(projectStructure) {
   return {
     services: files.filter((file) => file.path.includes('service')),
     infrastructure: files.filter(
-      (file) =>
-        file.path.includes('docker') ||
-        file.path.includes('kubernetes') ||
-        file.path.includes('k8s')
+      (file) => file.path.includes('docker') || file.path.includes('kubernetes') || file.path.includes('k8s')
     ),
     gateway: files.filter((file) => file.path.includes('gateway') || file.path.includes('proxy')),
   }
@@ -559,9 +528,7 @@ function findHexagonalComponents(projectStructure) {
   return {
     domain: files.filter((file) => file.path.includes('/domain/')),
     ports: files.filter((file) => file.path.includes('/ports/') || file.path.includes('port')),
-    adapters: files.filter(
-      (file) => file.path.includes('/adapters/') || file.path.includes('adapter')
-    ),
+    adapters: files.filter((file) => file.path.includes('/adapters/') || file.path.includes('adapter')),
   }
 }
 
@@ -575,14 +542,10 @@ function findEventDrivenComponents(projectStructure) {
 
   return {
     events: files.filter((file) => file.path.includes('/events/')),
-    publishers: files.filter(
-      (file) => file.path.includes('/publishers/') || file.path.includes('/dispatchers/')
-    ),
+    publishers: files.filter((file) => file.path.includes('/publishers/') || file.path.includes('/dispatchers/')),
     subscribers: files.filter(
       (file) =>
-        file.path.includes('/subscribers/') ||
-        file.path.includes('/consumers/') ||
-        file.path.includes('/listeners/')
+        file.path.includes('/subscribers/') || file.path.includes('/consumers/') || file.path.includes('/listeners/')
     ),
   }
 }

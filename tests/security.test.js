@@ -11,10 +11,7 @@ import { dangerousFilePaths, malformedCodeSamples } from './helpers/test-fixture
 describe('Security', () => {
   describe('Hub Client Security', () => {
     it('should use HTTPS URLs', async () => {
-      const hubClientSource = await fs.readFile(
-        path.join(global.TEST_ROOT, 'src/blueprints-client.js'),
-        'utf8'
-      )
+      const hubClientSource = await fs.readFile(path.join(global.TEST_ROOT, 'src/blueprints-client.js'), 'utf8')
 
       expect(hubClientSource).toContain('https://')
       expect(hubClientSource).not.toContain('http://')
@@ -143,7 +140,7 @@ describe('Security', () => {
 
   describe('CLI Argument Validation', () => {
     it('should validate command arguments', async () => {
-      const cliSource = await fs.readFile(path.join(global.TEST_ROOT, 'cli.js'), 'utf8')
+      const cliSource = await fs.readFile(path.join(global.TEST_ROOT, 'cli-new.js'), 'utf8')
 
       expect(cliSource).toContain('commander')
       expect(cliSource).toMatch(/(version|Version)/)

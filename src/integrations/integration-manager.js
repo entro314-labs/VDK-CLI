@@ -1,8 +1,15 @@
 /**
  * Integration Manager
  * ------------------
- * Central manager for all VDK integrations (IDEs, AI tools, platforms)
- * Handles discovery, registration, and coordination of integrations.
+ * Central manager for all VDK integrations with context platform priority system.
+ *
+ * Priority System:
+ * 1. CONTEXT PLATFORMS (HIGH): Cursor, Windsurf, Claude Code CLI
+ *    - Create their own context ecosystems (.cursor/rules/, .windsurf/rules/, .claude/)
+ *    - Always take priority over traditional IDEs
+ * 2. TRADITIONAL IDEs (MEDIUM): VS Code, JetBrains, etc.
+ *    - Use extensions/plugins for AI integration
+ *    - Only used as fallback when no context platforms detected
  */
 
 import chalk from 'chalk'
@@ -114,9 +121,7 @@ export class IntegrationManager {
         })
 
         if (process.env.VDK_DEBUG || verbose) {
-          console.warn(
-            chalk.yellow(`Failed to load integration module ${modulePath}: ${error.message}`)
-          )
+          console.warn(chalk.yellow(`Failed to load integration module ${modulePath}: ${error.message}`))
         }
       }
     }
@@ -260,14 +265,19 @@ export class IntegrationManager {
   }
 
   /**
-   * Get active integrations (high confidence)
-   * @returns {Array<Object>} Array of active integration results
+   * Get active integrations with context platform priority
+   * @returns {Array<Object>} Array of active integration results, prioritized
    */
   getActiveIntegrations() {
     if (!this.lastScan) {
       return []
     }
-    return this.lastScan.active.filter((integration) => integration.confidence === 'high')
+
+    const activeIntegrations = this.lastScan.active.filter(
+      (integration) => integration.confidence === 'high' || integration.confidence === 'medium'
+    )
+
+    return this.prioritizeContextPlatforms(activeIntegrations)
   }
 
   /**
@@ -452,5 +462,61 @@ export class IntegrationManager {
       summary: integration.getSummary(),
       detection,
     }
+  }
+
+  /**
+   * Get the primary detected IDE (highest confidence active integration)
+   * @returns {Object|null} Primary IDE detection or null
+   */
+  getPrimaryIDE() {
+    const activeIntegrations = this.getActiveIntegrations()
+    if (activeIntegrations.length === 0) {
+      return null
+    }
+
+    // Sort by confidence level, with project-specific config taking priority over environment detection
+    const confidenceOrder = { high: 3, medium: 2, low: 1, none: 0 }
+    const sorted = [...activeIntegrations].sort((a, b) => {
+      // First sort by confidence level
+      const confidenceDiff = confidenceOrder[b.confidence] - confidenceOrder[a.confidence]
+      if (confidenceDiff !== 0) {
+        return confidenceDiff
+      }
+
+      // Context platforms get priority regardless of confidence when equal
+      const aIsContextPlatform = this.isContextPlatform(a.name)
+      const bIsContextPlatform = this.isContextPlatform(b.name)
+
+      if (aIsContextPlatform && !bIsContextPlatform) return -1
+      if (bIsContextPlatform && !aIsContextPlatform) return 1
+
+      // If both are context platforms or both are traditional IDEs, keep original order
+      return 0
+    })
+
+    return sorted[0]
+  }
+
+  /**
+   * Prioritize context platforms over traditional IDEs
+   * @param {Array} integrations - Array of integration results
+   * @returns {Array} Prioritized integrations
+   */
+  prioritizeContextPlatforms(integrations) {
+    const contextPlatforms = integrations.filter((integration) => this.isContextPlatform(integration.name))
+    const traditionalIDEs = integrations.filter((integration) => !this.isContextPlatform(integration.name))
+
+    // Context platforms always come first, then traditional IDEs
+    return [...contextPlatforms, ...traditionalIDEs]
+  }
+
+  /**
+   * Check if an integration is a context-creating platform
+   * @param {string} name - Integration name
+   * @returns {boolean} True if context platform
+   */
+  isContextPlatform(name) {
+    const contextPlatforms = ['Cursor', 'Windsurf', 'Claude Code CLI']
+    return contextPlatforms.includes(name)
   }
 }

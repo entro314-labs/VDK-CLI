@@ -487,7 +487,18 @@
         },
         "ide": {
           "type": "string",
-          "enum": ["intellij", "webstorm", "pycharm", "phpstorm", "rubymine", "clion", "datagrip", "goland", "rider", "android-studio"],
+          "enum": [
+            "intellij",
+            "webstorm",
+            "pycharm",
+            "phpstorm",
+            "rubymine",
+            "clion",
+            "datagrip",
+            "goland",
+            "rider",
+            "android-studio"
+          ],
           "description": "Specific JetBrains IDE"
         },
         "plugin": {

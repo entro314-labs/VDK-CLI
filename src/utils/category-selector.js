@@ -13,15 +13,7 @@ export const COMMAND_CATEGORIES = {
   development: {
     name: 'Development',
     description: 'Core development tasks: bug fixes, migrations, project setup',
-    commands: [
-      'bug-fix',
-      'dependencies',
-      'integrate',
-      'migrate',
-      'onboard',
-      'project-setup',
-      'prototype',
-    ],
+    commands: ['bug-fix', 'dependencies', 'integrate', 'migrate', 'onboard', 'project-setup', 'prototype'],
     essential: true,
   },
   quality: {
@@ -62,16 +54,7 @@ export const COMMAND_CATEGORIES = {
   meta: {
     name: 'Documentation & Analysis',
     description: 'Documentation, research, visualization, and API management',
-    commands: [
-      'api',
-      'changelog',
-      'diagram',
-      'document',
-      'explain',
-      'research',
-      'summary',
-      'visualize',
-    ],
+    commands: ['api', 'changelog', 'diagram', 'document', 'explain', 'research', 'summary', 'visualize'],
     essential: false,
   },
   security: {
@@ -133,8 +116,7 @@ export function getSmartCategories(projectContext) {
   if (
     projectContext.projectStructure?.hasCI ||
     projectContext.techStack?.libraries?.some(
-      (lib) =>
-        lib.includes('github-actions') || lib.includes('gitlab-ci') || lib.includes('jenkins')
+      (lib) => lib.includes('github-actions') || lib.includes('gitlab-ci') || lib.includes('jenkins')
     )
   ) {
     smartCategories.push('workflow')
@@ -164,13 +146,10 @@ export async function selectCategoriesInteractively(projectContext) {
   intro(chalk.blue('🎯 VDK Command Category Selection'))
 
   // Check if this is a demo mode (when commands aren't actually available)
-  const isDemoMode =
-    !process.env.VDK_GITHUB_TOKEN || process.env.VDK_GITHUB_TOKEN.includes('expired')
+  const isDemoMode = !process.env.VDK_GITHUB_TOKEN || process.env.VDK_GITHUB_TOKEN.includes('expired')
 
   if (isDemoMode) {
-    console.log(
-      chalk.yellow('📋 Interactive Selection Demo (commands not available due to authentication)')
-    )
+    console.log(chalk.yellow('📋 Interactive Selection Demo (commands not available due to authentication)'))
     console.log(chalk.dim('This shows what the selection process would look like:\n'))
   }
 
@@ -178,15 +157,9 @@ export async function selectCategoriesInteractively(projectContext) {
     // Show project context
     if (projectContext.techStack) {
       console.log(chalk.green('📊 Detected Project Context:'))
-      console.log(
-        `   Language: ${projectContext.techStack.primaryLanguages?.join(', ') || 'Unknown'}`
-      )
-      console.log(
-        `   Framework: ${projectContext.techStack.frameworks?.join(', ') || 'None detected'}`
-      )
-      console.log(
-        `   Testing: ${projectContext.techStack.testingFrameworks?.join(', ') || 'None detected'}`
-      )
+      console.log(`   Language: ${projectContext.techStack.primaryLanguages?.join(', ') || 'Unknown'}`)
+      console.log(`   Framework: ${projectContext.techStack.frameworks?.join(', ') || 'None detected'}`)
+      console.log(`   Testing: ${projectContext.techStack.testingFrameworks?.join(', ') || 'None detected'}`)
       console.log('')
     }
 
@@ -239,10 +212,7 @@ async function selectPreset() {
   const presetOptions = Object.entries(PRESETS).map(([key, preset]) => ({
     value: key,
     label: `${preset.name} - ${preset.description}`,
-    hint:
-      preset.categories.length > 0
-        ? `Categories: ${preset.categories.join(', ')}`
-        : 'Smart selection',
+    hint: preset.categories.length > 0 ? `Categories: ${preset.categories.join(', ')}` : 'Smart selection',
   }))
 
   const selectedPreset = await select({

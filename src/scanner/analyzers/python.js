@@ -192,10 +192,7 @@ function detectPythonPatterns(content, analysis) {
   }
   if (
     content.includes('list comprehension') ||
-    (content.includes('[') &&
-      content.includes('for') &&
-      content.includes('in') &&
-      content.includes(']'))
+    (content.includes('[') && content.includes('for') && content.includes('in') && content.includes(']'))
   ) {
     functionalCount++
   }

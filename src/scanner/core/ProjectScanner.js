@@ -157,9 +157,7 @@ export class ProjectScanner {
           }
         } catch (error) {
           if (this.verbose) {
-            console.warn(
-              chalk.yellow(`Warning: Error analyzing file ${filePath}: ${error.message}`)
-            )
+            console.warn(chalk.yellow(`Warning: Error analyzing file ${filePath}: ${error.message}`))
           }
         }
       }
@@ -335,14 +333,7 @@ export class ProjectScanner {
 
     // Documentation files
     if (
-      [
-        'readme.md',
-        'license',
-        'license.md',
-        'license.txt',
-        'contributing.md',
-        'changelog.md',
-      ].includes(fileName) ||
+      ['readme.md', 'license', 'license.md', 'license.txt', 'contributing.md', 'changelog.md'].includes(fileName) ||
       ext === '.md'
     ) {
       return 'documentation'

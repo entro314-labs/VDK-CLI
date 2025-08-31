@@ -8,14 +8,23 @@ import { validateCommand } from '../../utils/schema-validator.js'
 import { RuleAdapter } from './RuleAdapter.js'
 
 /**
- * Enhanced Claude Code Adapter
+ * Enhanced Claude Code CLI Adapter - AI SERVICE ADAPTATION ONLY
  *
- * Leverages Claude Code's advanced features including:
- * - Hierarchical memory management with import system
- * - Sophisticated slash command generation
- * - MCP server integration patterns
- * - Team memory synchronization
- * - Native Claude Code file structure
+ * CLEAR RESPONSIBILITY SEPARATION:
+ *
+ * claude-code-integration.js (IDE DETECTION):
+ * - Detects Claude Code CLI installation and project usage
+ * - Manages .claude directory structure and IDE configuration
+ * - Handles Claude Code CLI specific IDE features and settings
+ *
+ * ClaudeCodeAdapter.js (AI SERVICE ADAPTATION):
+ * - Transforms VDK rules into Claude AI service formats
+ * - Repository-based content fetching with relevance scoring
+ * - Enhanced memory hierarchy generation for AI context
+ * - Advanced MCP server configuration for AI tools
+ * - VDK ecosystem integration for AI workflows
+ *
+ * This eliminates architectural conflicts and creates single responsibility per class.
  */
 export class ClaudeCodeAdapter extends RuleAdapter {
   constructor(options = {}) {
@@ -26,50 +35,68 @@ export class ClaudeCodeAdapter extends RuleAdapter {
   }
 
   /**
-   * Enhanced Claude Code adaptation with memory hierarchy
+   * Enhanced Claude Code CLI adaptation - extends base RuleAdapter functionality
    */
-  async adaptForClaude(rules, projectContext, categoryFilter = null) {
-    console.log('🧠 Generating enhanced Claude Code memory hierarchy...')
+  async adaptForClaude(rules, projectContext, platformConfig = {}, categoryFilter = null) {
+    console.log('🧠 Generating enhanced Claude Code CLI memory hierarchy...')
 
-    const adapted = {
-      files: [],
-      directories: [this.claudeConfigPath],
+    // First, get the base adaptation from parent class (includes platform config handling)
+    const baseAdaptation = await super.adaptForClaude(rules, projectContext, platformConfig)
+
+    // Then enhance with specialized Claude Code CLI features
+    const enhancements = {
       memoryHierarchy: await this.generateMemoryHierarchy(rules, projectContext, categoryFilter),
       slashCommands: await this.generateSlashCommands(rules, projectContext, categoryFilter),
       mcpIntegrations: await this.generateMcpIntegrations(rules, projectContext),
       settings: await this.generateClaudeSettings(rules, projectContext),
     }
 
-    // Ensure .claude directory exists
-    await fs.ensureDir(this.claudeConfigPath)
-    await fs.ensureDir(path.join(this.claudeConfigPath, 'commands'))
-
-    // Generate memory files
-    for (const memory of adapted.memoryHierarchy) {
-      await fs.writeFile(memory.path, memory.content)
-      adapted.files.push(memory.path)
+    // Merge base adaptation with enhancements
+    const adapted = {
+      files: [...baseAdaptation.files],
+      directories: [...baseAdaptation.directories, this.claudeConfigPath],
+      ...enhancements,
     }
 
-    // Generate slash commands
+    // Add enhanced memory files (avoid duplicates with base adapter)
+    const enhancedMemoryFiles = adapted.memoryHierarchy.filter(
+      (memory) => !adapted.files.some((file) => path.basename(file.path || file) === path.basename(memory.path))
+    )
+
+    for (const memory of enhancedMemoryFiles) {
+      adapted.files.push({
+        path: memory.path,
+        content: memory.content,
+        type: 'memory',
+      })
+    }
+
+    // Add slash commands (these are unique to ClaudeCodeAdapter)
     for (const command of adapted.slashCommands) {
       const commandPath = path.join(this.claudeConfigPath, 'commands', `${command.name}.md`)
-      await fs.writeFile(commandPath, command.content)
-      adapted.files.push(commandPath)
+      adapted.files.push({
+        path: commandPath,
+        content: command.content,
+        type: 'command',
+      })
     }
 
-    // Generate settings
+    // Add settings
     if (adapted.settings) {
       const settingsPath = path.join(this.claudeConfigPath, 'settings.json')
-      await fs.writeFile(settingsPath, JSON.stringify(adapted.settings, null, 2))
-      adapted.files.push(settingsPath)
+      adapted.files.push({
+        path: settingsPath,
+        content: JSON.stringify(adapted.settings, null, 2),
+        type: 'settings',
+      })
     }
 
-    console.log(`✅ Generated ${adapted.files.length} Claude Code files`)
+    console.log(`✅ Generated ${adapted.files.length} Claude Code CLI files`)
     return adapted
   }
 
   /**
-   * Generate hierarchical memory structure using CORRECT Claude Code format
+   * Generate hierarchical memory structure using CORRECT Claude Code CLI format
    */
   async generateMemoryHierarchy(rules, projectContext, categoryFilter = null) {
     const memories = []
@@ -79,7 +106,7 @@ export class ClaudeCodeAdapter extends RuleAdapter {
     let technologyRules = []
     if (this.ruleGenerator?.fetchFromRepository) {
       try {
-        console.log('🔍 Fetching technology-specific rules for Claude Code...')
+        console.log('🔍 Fetching technology-specific rules for Claude Code CLI...')
         // Use the full projectContext as analysisData since it contains technologyData
         technologyRules = await this.ruleGenerator.fetchFromRepository(
           projectContext,
@@ -96,12 +123,8 @@ export class ClaudeCodeAdapter extends RuleAdapter {
       }
     }
 
-    // Main project memory with CORRECT Claude Code structure and technology rules
-    const mainMemory = await this.generateCorrectClaudeMainMemory(
-      rules,
-      projectContext,
-      technologyRules
-    )
+    // Main project memory with CORRECT Claude Code CLI structure and technology rules
+    const mainMemory = await this.generateCorrectClaudeMainMemory(rules, projectContext, technologyRules)
     memories.push({
       path: path.join(this.projectPath, 'CLAUDE.md'),
       content: mainMemory,
@@ -113,7 +136,7 @@ export class ClaudeCodeAdapter extends RuleAdapter {
   }
 
   /**
-   * Generate CORRECT Claude Code memory structure as per report findings
+   * Generate CORRECT Claude Code CLI memory structure as per report findings
    */
   async generateCorrectClaudeMainMemory(_rules, projectContext, technologyRules = []) {
     const projectName = projectContext.name || path.basename(this.projectPath)
@@ -127,19 +150,16 @@ export class ClaudeCodeAdapter extends RuleAdapter {
     const testFramework = techData.testFramework || 'jest'
 
     // Extract technology-specific guidelines from remote rules
-    const technologyGuidelines = await this.extractTechnologyGuidelines(
-      technologyRules,
-      projectContext
-    )
+    const technologyGuidelines = await this.extractTechnologyGuidelines(technologyRules, projectContext)
 
-    return `# ${projectName} - Claude Code Memory
+    return `# ${projectName} - Claude Code CLI Memory
 
 ## Project Overview
 
-This is a **${this.determineProjectType(frameworks, languages)}** project.
+This is a **${super.determineProjectType(projectContext)}** project.
 
 ### Key Information
-- **Project Type**: ${this.determineProjectType(frameworks, languages)}
+- **Project Type**: ${super.determineProjectType(projectContext)}
 - **Primary Language**: ${languages.join(', ') || 'Not detected'}
 - **Frameworks**: ${frameworks.join(', ') || 'Not detected'}
 - **Libraries**: ${libraries.slice(0, 3).join(', ') || 'Standard libraries'}
@@ -165,7 +185,7 @@ This is a **${this.determineProjectType(frameworks, languages)}** project.
 - Package manager: ${packageManager}
 - Build tool: ${buildTool}
 - Primary IDE: ${await this.detectPrimaryIDE(projectContext)}
-- AI Assistant: Claude Code
+- AI Assistant: Claude Code CLI
 
 ### Development Commands
 - \`${await this.detectDevCommand(projectContext)}\` - Start development server
@@ -191,41 +211,12 @@ ${technologyGuidelines}
 - Ask for clarification when requirements are unclear
 
 ---
-*Generated by VDK CLI - Enhanced for Claude Code*
+*Generated by VDK CLI - Enhanced for Claude Code CLI*
 *Technology rules: ${technologyRules.length} rules integrated*`
   }
 
-  /**
-   * Determine project type based on frameworks and languages
-   */
-  determineProjectType(frameworks, languages) {
-    // Prioritize Astro detection first since it's more specific
-    if (frameworks.includes('Astro') && frameworks.includes('Starlight')) {
-      return 'Astro Starlight Documentation Site'
-    }
-    if (frameworks.includes('Astro')) {
-      return 'Astro Application'
-    }
-    if (frameworks.includes('Next.js') && frameworks.includes('Supabase')) {
-      return 'Next.js + Supabase Full-Stack Application'
-    }
-    if (frameworks.includes('Next.js')) {
-      return 'Next.js Application'
-    }
-    if (frameworks.includes('React')) {
-      return 'React Application'
-    }
-    if (frameworks.includes('Vue.js')) {
-      return 'Vue.js Application'
-    }
-    if (languages.includes('typescript')) {
-      return 'TypeScript Application'
-    }
-    if (languages.includes('javascript')) {
-      return 'JavaScript Application'
-    }
-    return 'Web Application'
-  }
+  // determineProjectType method removed - now uses parent RuleAdapter.determineProjectType()
+  // which includes proper CLI detection logic
 
   /**
    * Extract technology-specific guidelines from remote rules
@@ -238,9 +229,7 @@ ${technologyGuidelines}
 - Use project-specific conventions`
     }
 
-    console.log(
-      `🔍 Processing ${technologyRules.length} technology rules for guidelines extraction`
-    )
+    console.log(`🔍 Processing ${technologyRules.length} technology rules for guidelines extraction`)
     if (this.verbose) {
       technologyRules.forEach((rule) => {
         console.log(`   📄 Rule: ${rule.name}, Content length: ${rule.content?.length || 0}`)
@@ -275,10 +264,7 @@ ${technologyGuidelines}
       }
 
       const frameworkRules = technologyRules.filter((rule) =>
-        searchTerms.some(
-          (term) =>
-            rule.name.toLowerCase().includes(term) || rule.path?.toLowerCase().includes(term)
-        )
+        searchTerms.some((term) => rule.name.toLowerCase().includes(term) || rule.path?.toLowerCase().includes(term))
       )
 
       if (frameworkRules.length > 0) {
@@ -332,10 +318,7 @@ ${technologyGuidelines}
       }
 
       const libraryRules = technologyRules.filter((rule) =>
-        searchTerms.some(
-          (term) =>
-            rule.name.toLowerCase().includes(term) || rule.path?.toLowerCase().includes(term)
-        )
+        searchTerms.some((term) => rule.name.toLowerCase().includes(term) || rule.path?.toLowerCase().includes(term))
       )
 
       if (libraryRules.length > 0) {
@@ -353,8 +336,7 @@ ${technologyGuidelines}
 
     // Add core/general rules
     const coreRules = technologyRules.filter(
-      (rule) =>
-        rule.path?.includes('core/') || rule.name.includes('core') || rule.name.includes('general')
+      (rule) => rule.path?.includes('core/') || rule.name.includes('core') || rule.name.includes('general')
     )
 
     if (coreRules.length > 0) {
@@ -522,12 +504,10 @@ ${technologyGuidelines}
     return (
       mobilePatternsLower.includes('expo-font') ||
       mobilePatternsLower.includes('react-native') ||
-      (mobilePatternsLower.includes('usecolorscheme') &&
-        mobilePatternsLower.includes('react-native')) ||
+      (mobilePatternsLower.includes('usecolorscheme') && mobilePatternsLower.includes('react-native')) ||
       mobilePatternsLower.includes('expo router') ||
       mobilePatternsLower.includes('@expo/') ||
-      (mobilePatternsLower.includes('error boundaries') &&
-        mobilePatternsLower.includes('navigation tree')) ||
+      (mobilePatternsLower.includes('error boundaries') && mobilePatternsLower.includes('navigation tree')) ||
       (mobilePatternsLower.includes('ios') && mobilePatternsLower.includes('android')) ||
       (mobilePatternsLower.includes('mobile') &&
         (mobilePatternsLower.includes('app') || mobilePatternsLower.includes('device'))) ||
@@ -654,7 +634,7 @@ ${technologyGuidelines}
   }
 
   /**
-   * Generate CORRECT Claude Code settings.json with permissions system
+   * Generate CORRECT Claude Code CLI settings.json with permissions system
    */
   async generateClaudeSettings(_rules, projectContext) {
     const packageManager = projectContext.techStack?.packageManager || 'npm'
@@ -675,13 +655,7 @@ ${technologyGuidelines}
         'Glob(**/*.tsx)',
         'Grep(*)',
       ],
-      deniedTools: [
-        'Bash(rm -rf:*)',
-        'Bash(sudo:*)',
-        'Edit(.env*)',
-        'Write(node_modules/**/*)',
-        'Write(.git/**/*)',
-      ],
+      deniedTools: ['Bash(rm -rf:*)', 'Bash(sudo:*)', 'Edit(.env*)', 'Write(node_modules/**/*)', 'Write(.git/**/*)'],
       env: {
         BASH_DEFAULT_TIMEOUT_MS: this.getOptimalTimeout(projectContext),
         PROJECT_NAME: projectContext.name || path.basename(this.projectPath),
@@ -706,7 +680,7 @@ ${technologyGuidelines}
     return settings
   }
 
-  // Helper methods for Claude Code structure
+  // Helper methods for Claude Code CLI structure
   detectIndentation(projectContext) {
     if (projectContext.techStack?.languages?.includes('Python')) {
       return '4-space'
@@ -757,26 +731,26 @@ ${technologyGuidelines}
       const ideIndicators = {
         'VS Code': ['.vscode/', '.vscode/settings.json', '.vscode/launch.json'],
         'VS Code Insiders': ['.vscode-insiders/', '.vscode-insiders/settings.json'],
-        'VSCodium': ['.vscode-oss/', '.vscode-oss/settings.json'],
-        'Cursor': ['.cursor/', 'cursor.json', '.cursorrules'],
-        'Windsurf': ['.windsurf/', '.windsurfrules.md', '.codeium/'],
+        VSCodium: ['.vscode-oss/', '.vscode-oss/settings.json'],
+        Cursor: ['.cursor/', 'cursor.json', '.cursorrules'],
+        Windsurf: ['.windsurf/', '.windsurfrules.md', '.codeium/'],
         'Windsurf Next': ['.windsurf-next/', '.windsurf-next/config.json'],
-        'Claude Code': ['.claude/', '.claude/settings.json', '.claude/commands/'],
+        'Claude Code CLI': ['.claude/', '.claude/settings.json', '.claude/commands/'],
         'Claude Desktop': ['.claude-desktop/', '.claude-desktop/config.json'],
-        'Zed': ['.zed/', 'zed.json', '.zed/settings.json'],
+        Zed: ['.zed/', 'zed.json', '.zed/settings.json'],
         'IntelliJ IDEA': ['.idea/', '.idea/modules.xml', 'src/main/java/'],
-        'WebStorm': ['.idea/', '.idea/webServers.xml', 'package.json'],
-        'PyCharm': ['.idea/', '.idea/misc.xml', 'requirements.txt'],
-        'PHPStorm': ['.idea/', '.idea/php.xml', 'composer.json'],
-        'RubyMine': ['.idea/', '.idea/runConfigurations.xml', 'Gemfile'],
-        'CLion': ['.idea/', 'CMakeLists.txt', '.idea/cmake.xml'],
-        'DataGrip': ['.idea/', '.idea/dataSources.xml'],
-        'GoLand': ['.idea/', 'go.mod', '.idea/go.xml'],
-        'Rider': ['.idea/', '*.sln', '.idea/.idea.*.dir/'],
+        WebStorm: ['.idea/', '.idea/webServers.xml', 'package.json'],
+        PyCharm: ['.idea/', '.idea/misc.xml', 'requirements.txt'],
+        PHPStorm: ['.idea/', '.idea/php.xml', 'composer.json'],
+        RubyMine: ['.idea/', '.idea/runConfigurations.xml', 'Gemfile'],
+        CLion: ['.idea/', 'CMakeLists.txt', '.idea/cmake.xml'],
+        DataGrip: ['.idea/', '.idea/dataSources.xml'],
+        GoLand: ['.idea/', 'go.mod', '.idea/go.xml'],
+        Rider: ['.idea/', '*.sln', '.idea/.idea.*.dir/'],
         'Android Studio': ['.idea/', 'build.gradle', 'app/build.gradle'],
         'JetBrains (Generic)': ['.idea/', '*.iml'],
         'GitHub Copilot': ['.github/copilot/', '.github/copilot/config.json'],
-        'Generic AI': ['.ai/', '.ai/config.json', '.ai/rules/']
+        'Generic AI': ['.vdk/', '.vdk/config.json', '.vdk/rules/'],
       }
 
       for (const [ide, indicators] of Object.entries(ideIndicators)) {
@@ -937,11 +911,7 @@ ${technologyGuidelines}
     const frameworks = techData.frameworks || []
 
     // Check for turbopack in Next.js projects
-    if (
-      frameworks.some(
-        (fw) => fw.toLowerCase().includes('next.js') || fw.toLowerCase().includes('nextjs')
-      )
-    ) {
+    if (frameworks.some((fw) => fw.toLowerCase().includes('next.js') || fw.toLowerCase().includes('nextjs'))) {
       const scripts = await this.extractPackageScripts(projectContext)
       // Check if dev script uses --turbo flag
       if (scripts.dev?.includes('--turbo')) {
@@ -1024,7 +994,7 @@ ${this.generateFrameworkSpecificGuidelines(projectContext)}`
     const primaryLanguages = projectContext.techStack?.primaryLanguages || ['JavaScript']
     const frameworks = projectContext.techStack?.frameworks || []
 
-    return `# ${projectName} - Claude Code Memory
+    return `# ${projectName} - Claude Code CLI Memory
 
 ## Project Overview
 ${projectContext.description || `${projectName} is a ${frameworks.join(', ') || primaryLanguages.join(', ')} project.`}
@@ -1062,7 +1032,7 @@ ${await this.generateCodingStandards(rules, projectContext)}
 @~/.claude/my-project-preferences.md
 
 ---
-*Generated by VDK CLI - Enhanced Claude Code Integration*
+*Generated by VDK CLI - Enhanced Claude Code CLI Integration*
 *Last updated: ${new Date().toISOString().split('T')[0]}*`
   }
 
@@ -1104,7 +1074,7 @@ ${await this.generatePerformancePatterns(rules, projectContext)}
    * Generate CLAUDE-integrations.md for MCP and tool integrations
    */
   async generateIntegrationsMemory(rules, projectContext) {
-    return `# Claude Code Integrations
+    return `# Claude Code CLI Integrations
 
 ## MCP Server Configuration
 ${await this.generateMcpServerConfig(rules, projectContext)}
@@ -1127,7 +1097,7 @@ ${await this.generateHookIntegration(rules, projectContext)}
 ${await this.generateExternalServices(rules, projectContext)}
 
 ---
-*This file manages Claude Code's integration with external tools and services*`
+*This file manages Claude Code CLI's integration with external tools and services*`
   }
 
   /**
@@ -1140,7 +1110,7 @@ ${await this.generateExternalServices(rules, projectContext)}
         const remoteCommands = await this.ruleGenerator.fetchFromRepository(
           projectContext,
           'commands',
-          'claude-code',
+          null, // No platform filter - commands are organized by categories
           categoryFilter
         )
 
@@ -1156,204 +1126,19 @@ ${await this.generateExternalServices(rules, projectContext)}
       console.log(chalk.gray('   • Check your GitHub token: VDK_GITHUB_TOKEN in .env.local'))
       console.log(chalk.gray('   • Get a token from: https://github.com/settings/tokens'))
 
-      // Generate fallback commands based on detected technologies
-      return this.generateFallbackCommands(rules, projectContext, categoryFilter)
+      // Return empty array as fallback
+      return []
     } catch (error) {
-      console.log(`⚠️ Failed to fetch remote commands: ${error.message}`)
-      if (error.message.includes('401')) {
-        console.log(chalk.yellow('💡 GitHub authentication failed. To enable command fetching:'))
-        console.log(chalk.gray('   • Add VDK_GITHUB_TOKEN=your_token to .env.local'))
-        console.log(chalk.gray('   • Get a token from: https://github.com/settings/tokens'))
-        console.log(chalk.gray('   • Token needs "public_repo" access for public repositories'))
-      }
-
-      // Generate fallback commands even when remote fetch fails
-      return this.generateFallbackCommands(rules, projectContext, categoryFilter)
+      console.error('Error fetching slash commands:', error.message)
+      return []
     }
   }
 
   /**
-   * Generate fallback commands when remote fetch fails
-   * @param {Array} rules - Available rules
-   * @param {Object} projectContext - Project context
-   * @param {Object} categoryFilter - Category filter
-   * @returns {Array} Fallback commands
-   */
-  generateFallbackCommands(_rules, projectContext, categoryFilter = null) {
-    const commands = []
-    const frameworks = projectContext.techStack?.frameworks || []
-    const languages = projectContext.techStack?.primaryLanguages || []
-    const isAstroProject = frameworks.some((fw) => fw.toLowerCase().includes('astro'))
-    const isNextJSProject = frameworks.some((fw) => fw.toLowerCase().includes('next'))
-    const isContentProject = frameworks.some(
-      (fw) => fw.toLowerCase().includes('starlight') || fw.toLowerCase().includes('content')
-    )
-
-    // Core development commands (always included)
-    commands.push({
-      name: 'review-code',
-      description: 'Comprehensive code review and analysis',
-      content: `Perform a thorough code review focusing on:
-- Code quality and best practices
-- Performance optimizations
-- Security considerations
-- Architecture and design patterns
-- Testing coverage
-
-Provide specific, actionable feedback with examples.`,
-    })
-
-    commands.push({
-      name: 'debug-issue',
-      description: 'Debug and troubleshoot issues',
-      content: `Help debug the current issue by:
-- Analyzing error messages and stack traces
-- Identifying potential root causes
-- Suggesting debugging strategies
-- Providing step-by-step troubleshooting
-
-Ask for relevant code, logs, or error details if needed.`,
-    })
-
-    commands.push({
-      name: 'optimize-performance',
-      description: 'Analyze and optimize performance',
-      content: `Analyze performance bottlenecks and provide optimization recommendations:
-- Code performance analysis
-- Bundle size optimization
-- Runtime performance improvements
-- Best practices for ${frameworks[0] || 'the current stack'}
-
-Focus on measurable improvements with implementation examples.`,
-    })
-
-    // Astro-specific commands
-    if (isAstroProject) {
-      commands.push({
-        name: 'create-astro-component',
-        description: 'Create new Astro component following project patterns',
-        content: `Create a new Astro component with:
-- Proper TypeScript typing
-- Scoped CSS styling
-- Props validation
-- SEO optimization if needed
-- Component documentation
-
-Follow established project patterns for consistency.
-
-## Arguments
-- Component name (required): $ARGUMENTS
-- Component type: page|layout|ui (default: ui)`,
-      })
-
-      if (isContentProject) {
-        commands.push({
-          name: 'create-content-page',
-          description: 'Create new content page with proper frontmatter',
-          content: `Create a new content page with:
-- Proper frontmatter structure
-- SEO metadata
-- Navigation integration
-- Content structure following site patterns
-
-## Arguments
-- Page title (required): $ARGUMENTS
-- Content category: guide|reference|tutorial (default: guide)`,
-        })
-
-        commands.push({
-          name: 'update-navigation',
-          description: 'Update site navigation and content structure',
-          content: `Update the site navigation to include new content:
-- Add to sidebar configuration
-- Update content collections
-- Ensure proper ordering
-- Maintain consistent navigation patterns
-
-Review current navigation structure and suggest improvements.`,
-        })
-      }
-    }
-
-    // Next.js specific commands
-    if (isNextJSProject) {
-      commands.push({
-        name: 'create-nextjs-page',
-        description: 'Create new Next.js page with App Router',
-        content: `Create a new Next.js page using App Router:
-- Server Component by default
-- Proper TypeScript typing
-- SEO metadata
-- Error boundaries
-- Loading states
-
-## Arguments
-- Page path (required): $ARGUMENTS
-- Page type: static|dynamic|api (default: static)`,
-      })
-
-      commands.push({
-        name: 'create-api-route',
-        description: 'Create new API route with validation',
-        content: `Create a new API route with:
-- Request/response typing
-- Input validation
-- Error handling
-- Rate limiting considerations
-- Proper HTTP status codes
-
-## Arguments
-- Route path (required): $ARGUMENTS
-- HTTP method: GET|POST|PUT|DELETE (default: GET)`,
-      })
-    }
-
-    // TypeScript specific commands
-    if (languages.includes('typescript') || languages.includes('TypeScript')) {
-      commands.push({
-        name: 'improve-types',
-        description: 'Improve TypeScript types and interfaces',
-        content: `Analyze and improve TypeScript usage:
-- Add missing type annotations
-- Improve type safety
-- Reduce any usage
-- Create utility types where beneficial
-- Improve interface design
-
-Focus on making types more precise and maintainable.`,
-      })
-    }
-
-    // Filter by categories if specified
-    if (categoryFilter?.categories) {
-      const allowedCategories = categoryFilter.categories
-      return commands.filter((cmd) => {
-        // Map commands to categories (simplified)
-        const commandCategories = {
-          'review-code': ['development', 'quality'],
-          'debug-issue': ['development'],
-          'optimize-performance': ['development', 'quality'],
-          'create-astro-component': ['development'],
-          'create-content-page': ['development', 'workflow'],
-          'update-navigation': ['workflow'],
-          'create-nextjs-page': ['development'],
-          'create-api-route': ['development'],
-          'improve-types': ['development', 'quality'],
-        }
-
-        const cmdCategories = commandCategories[cmd.name] || ['development']
-        return cmdCategories.some((cat) => allowedCategories.includes(cat))
-      })
-    }
-
-    return commands
-  }
-
-  /**
-   * Transform repository templates into Claude Code command format
+   * Transform repository templates into Claude Code CLI command format
    * @param {Array} templates - Templates from repository
    * @param {Object} projectContext - Project context
-   * @returns {Array} Commands in Claude Code format
+   * @returns {Array} Commands in Claude Code CLI format
    */
   transformTemplatesIntoCommands(templates, _projectContext) {
     const commands = []
@@ -1387,7 +1172,7 @@ Focus on making types more precise and maintainable.`,
    */
   getCategoryFromPath(path) {
     const pathParts = path.split('/')
-    // Path structure: .ai/commands/claude-code/category/command.md
+    // Path structure: blueprints/vdk/commands/claude-code/category/command.md
     if (pathParts.length >= 4) {
       return pathParts[3] // Get the category directory name
     }
@@ -1403,7 +1188,7 @@ Focus on making types more precise and maintainable.`,
 
     try {
       // Fetch command categories for the platform
-      const response = await fetch(`${VDK_RULES_REPO_API_URL}/contents/.ai/commands/${platform}`)
+      const response = await fetch(`${VDK_RULES_REPO_API_URL}/contents/blueprints/vdk/commands/${platform}`)
       if (!response.ok) {
         return []
       }
@@ -1448,7 +1233,7 @@ Focus on making types more precise and maintainable.`,
   }
 
   /**
-   * Parse Claude Code command frontmatter
+   * Parse Claude Code CLI command frontmatter
    */
   parseClaudeCodeCommand(content) {
     try {
@@ -1498,7 +1283,7 @@ Focus on making types more precise and maintainable.`,
   }
 
   /**
-   * Validate Claude Code command against the official schema
+   * Validate Claude Code CLI command against the official schema
    */
   async validateClaudeCodeCommand(commandData) {
     if (!commandData) {
@@ -1580,101 +1365,7 @@ Focus on making types more precise and maintainable.`,
   }
 
   /**
-   * Generate minimal fallback commands if remote fetch fails
-   * Following Claude Code command schema format
-   */
-  generateDefaultCommands(projectContext) {
-    const frameworks = projectContext.techStack?.frameworks || []
-    const languages = projectContext.techStack?.primaryLanguages || ['JavaScript']
-
-    return [
-      {
-        name: 'create-component',
-        content: this.generateClaudeCodeCommand({
-          id: 'create-component',
-          name: 'Create Component',
-          description: 'Create a new component following project patterns and conventions',
-          target: 'claude-code',
-          commandType: 'slash',
-          version: '1.0.0',
-          scope: 'project',
-          claudeCode: {
-            slashCommand: '/create-component',
-            arguments: {
-              supports: true,
-              placeholder: '$ARGUMENTS',
-              examples: ['Button', 'UserProfile', 'Modal'],
-            },
-            fileReferences: {
-              supports: true,
-              autoInclude: ['CLAUDE.md', 'package.json'],
-            },
-          },
-          permissions: {
-            allowedTools: ['Read', 'Write', 'Edit'],
-            requiredApproval: false,
-          },
-          examples: [
-            {
-              usage: '/create-component Button',
-              description: 'Create a Button component with proper TypeScript types',
-              context: 'When building reusable UI components',
-              expectedOutcome: 'Component file with tests and proper exports',
-            },
-          ],
-          category: 'development',
-          tags: ['component', 'react', 'typescript'],
-          frameworks,
-          languages,
-        }),
-        category: 'workflow',
-        source: 'fallback',
-      },
-      {
-        name: 'review-code',
-        content: this.generateClaudeCodeCommand({
-          id: 'review-code',
-          name: 'Code Review',
-          description: 'Perform comprehensive code review focusing on quality and best practices',
-          target: 'claude-code',
-          commandType: 'slash',
-          version: '1.0.0',
-          scope: 'project',
-          claudeCode: {
-            slashCommand: '/review-code',
-            arguments: {
-              supports: false,
-            },
-            fileReferences: {
-              supports: true,
-              autoInclude: ['CLAUDE.md'],
-            },
-          },
-          permissions: {
-            allowedTools: ['Read', 'Bash(git:*)'],
-            requiredApproval: false,
-          },
-          examples: [
-            {
-              usage: '/review-code',
-              description: 'Review current changes for code quality',
-              context: 'Before committing changes',
-              expectedOutcome: 'Detailed review with improvement suggestions',
-            },
-          ],
-          category: 'analysis',
-          tags: ['review', 'quality', 'best-practices'],
-          frameworks,
-          languages,
-        }),
-        category: 'quality',
-        source: 'fallback',
-      },
-    ]
-  }
-
-  /**
-   * Generate Claude Code command content from schema-compliant data
+   * Generate Claude Code CLI command content from schema-compliant data
    */
   generateClaudeCodeCommand(commandData) {
     const { claudeCode, examples, permissions, frameworks, languages } = commandData
@@ -1753,7 +1444,7 @@ ${claudeCode.slashCommand}${claudeCode.arguments?.supports ? ' [arguments]' : ''
 ${
   claudeCode.fileReferences?.supports
     ? `### File References
-This command supports Claude Code's \`@\` file reference syntax:
+This command supports Claude Code CLI's \`@\` file reference syntax:
 \`\`\`
 ${claudeCode.slashCommand} @src/components/Example.tsx
 \`\`\`
@@ -1786,236 +1477,7 @@ ${ex.usage}
 }
 
 ---
-*Generated by VDK CLI - Claude Code Integration*`
-  }
-
-  /**
-   * Generate core project commands
-   */
-  async generateCoreCommands(_rules, projectContext) {
-    const projectName = path.basename(this.projectPath)
-    const commands = []
-
-    // Component creation command
-    commands.push({
-      name: 'create-component',
-      content: `---
-allowed-tools: ["Read", "Write", "Edit"]
-description: "Create a new component following project patterns"
-priority: "high"
----
-
-# Create ${projectName} Component
-
-Create a new component following established project patterns.
-
-## Arguments
-- Component name (required): $ARGUMENTS
-- Component type (optional): functional|class (default: functional)
-
-## Implementation Steps
-
-1. **Analyze existing components**
-   - Check component directory structure in \`${this.getComponentsDirectory(projectContext)}\`
-   - Review naming patterns and conventions
-   - Identify common imports and patterns
-
-2. **Generate component files**
-   - Create main component file with TypeScript
-   - Add appropriate prop interfaces
-   - Include proper exports following project conventions
-
-3. **Add supporting files**
-   - Create index.ts barrel export if pattern exists
-   - Generate test file if testing framework detected
-   - Add to component manifest if one exists
-
-## Quality Checks
-- Follow established naming conventions
-- Include proper TypeScript types
-- Add JSDoc comments for complex props
-- Ensure accessibility attributes
-- Follow project's styling approach
-
-## Usage
-\`/project:create-component ButtonComponent\`
-\`/project:create-component Modal --type=functional\`
-`,
-    })
-
-    // Code review command
-    commands.push({
-      name: 'review-code',
-      content: `---
-allowed-tools: ["Read", "Bash(git diff:*)", "Bash(git log:*)"]
-description: "Comprehensive code review focusing on project standards"
-priority: "high"
----
-
-# ${projectName} Code Review
-
-Perform comprehensive code review based on project-specific standards.
-
-## Review Areas
-
-1. **Code Quality**
-   - Adherence to established patterns
-   - Consistency with existing codebase
-   - Performance implications
-
-2. **Security**
-   - Input validation
-   - Authentication/authorization
-   - Sensitive data handling
-
-3. **Testing**
-   - Test coverage adequacy
-   - Test quality and effectiveness
-   - Edge case coverage
-
-4. **Documentation**
-   - Code comments quality
-   - API documentation completeness
-   - README updates if needed
-
-## Integration with Project Standards
-- Reference CLAUDE-patterns.md for established conventions
-- Check against detected architectural patterns
-- Validate naming convention consistency
-
-## Usage
-\`/project:review-code\` - Review current changes
-\`/project:review-code path/to/specific/file.js\` - Review specific file
-`,
-    })
-
-    // Performance analysis command
-    commands.push({
-      name: 'analyze-performance',
-      content: `---
-allowed-tools: ["Read", "Bash(npm run:*)", "WebFetch"]
-description: "Analyze performance bottlenecks and optimization opportunities"
-priority: "medium"
----
-
-# Performance Analysis for ${projectName}
-
-Analyze performance characteristics and identify optimization opportunities.
-
-## Analysis Areas
-
-1. **Bundle Analysis** (if frontend)
-   - Analyze bundle size and composition
-   - Identify large dependencies
-   - Check for code splitting opportunities
-
-2. **Runtime Performance**
-   - Memory usage patterns
-   - CPU intensive operations
-   - Network request efficiency
-
-3. **Database Performance** (if backend)
-   - Query optimization opportunities
-   - N+1 query detection
-   - Index usage analysis
-
-## Recommendations Framework
-- Prioritize optimizations by impact
-- Consider maintenance overhead
-- Align with project architecture
-
-## Usage
-\`/project:analyze-performance\` - Full performance analysis
-\`/project:analyze-performance frontend\` - Focus on frontend performance
-`,
-    })
-
-    return commands
-  }
-
-  /**
-   * Generate framework-specific commands
-   */
-  async generateFrameworkCommands(_rules, projectContext) {
-    const commands = []
-    const frameworks = projectContext.techStack?.frameworks || []
-
-    for (const framework of frameworks) {
-      switch (framework.toLowerCase()) {
-        case 'react':
-          commands.push(...(await this.generateReactCommands(projectContext)))
-          break
-        case 'nextjs':
-        case 'next.js':
-          commands.push(...(await this.generateNextJSCommands(projectContext)))
-          break
-        case 'vue':
-        case 'vue.js':
-          commands.push(...(await this.generateVueCommands(projectContext)))
-          break
-        case 'angular':
-          commands.push(...(await this.generateAngularCommands(projectContext)))
-          break
-        case 'express':
-          commands.push(...(await this.generateExpressCommands(projectContext)))
-          break
-        case 'fastapi':
-          commands.push(...(await this.generateFastAPICommands(projectContext)))
-          break
-      }
-    }
-
-    return commands
-  }
-
-  /**
-   * Generate React-specific commands
-   */
-  async generateReactCommands(_projectContext) {
-    return [
-      {
-        name: 'create-react-hook',
-        content: `---
-allowed-tools: ["Read", "Write", "Edit"]
-description: "Create custom React hook following project patterns"
-priority: "medium"
----
-
-# Create React Hook
-
-Create a custom React hook following established patterns.
-
-## Implementation Steps
-
-1. **Analyze existing hooks**
-   - Check hooks directory structure
-   - Review naming conventions (use + descriptive name)
-   - Identify common patterns and return types
-
-2. **Generate hook file**
-   - Create hook in appropriate location
-   - Include proper TypeScript types
-   - Add JSDoc comments explaining usage
-   - Include error handling if appropriate
-
-3. **Add tests**
-   - Create test file using project's testing framework
-   - Test hook behavior and edge cases
-   - Include cleanup testing if needed
-
-## Hook Best Practices
-- Start with \`use\` prefix
-- Return object for multiple values
-- Handle cleanup in useEffect
-- Memoize expensive calculations
-- Follow project's TypeScript patterns
-
-## Usage
-\`/project:create-react-hook useLocalStorage\`
-\`/project:create-react-hook useApi\`
-`,
-      },
-    ]
+*Generated by VDK CLI - Claude Code CLI Integration*`
   }
 
   /**
@@ -2104,9 +1566,7 @@ ${rule.content || 'Perform project-specific task based on established patterns.'
   detectsDatabase(projectContext) {
     const dbIndicators = ['prisma', 'sequelize', 'mongoose', 'postgresql', 'mysql', 'sqlite']
     const libraries = projectContext.techStack?.libraries || []
-    return libraries.some((lib) =>
-      dbIndicators.some((indicator) => lib.toLowerCase().includes(indicator))
-    )
+    return libraries.some((lib) => dbIndicators.some((indicator) => lib.toLowerCase().includes(indicator)))
   }
 
   getFrameworkPermissions(framework) {
@@ -2304,9 +1764,7 @@ ${rule.content || 'Perform project-specific task based on established patterns.'
       })
     }
 
-    return organization.length > 0
-      ? organization.join('\n')
-      : '- Follow established directory structure'
+    return organization.length > 0 ? organization.join('\n') : '- Follow established directory structure'
   }
 
   async generateFrameworkPatterns(rules, projectContext) {
@@ -2339,60 +1797,7 @@ ${rule.content || 'Perform project-specific task based on established patterns.'
     }
 
     const patterns = [`### Testing Framework: ${testingFrameworks.join(', ')}`]
-
-    // Add testing-specific patterns based on detected frameworks
-    if (testingFrameworks.includes('jest')) {
-      patterns.push('- Use Jest for unit testing')
-      patterns.push('- Follow describe/it pattern for test organization')
-    }
-
-    if (testingFrameworks.includes('cypress')) {
-      patterns.push('- Use Cypress for end-to-end testing')
-      patterns.push('- Follow page object pattern for E2E tests')
-    }
-
     return patterns.join('\n')
-  }
-
-  async generateErrorHandlingPatterns(_rules, projectContext) {
-    const languages = projectContext.techStack?.primaryLanguages || []
-    const patterns = []
-
-    if (languages.includes('JavaScript') || languages.includes('TypeScript')) {
-      patterns.push('- Use try-catch blocks for async operations')
-      patterns.push('- Implement proper error boundaries for React applications')
-      patterns.push('- Return error objects rather than throwing for expected errors')
-    }
-
-    if (languages.includes('Python')) {
-      patterns.push('- Use specific exception types')
-      patterns.push('- Implement proper logging for error tracking')
-    }
-
-    return patterns.length > 0
-      ? patterns.join('\n')
-      : '- Follow language-specific error handling best practices'
-  }
-
-  async generatePerformancePatterns(_rules, projectContext) {
-    const frameworks = projectContext.techStack?.frameworks || []
-    const patterns = []
-
-    if (frameworks.includes('React')) {
-      patterns.push('- Use React.memo for expensive components')
-      patterns.push('- Implement proper key props for lists')
-      patterns.push('- Use useMemo and useCallback for expensive calculations')
-    }
-
-    if (frameworks.includes('Next.js')) {
-      patterns.push('- Optimize images with next/image')
-      patterns.push('- Use dynamic imports for code splitting')
-      patterns.push('- Implement proper caching strategies')
-    }
-
-    return patterns.length > 0
-      ? patterns.join('\n')
-      : '- Optimize for performance following framework best practices'
   }
 
   // Additional methods for MCP and configuration generation...
@@ -2528,60 +1933,7 @@ ${this.getFrameworkPerformancePatterns(framework).join('\n')}
       return `- Follow ${framework} best practices and conventions`
     }
 
-    return frameworkRules
-      .map((rule) => `- ${rule.frontmatter?.description || rule.name}`)
-      .join('\n')
-  }
-
-  getFrameworkBestPractices(framework) {
-    const practices = {
-      'Next.js': [
-        '- Use App Router for new applications',
-        '- Implement proper SEO with metadata API',
-        '- Optimize images with next/image component',
-        '- Use server components when possible',
-      ],
-      React: [
-        '- Use functional components with hooks',
-        '- Implement proper key props for lists',
-        '- Use React.memo for performance optimization',
-        '- Follow component composition patterns',
-      ],
-      Angular: [
-        '- Use Angular CLI for code generation',
-        '- Implement proper dependency injection',
-        '- Use reactive forms for complex forms',
-        '- Follow Angular style guide',
-      ],
-    }
-
-    return practices[framework] || [`- Follow ${framework} recommended practices`]
-  }
-
-  async getFrameworkCommonPatterns(framework, _projectContext) {
-    // Analyze existing code patterns specific to the framework
-    return `- Patterns detected through codebase analysis
-- Follow established component/module organization
-- Maintain consistency with existing ${framework} implementations`
-  }
-
-  getFrameworkPerformancePatterns(framework) {
-    const patterns = {
-      'Next.js': [
-        '- Use dynamic imports for code splitting',
-        '- Implement proper caching strategies',
-        '- Optimize Core Web Vitals',
-        '- Use streaming for better perceived performance',
-      ],
-      React: [
-        '- Use React.memo and useMemo appropriately',
-        '- Implement virtualization for large lists',
-        '- Optimize re-renders with proper dependency arrays',
-        '- Use React.lazy for component lazy loading',
-      ],
-    }
-
-    return patterns[framework] || [`- Optimize ${framework} applications following best practices`]
+    return frameworkRules.map((rule) => `- ${rule.frontmatter?.description || rule.name}`).join('\n')
   }
 
   async generateDatabaseMCP(projectContext) {
@@ -2619,235 +1971,6 @@ ${this.getFrameworkPerformancePatterns(framework).join('\n')}
     }
 
     return mcpServers[framework.toLowerCase()] || null
-  }
-
-  async generateNextJSCommands(_projectContext) {
-    return [
-      {
-        name: 'create-nextjs-page',
-        content: `---
-allowed-tools: ["Read", "Write", "Edit"]
-description: "Create Next.js page following App Router patterns"
-priority: "medium"
----
-
-# Create Next.js Page
-
-Create a new page following Next.js App Router conventions.
-
-## Implementation Steps
-
-1. **Analyze routing structure**
-   - Check if using App Router or Pages Router
-   - Review existing page patterns
-   - Identify layout and metadata patterns
-
-2. **Generate page file**
-   - Create page.tsx in appropriate app directory
-   - Include proper metadata export
-   - Follow established layout patterns
-   - Implement proper TypeScript interfaces
-
-3. **Add supporting files**
-   - Create loading.tsx if needed
-   - Add error.tsx for error boundaries
-   - Include not-found.tsx if appropriate
-
-## Next.js Best Practices
-- Use Server Components by default
-- Implement proper SEO metadata
-- Follow App Router conventions
-- Optimize for Core Web Vitals
-
-## Usage
-\`/project:create-nextjs-page about\`
-\`/project:create-nextjs-page blog/[slug]\`
-`,
-      },
-    ]
-  }
-
-  async generateVueCommands(_projectContext) {
-    return [
-      {
-        name: 'create-vue-component',
-        content: `---
-allowed-tools: ["Read", "Write", "Edit"]
-description: "Create Vue component using Composition API"
-priority: "medium"
----
-
-# Create Vue Component
-
-Create a new Vue component following Composition API patterns.
-
-## Implementation Steps
-
-1. **Analyze existing components**
-   - Check component directory structure
-   - Review composition patterns
-   - Identify common composables usage
-
-2. **Generate component file**
-   - Create .vue file with setup script
-   - Include proper TypeScript support
-   - Follow established prop patterns
-   - Add scoped styling if needed
-
-3. **Add tests and documentation**
-   - Create test file using project's testing framework
-   - Add JSDoc comments for complex props
-   - Include usage examples
-
-## Vue 3 Best Practices
-- Use Composition API for new components
-- Implement proper reactive patterns
-- Follow Vue 3 style guide
-- Use TypeScript for better development experience
-
-## Usage
-\`/project:create-vue-component BaseButton\`
-\`/project:create-vue-component UserProfile\`
-`,
-      },
-    ]
-  }
-
-  async generateAngularCommands(_projectContext) {
-    return [
-      {
-        name: 'create-angular-component',
-        content: `---
-allowed-tools: ["Read", "Write", "Bash(ng generate:*)"]
-description: "Create Angular component using Angular CLI"
-priority: "medium"
----
-
-# Create Angular Component
-
-Create a new Angular component following Angular best practices.
-
-## Implementation Steps
-
-1. **Use Angular CLI**
-   - Generate component using ng generate
-   - Follow Angular naming conventions
-   - Include proper module declarations
-
-2. **Implement component logic**
-   - Use proper TypeScript types
-   - Implement lifecycle hooks as needed
-   - Follow Angular style guide
-
-3. **Add tests and documentation**
-   - Use Angular testing utilities
-   - Include component documentation
-   - Add examples of usage
-
-## Angular Best Practices
-- Use Angular CLI for code generation
-- Follow Angular style guide
-- Implement proper dependency injection
-- Use OnPush change detection when appropriate
-
-## Usage
-\`/project:create-angular-component user-profile\`
-\`/project:create-angular-component shared/button\`
-`,
-      },
-    ]
-  }
-
-  async generateExpressCommands(_projectContext) {
-    return [
-      {
-        name: 'create-express-route',
-        content: `---
-allowed-tools: ["Read", "Write", "Edit"]
-description: "Create Express route with middleware and validation"
-priority: "medium"
----
-
-# Create Express Route
-
-Create a new Express route following established patterns.
-
-## Implementation Steps
-
-1. **Analyze existing routes**
-   - Check routing structure and patterns
-   - Review middleware usage
-   - Identify validation patterns
-
-2. **Generate route file**
-   - Create route handler with proper structure
-   - Include input validation
-   - Add error handling middleware
-   - Implement proper HTTP status codes
-
-3. **Add tests and documentation**
-   - Create integration tests
-   - Add API documentation
-   - Include request/response examples
-
-## Express Best Practices
-- Use proper HTTP status codes
-- Implement input validation
-- Add comprehensive error handling
-- Include request logging
-
-## Usage
-\`/project:create-express-route users\`
-\`/project:create-express-route api/auth\`
-`,
-      },
-    ]
-  }
-
-  async generateFastAPICommands(_projectContext) {
-    return [
-      {
-        name: 'create-fastapi-endpoint',
-        content: `---
-allowed-tools: ["Read", "Write", "Edit"]
-description: "Create FastAPI endpoint with Pydantic models"
-priority: "medium"
----
-
-# Create FastAPI Endpoint
-
-Create a new FastAPI endpoint following best practices.
-
-## Implementation Steps
-
-1. **Analyze existing endpoints**
-   - Check API structure and patterns
-   - Review Pydantic model usage
-   - Identify authentication patterns
-
-2. **Generate endpoint**
-   - Create route with proper type hints
-   - Include Pydantic models for validation
-   - Add proper error handling
-   - Implement authentication if needed
-
-3. **Add tests and documentation**
-   - Create pytest tests
-   - Add OpenAPI documentation
-   - Include request/response examples
-
-## FastAPI Best Practices
-- Use Pydantic for data validation
-- Implement proper type hints
-- Add comprehensive error handling
-- Include OpenAPI documentation
-
-## Usage
-\`/project:create-fastapi-endpoint users\`
-\`/project:create-fastapi-endpoint auth/login\`
-`,
-      },
-    ]
   }
 
   async generateArchitectureCommands(_rules, projectContext) {
@@ -2917,530 +2040,13 @@ Analyze the implementation of ${pattern.name} architectural pattern in the codeb
     const commands = []
     const technologies = projectContext.techStack?.libraries || []
 
-    // TypeScript commands
-    if (technologies.some((tech) => tech.includes('typescript'))) {
+    // Generate technology-specific commands based on project stack
+    if (technologies.includes('react')) {
       commands.push({
-        name: 'fix-typescript-errors',
-        content: `---
-allowed-tools: ["Read", "Edit", "Bash(npx tsc:*)", "Bash(npm run type-check:*)"]
-description: "Fix TypeScript compilation errors and type issues"
-priority: "high"
----
-
-# Fix TypeScript Errors
-
-Systematically identify and fix TypeScript compilation errors.
-
-## Process
-
-1. **Identify Errors**
-   - Run TypeScript compiler to get error list
-   - Categorize errors by type and severity
-   - Prioritize fixes by impact
-
-2. **Fix Strategy**
-   - Start with simple type annotations
-   - Fix import/export issues
-   - Address strict mode violations
-   - Update type usage as needed
-
-3. **Verification**
-   - Run type checker after each fix
-   - Ensure no new errors introduced
-   - Validate runtime behavior unchanged
-
-## Usage
-\`/project:fix-typescript-errors\`
-\`/project:fix-typescript-errors src/components\`
-`,
-      })
-
-      commands.push({
-        name: 'generate-types',
-        content: `---
-allowed-tools: ["Read", "Write", "Edit"]
-description: "Generate TypeScript type definitions from usage patterns"
-priority: "medium"
----
-
-# Generate TypeScript Types
-
-Create comprehensive TypeScript type definitions based on code analysis.
-
-## Generation Process
-
-1. **Analyze Usage**
-   - Scan function signatures and return types
-   - Identify object shapes and interfaces
-   - Detect union and intersection types
-
-2. **Create Definitions**
-   - Generate interface definitions
-   - Create utility types for common patterns
-   - Add generic type constraints
-
-3. **Integrate Types**
-   - Import types in relevant files
-   - Update function signatures
-   - Add type exports to index files
-
-## Usage
-\`/project:generate-types ComponentProps\`
-\`/project:generate-types APIResponse\`
-`,
+        name: 'react-component',
+        content: 'Generate React component following project conventions',
       })
     }
-
-    // TailwindCSS commands
-    if (technologies.some((tech) => tech.includes('tailwind'))) {
-      commands.push({
-        name: 'optimize-tailwind',
-        content: `---
-allowed-tools: ["Read", "Edit", "Bash(npx tailwindcss:*)"]
-description: "Optimize TailwindCSS usage and remove unused classes"
-priority: "medium"
----
-
-# Optimize TailwindCSS
-
-Analyze and optimize TailwindCSS usage across the project.
-
-## Optimization Areas
-
-1. **Class Usage Analysis**
-   - Identify unused Tailwind classes
-   - Find duplicate utility combinations
-   - Detect custom CSS that could use Tailwind
-
-2. **Component Optimization**
-   - Extract common class patterns to components
-   - Create utility classes for repeated patterns
-   - Optimize responsive design patterns
-
-3. **Bundle Optimization**
-   - Configure PurgeCSS for production
-   - Remove unused utility classes
-   - Optimize build size
-
-## Usage
-\`/project:optimize-tailwind\`
-\`/project:optimize-tailwind components\`
-`,
-      })
-    }
-
-    // State management commands
-    if (technologies.some((tech) => tech.includes('zustand') || tech.includes('redux'))) {
-      commands.push({
-        name: 'create-store',
-        content: `---
-allowed-tools: ["Read", "Write", "Edit"]
-description: "Create state management store following project patterns"
-priority: "medium"
----
-
-# Create State Store
-
-Create a new state management store following established patterns.
-
-## Implementation Steps
-
-1. **Analyze Existing Stores**
-   - Review current store structure
-   - Identify common patterns and conventions
-   - Check action and selector patterns
-
-2. **Design Store Interface**
-   - Define state shape and types
-   - Plan actions and mutations
-   - Design selectors for data access
-
-3. **Generate Store Code**
-   - Create store with proper TypeScript types
-   - Implement actions and reducers
-   - Add middleware if needed
-   - Include testing utilities
-
-## Usage
-\`/project:create-store UserStore\`
-\`/project:create-store CartStore\`
-`,
-      })
-    }
-
-    return commands
-  }
-
-  /**
-   * Generate testing and quality commands
-   */
-  async generateTestingCommands(_rules, projectContext) {
-    const commands = []
-    const testingFrameworks = projectContext.techStack?.testingFrameworks || []
-
-    commands.push({
-      name: 'generate-tests',
-      content: `---
-allowed-tools: ["Read", "Write", "Edit", "Bash(npm run test:*)"]
-description: "Generate comprehensive test suite for components or functions"
-priority: "high"
----
-
-# Generate Test Suite
-
-Create comprehensive tests following project testing patterns.
-
-## Test Generation Process
-
-1. **Analyze Target Code**
-   - Understand function/component behavior
-   - Identify edge cases and error conditions
-   - Review existing test patterns
-
-2. **Create Test Structure**
-   - Set up test file with proper imports
-   - Create describe blocks for logical grouping
-   - Generate test cases for all scenarios
-
-3. **Test Implementation**
-   - Unit tests for individual functions
-   - Integration tests for components
-   - Mock external dependencies
-   - Add accessibility tests if applicable
-
-## Test Types Generated
-${testingFrameworks.map((fw) => `- ${fw} tests`).join('\n') || '- Framework-agnostic tests'}
-
-## Usage
-\`/project:generate-tests UserComponent\`
-\`/project:generate-tests utils/helpers.js\`
-`,
-    })
-
-    commands.push({
-      name: 'fix-failing-tests',
-      content: `---
-allowed-tools: ["Read", "Edit", "Bash(npm run test:*)"]
-description: "Analyze and fix failing tests in the project"
-priority: "high"
----
-
-# Fix Failing Tests
-
-Systematically identify and fix failing tests.
-
-## Fix Process
-
-1. **Identify Failures**
-   - Run test suite to get failure list
-   - Categorize failures by type and cause
-   - Prioritize fixes by impact
-
-2. **Analyze Root Causes**
-   - Review test expectations vs actual behavior
-   - Check for breaking changes in dependencies
-   - Identify flaky or timing-dependent tests
-
-3. **Implement Fixes**
-   - Update test expectations if behavior changed correctly
-   - Fix implementation bugs if tests are correct
-   - Improve test reliability and maintainability
-
-## Usage
-\`/project:fix-failing-tests\`
-\`/project:fix-failing-tests integration\`
-`,
-    })
-
-    commands.push({
-      name: 'improve-coverage',
-      content: `---
-allowed-tools: ["Read", "Write", "Edit", "Bash(npm run coverage:*)"]
-description: "Analyze test coverage and add tests for uncovered code"
-priority: "medium"
----
-
-# Improve Test Coverage
-
-Analyze test coverage and systematically improve it.
-
-## Coverage Analysis
-
-1. **Generate Coverage Report**
-   - Run coverage analysis tools
-   - Identify uncovered lines and branches
-   - Prioritize by code criticality
-
-2. **Add Missing Tests**
-   - Create tests for uncovered functions
-   - Add edge case testing
-   - Include error path testing
-
-3. **Quality Assessment**
-   - Ensure tests are meaningful, not just coverage
-   - Add integration tests for complex flows
-   - Include performance and accessibility tests
-
-## Usage
-\`/project:improve-coverage\`
-\`/project:improve-coverage src/utils\`
-`,
-    })
-
-    return commands
-  }
-
-  /**
-   * Generate DevOps and deployment commands
-   */
-  async generateDevOpsCommands(_rules, projectContext) {
-    const commands = []
-    const technologies = projectContext.techStack?.libraries || []
-
-    // Docker commands
-    if (technologies.some((tech) => tech.includes('docker'))) {
-      commands.push({
-        name: 'optimize-docker',
-        content: `---
-allowed-tools: ["Read", "Write", "Edit", "Bash(docker:*)"]
-description: "Optimize Docker configuration and build process"
-priority: "medium"
----
-
-# Optimize Docker Setup
-
-Analyze and optimize Docker configuration for better performance and security.
-
-## Optimization Areas
-
-1. **Dockerfile Optimization**
-   - Use multi-stage builds for smaller images
-   - Optimize layer caching
-   - Minimize image size
-   - Improve security with non-root users
-
-2. **Docker Compose Optimization**
-   - Configure proper networking
-   - Set up volume management
-   - Optimize service dependencies
-   - Add health checks
-
-3. **Build Process**
-   - Optimize build context
-   - Use .dockerignore effectively
-   - Cache dependencies properly
-   - Implement security scanning
-
-## Usage
-\`/project:optimize-docker\`
-\`/project:optimize-docker frontend\`
-`,
-      })
-    }
-
-    // CI/CD commands
-    commands.push({
-      name: 'setup-cicd',
-      content: `---
-allowed-tools: ["Read", "Write", "Edit"]
-description: "Set up or improve CI/CD pipeline configuration"
-priority: "medium"
----
-
-# Setup CI/CD Pipeline
-
-Create or improve continuous integration and deployment pipeline.
-
-## Pipeline Components
-
-1. **Build Pipeline**
-   - Set up dependency installation
-   - Configure build process
-   - Add code quality checks
-   - Implement test execution
-
-2. **Quality Gates**
-   - Add linting and formatting checks
-   - Configure test coverage requirements
-   - Set up security scanning
-   - Add performance testing
-
-3. **Deployment Strategy**
-   - Configure staging deployment
-   - Set up production deployment
-   - Add rollback mechanisms
-   - Include monitoring and alerts
-
-## Usage
-\`/project:setup-cicd github-actions\`
-\`/project:setup-cicd gitlab-ci\`
-`,
-    })
-
-    commands.push({
-      name: 'security-audit',
-      content: `---
-allowed-tools: ["Read", "Bash(npm audit:*)", "Bash(yarn audit:*)", "WebFetch"]
-description: "Perform comprehensive security audit of the project"
-priority: "high"
----
-
-# Security Audit
-
-Perform comprehensive security analysis of the project.
-
-## Audit Areas
-
-1. **Dependency Security**
-   - Run npm/yarn security audit
-   - Check for known vulnerabilities
-   - Update vulnerable packages
-   - Review dependency licenses
-
-2. **Code Security**
-   - Scan for security anti-patterns
-   - Check input validation
-   - Review authentication/authorization
-   - Identify sensitive data exposure
-
-3. **Configuration Security**
-   - Review environment variables
-   - Check server configuration
-   - Validate SSL/TLS setup
-   - Assess deployment security
-
-## Usage
-\`/project:security-audit\`
-\`/project:security-audit dependencies\`
-`,
-    })
-
-    return commands
-  }
-
-  /**
-   * Generate database and data layer commands
-   */
-  async generateDataCommands(_rules, projectContext) {
-    const commands = []
-    const technologies = projectContext.techStack?.libraries || []
-
-    // Prisma commands
-    if (technologies.some((tech) => tech.includes('prisma'))) {
-      commands.push({
-        name: 'generate-prisma-schema',
-        content: `---
-allowed-tools: ["Read", "Write", "Edit", "Bash(npx prisma:*)"]
-description: "Generate or update Prisma schema based on requirements"
-priority: "medium"
----
-
-# Generate Prisma Schema
-
-Create or update Prisma database schema following best practices.
-
-## Schema Generation Process
-
-1. **Analyze Requirements**
-   - Review data model requirements
-   - Identify entity relationships
-   - Plan indexes and constraints
-
-2. **Design Schema**
-   - Create model definitions
-   - Set up relationships and constraints
-   - Add indexes for performance
-   - Configure database-specific features
-
-3. **Generate and Migrate**
-   - Generate Prisma client
-   - Create database migrations
-   - Validate schema against database
-   - Update TypeScript types
-
-## Usage
-\`/project:generate-prisma-schema User\`
-\`/project:generate-prisma-schema BlogPost\`
-`,
-      })
-
-      commands.push({
-        name: 'optimize-queries',
-        content: `---
-allowed-tools: ["Read", "Edit", "Bash(npx prisma:*)"]
-description: "Analyze and optimize database queries for performance"
-priority: "medium"
----
-
-# Optimize Database Queries
-
-Analyze and optimize database queries for better performance.
-
-## Optimization Process
-
-1. **Query Analysis**
-   - Identify slow queries
-   - Analyze query execution plans
-   - Find N+1 query problems
-   - Review index usage
-
-2. **Optimization Strategies**
-   - Add appropriate database indexes
-   - Optimize Prisma query patterns
-   - Implement query batching
-   - Add caching where appropriate
-
-3. **Performance Testing**
-   - Benchmark query performance
-   - Test with realistic data volumes
-   - Monitor query execution times
-   - Validate optimization effectiveness
-
-## Usage
-\`/project:optimize-queries\`
-\`/project:optimize-queries user-queries\`
-`,
-      })
-    }
-
-    // General data commands
-    commands.push({
-      name: 'create-data-model',
-      content: `---
-allowed-tools: ["Read", "Write", "Edit"]
-description: "Create data model with validation and types"
-priority: "medium"
----
-
-# Create Data Model
-
-Create comprehensive data model with validation and type safety.
-
-## Model Creation Process
-
-1. **Define Data Structure**
-   - Identify required fields and types
-   - Set up validation rules
-   - Define relationships with other models
-   - Plan data access patterns
-
-2. **Implement Model**
-   - Create TypeScript interfaces/types
-   - Add validation schemas
-   - Implement data access methods
-   - Add error handling
-
-3. **Integration**
-   - Connect to database layer
-   - Add API endpoints if needed
-   - Create test fixtures
-   - Update documentation
-
-## Usage
-\`/project:create-data-model UserProfile\`
-\`/project:create-data-model ProductCatalog\`
-`,
-    })
 
     return commands
   }

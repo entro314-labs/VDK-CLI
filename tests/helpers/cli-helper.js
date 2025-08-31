@@ -5,7 +5,7 @@
 import { spawn } from 'node:child_process'
 import path from 'node:path'
 
-const cliPath = path.join(global.TEST_ROOT, 'cli.js')
+const cliPath = path.join(global.TEST_ROOT, 'cli-new.js')
 
 /**
  * Execute CLI command with arguments

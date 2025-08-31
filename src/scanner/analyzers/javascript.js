@@ -105,10 +105,7 @@ export async function analyzeJavaScript(content, filePath) {
         for (const prop of node.properties) {
           if (prop.type === 'Property') {
             objectPropertyCount++
-          } else if (
-            prop.type === 'ObjectMethod' ||
-            (prop.value && prop.value.type === 'FunctionExpression')
-          ) {
+          } else if (prop.type === 'ObjectMethod' || (prop.value && prop.value.type === 'FunctionExpression')) {
             objectMethodCount++
           }
         }
@@ -217,9 +214,7 @@ function isReactClassComponent(node) {
 
   // Or check for render() method that returns JSX
   if (node.body?.body) {
-    const renderMethod = node.body.body.find(
-      (n) => n.type === 'MethodDefinition' && n.key && n.key.name === 'render'
-    )
+    const renderMethod = node.body.body.find((n) => n.type === 'MethodDefinition' && n.key && n.key.name === 'render')
 
     if (renderMethod) {
       return true
@@ -248,10 +243,7 @@ function isJSXReturningFunction(node) {
     if (node.body.body) {
       const returnStatement = node.body.body.find((n) => n.type === 'ReturnStatement')
       if (returnStatement?.argument) {
-        return (
-          returnStatement.argument.type === 'JSXElement' ||
-          returnStatement.argument.type === 'JSXFragment'
-        )
+        return returnStatement.argument.type === 'JSXElement' || returnStatement.argument.type === 'JSXFragment'
       }
     }
   }

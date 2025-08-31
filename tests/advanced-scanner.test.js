@@ -20,9 +20,7 @@ describe('Advanced Scanner Components', () => {
 
   describe('Architecture Pattern Detection', () => {
     it('should detect architectural patterns', async () => {
-      const { detectArchitecturalPatterns } = await import(
-        '../src/scanner/core/ArchPatternDetector.js'
-      )
+      const { detectArchitecturalPatterns } = await import('../src/scanner/core/ArchPatternDetector.js')
 
       expect(detectArchitecturalPatterns).toBeDefined()
       expect(typeof detectArchitecturalPatterns).toBe('function')
@@ -101,10 +99,7 @@ describe('Advanced Scanner Components', () => {
       )
 
       // Create configuration files
-      await fs.writeFile(
-        path.join(tempDir, '.eslintrc.json'),
-        JSON.stringify({ extends: ['eslint:recommended'] })
-      )
+      await fs.writeFile(path.join(tempDir, '.eslintrc.json'), JSON.stringify({ extends: ['eslint:recommended'] }))
       await fs.writeFile(path.join(tempDir, 'vite.config.js'), 'export default { plugins: [] }')
 
       const { ProjectScanner } = await import('../src/scanner/core/ProjectScanner.js')
@@ -179,19 +174,19 @@ describe('Advanced Scanner Components', () => {
     })
   })
 
-  describe('Claude Code Adapter', () => {
-    it('should adapt content for Claude Code', async () => {
-      const { ClaudeCodeAdapter } = await import('../src/scanner/core/ClaudeCodeAdapter.js')
+  describe('Claude Code CLI Adapter', () => {
+    it('should adapt content for Claude Code CLI', async () => {
+      const { ClaudeCodeCLIAdapter } = await import('../src/scanner/core/ClaudeCodeAdapter.js')
 
-      expect(ClaudeCodeAdapter).toBeDefined()
+      expect(ClaudeCodeCLIAdapter).toBeDefined()
 
-      if (typeof ClaudeCodeAdapter === 'function') {
-        const adapter = new ClaudeCodeAdapter()
+      if (typeof ClaudeCodeCLIAdapter === 'function') {
+        const adapter = new ClaudeCodeCLIAdapter()
         expect(adapter).toBeDefined()
       }
     })
 
-    it('should format rules for Claude Code consumption', async () => {
+    it('should format rules for Claude Code CLI consumption', async () => {
       const claudeAdapter = await import('../src/scanner/core/ClaudeCodeAdapter.js')
 
       expect(claudeAdapter).toBeDefined()

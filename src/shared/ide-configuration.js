@@ -22,7 +22,9 @@ const IDE_CONFIGURATIONS = [
     rulesFolder: '.vscode/ai-rules',
     configFiles: ['.vscode/settings.json', '.vscode/extensions.json'],
     mcpConfigFile: '.vscode/mcp.json',
-    description: 'Works with VS Code AI extensions.',
+    description: 'Traditional IDE: Uses extensions/plugins for AI integration.',
+    priority: 'medium',
+    type: 'traditional-ide',
   },
   {
     id: 'vscode-insiders',
@@ -45,14 +47,16 @@ const IDE_CONFIGURATIONS = [
   },
   {
     id: 'cursor',
-    name: 'Cursor AI',
+    name: 'Cursor',
     configFolder: '.cursor',
-    rulesFolder: '.ai/rules',
+    rulesFolder: '.cursor/rules',
     configFiles: ['.cursor/settings.json'],
     mcpConfigFile: '.cursor/mcp.json',
     ignoreFile: '.cursorignore',
     globalConfigPath: '~/.cursor/mcp.json',
-    description: 'Optimized for Cursor AI Editor with automatic rule detection.',
+    description: 'Context Platform: Cursor IDE with multi-model AI support (Claude, GPT, etc.) and MDC format.',
+    priority: 'high',
+    type: 'context-platform',
   },
   {
     id: 'windsurf',
@@ -61,7 +65,9 @@ const IDE_CONFIGURATIONS = [
     rulesFolder: '.windsurf/rules',
     configFiles: ['.windsurf/config.json'],
     mcpConfigFile: '~/.codeium/windsurf/mcp_config.json',
-    description: 'Specifically formatted for Windsurf AI integration.',
+    description: 'Context Platform: Windsurf IDE with multi-model AI support and native rule format.',
+    priority: 'high',
+    type: 'context-platform',
   },
   {
     id: 'windsurf-next',
@@ -91,14 +97,16 @@ const IDE_CONFIGURATIONS = [
     description: 'Optimized for Claude Desktop integration.',
   },
   {
-    id: 'claude',
-    name: 'Claude Code',
+    id: 'claude-code-cli',
+    name: 'Claude Code CLI',
     configFolder: '.claude',
     rulesFolder: '.claude/commands',
     configFiles: ['.claude/settings.json', '.claude/settings.local.json'],
     globalConfigPath: '~/.claude/settings.json',
     enterpriseConfigPath: '/Library/Application Support/ClaudeCode/policies.json',
-    description: 'Optimized for Claude Code integration.',
+    description: 'Context Platform: Claude Code CLI - works across multiple IDEs via plugins.',
+    priority: 'high',
+    type: 'context-platform',
   },
   {
     id: 'zed',
@@ -108,7 +116,9 @@ const IDE_CONFIGURATIONS = [
     configFiles: ['~/.config/zed/settings.json', '~/.config/zed/keymap.json'],
     globalConfigPath: '~/.config/zed/settings.json',
     logPath: '~/Library/Logs/Zed/Zed.log',
-    description: 'For use with Zed Editor AI features.',
+    description: 'Traditional IDE: Supports AI extensions and features.',
+    priority: 'medium',
+    type: 'traditional-ide',
   },
   {
     id: 'jetbrains',
@@ -119,7 +129,9 @@ const IDE_CONFIGURATIONS = [
     mcpConfigPath: '~/.cache/JetBrains/*/mcp',
     settingsPath: 'Settings | Tools | AI Assistant | Model Context Protocol (MCP)',
     mcpConfigFile: null, // Configured through IDE Settings UI
-    description: 'Compatible with JetBrains AI assistant integration.',
+    description: 'Traditional IDE: Built-in AI assistant and MCP support.',
+    priority: 'medium',
+    type: 'traditional-ide',
   },
   {
     id: 'intellij',
@@ -237,7 +249,8 @@ const IDE_CONFIGURATIONS = [
     configFolder: '.openai',
     rulesFolder: '.openai/rules',
     configFiles: ['.openai/config.json'],
-    description: 'Configuration for OpenAI API-based development tools (Note: Original Codex API deprecated March 2023).',
+    description:
+      'Configuration for OpenAI API-based development tools (Note: Original Codex API deprecated March 2023).',
   },
   {
     id: 'generic-ai',
@@ -321,7 +334,7 @@ function detectIDEs(projectPath) {
  */
 function detectSpecificJetBrainsIDEs(projectPath) {
   const detectedIDEs = []
-  
+
   // Check if .idea folder exists first
   const ideaPath = path.join(projectPath, '.idea')
   if (!fs.existsSync(ideaPath)) {
@@ -330,56 +343,56 @@ function detectSpecificJetBrainsIDEs(projectPath) {
 
   // IDE-specific detection patterns
   const ideDetectionPatterns = {
-    'intellij': {
+    intellij: {
       files: ['.idea/modules.xml', '.idea/compiler.xml', 'src/main/java/', 'pom.xml', 'build.gradle'],
       indicators: ['Java', 'Maven', 'Gradle', 'Kotlin'],
-      confidence: 0.8
+      confidence: 0.8,
     },
-    'webstorm': {
+    webstorm: {
       files: ['.idea/webServers.xml', '.idea/jsLibraryMappings.xml', 'package.json', 'tsconfig.json'],
       indicators: ['Node.js', 'TypeScript', 'JavaScript', 'React', 'Vue'],
-      confidence: 0.9
+      confidence: 0.9,
     },
-    'pycharm': {
+    pycharm: {
       files: ['.idea/misc.xml', 'requirements.txt', 'setup.py', 'pyproject.toml', '__pycache__/'],
       indicators: ['Python', 'Django', 'Flask'],
-      confidence: 0.9
+      confidence: 0.9,
     },
-    'phpstorm': {
+    phpstorm: {
       files: ['.idea/php.xml', 'composer.json', 'composer.lock', '*.php'],
       indicators: ['PHP', 'Laravel', 'Symfony'],
-      confidence: 0.9
+      confidence: 0.9,
     },
-    'rubymine': {
+    rubymine: {
       files: ['.idea/runConfigurations.xml', 'Gemfile', 'Gemfile.lock', 'config.ru'],
       indicators: ['Ruby', 'Rails', 'Bundler'],
-      confidence: 0.9
+      confidence: 0.9,
     },
-    'clion': {
+    clion: {
       files: ['CMakeLists.txt', '.idea/cmake.xml', 'Makefile', '*.cpp', '*.c', '*.h'],
       indicators: ['C++', 'C', 'CMake'],
-      confidence: 0.8
+      confidence: 0.8,
     },
-    'datagrip': {
+    datagrip: {
       files: ['.idea/dataSources.xml', '.idea/sqldialects.xml', '*.sql'],
       indicators: ['SQL', 'Database'],
-      confidence: 0.7
+      confidence: 0.7,
     },
-    'goland': {
+    goland: {
       files: ['go.mod', 'go.sum', '.idea/go.xml', '*.go'],
       indicators: ['Go', 'Golang'],
-      confidence: 0.9
+      confidence: 0.9,
     },
-    'rider': {
+    rider: {
       files: ['.idea/.idea.*.dir/', '*.sln', '*.csproj', 'global.json'],
       indicators: ['.NET', 'C#', 'Unity'],
-      confidence: 0.8
+      confidence: 0.8,
     },
     'android-studio': {
       files: ['build.gradle', 'app/build.gradle', '.idea/gradle.xml', 'AndroidManifest.xml'],
       indicators: ['Android', 'Gradle', 'Kotlin'],
-      confidence: 0.9
-    }
+      confidence: 0.9,
+    },
   }
 
   // Check each IDE pattern
@@ -389,16 +402,16 @@ function detectSpecificJetBrainsIDEs(projectPath) {
 
     for (const filePattern of pattern.files) {
       const filePath = path.join(projectPath, filePattern)
-      
+
       if (filePattern.includes('*')) {
         // Handle wildcard patterns
         const dir = path.dirname(filePath)
         const fileName = path.basename(filePattern)
-        
+
         try {
           if (fs.existsSync(dir)) {
             const files = fs.readdirSync(dir)
-            const hasMatch = files.some(file => {
+            const hasMatch = files.some((file) => {
               const regex = new RegExp(fileName.replace('*', '.*'))
               return regex.test(file)
             })
@@ -408,8 +421,8 @@ function detectSpecificJetBrainsIDEs(projectPath) {
           // Ignore directory read errors
         }
       } else if (fs.existsSync(filePath)) {
-          matchCount++
-        }
+        matchCount++
+      }
     }
 
     // Calculate confidence score
@@ -417,14 +430,14 @@ function detectSpecificJetBrainsIDEs(projectPath) {
     const confidence = matchRatio >= 0.3 ? pattern.confidence * matchRatio : 0
 
     if (confidence > 0.5) {
-      const ideConfig = IDE_CONFIGURATIONS.find(ide => ide.id === ideId)
+      const ideConfig = IDE_CONFIGURATIONS.find((ide) => ide.id === ideId)
       if (ideConfig) {
         detectedIDEs.push({
           ...ideConfig,
           confidence,
           matchCount,
           totalPatterns,
-          indicators: pattern.indicators
+          indicators: pattern.indicators,
         })
       }
     }

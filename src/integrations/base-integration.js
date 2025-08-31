@@ -63,8 +63,7 @@ export class BaseIntegration {
    */
   getCachedDetection(force = false) {
     const now = Date.now()
-    const cacheExpired =
-      !this._detectionCacheTime || now - this._detectionCacheTime > this._cacheValidityMs
+    const cacheExpired = !this._detectionCacheTime || now - this._detectionCacheTime > this._cacheValidityMs
 
     if (force || !this._detectionCache || cacheExpired) {
       this._detectionCache = this.detectUsage()
@@ -226,6 +225,102 @@ export class BaseIntegration {
   }
 
   /**
+   * Common detection helper: Create detection result structure
+   * @param {Object} options - Detection options
+   * @returns {Object} Standard detection result structure
+   */
+  createDetectionResult(options = {}) {
+    return {
+      isUsed: options.isUsed,
+      confidence: options.confidence || 'none', // none, low, medium, high
+      indicators: options.indicators || [],
+      recommendations: options.recommendations || [],
+    }
+  }
+
+  /**
+   * Common detection helper: Check multiple paths and add indicators
+   * @param {Object} detection - Detection result object to modify
+   * @param {Object} pathsToCheck - Object with description: path pairs
+   * @param {string} confidenceLevel - Confidence to set when paths are found
+   * @returns {Object} Updated detection result
+   */
+  checkPaths(detection, pathsToCheck, confidenceLevel = 'medium') {
+    let foundAny = false
+
+    for (const [description, checkPath] of Object.entries(pathsToCheck)) {
+      if (this.fileExists(checkPath) || this.directoryExists(checkPath)) {
+        detection.indicators.push(description)
+        foundAny = true
+      }
+    }
+
+    if (foundAny) {
+      detection.isUsed = true
+      detection.confidence = confidenceLevel
+    }
+
+    return detection
+  }
+
+  /**
+   * Common detection helper: Check for recent activity and add indicators
+   * @param {Object} detection - Detection result object to modify
+   * @param {string} dirPath - Directory to check for activity
+   * @param {string} activityDescription - Description of the activity type
+   * @param {number} daysBack - Days to check back (default: 7)
+   * @returns {Object} Updated detection result
+   */
+  checkRecentActivity(detection, dirPath, activityDescription, daysBack = 7) {
+    const recentFiles = this.getRecentActivity(dirPath, daysBack)
+    if (recentFiles.length > 0) {
+      detection.indicators.push(`${activityDescription} (${recentFiles.length} recent files)`)
+      if (detection.confidence === 'none') {
+        detection.confidence = 'low'
+      }
+      if (!detection.isUsed) {
+        detection.isUsed = true
+      }
+    }
+    return detection
+  }
+
+  /**
+   * Common detection helper: Add standard recommendations based on confidence level
+   * @param {Object} detection - Detection result object to modify
+   * @param {string} integrationName - Name of the integration for URLs/commands
+   * @param {string} installUrl - URL for installation instructions
+   * @returns {Object} Updated detection result
+   */
+  addStandardRecommendations(detection, integrationName, installUrl = null) {
+    const name = integrationName || this.name
+
+    switch (detection.confidence) {
+      case 'none':
+        if (installUrl) {
+          detection.recommendations.push(`${name} not detected. Install from: ${installUrl}`)
+        } else {
+          detection.recommendations.push(`${name} not detected. Consider installing for better AI assistance`)
+        }
+        break
+      case 'low':
+        detection.recommendations.push(`${name} may be installed but not configured for this project`)
+        detection.recommendations.push('Run: vdk init --ide-integration to configure integration')
+        break
+      case 'medium':
+        detection.recommendations.push(`${name} appears to be configured`)
+        detection.recommendations.push('Consider optimizing .vdk/rules for better AI assistance')
+        break
+      case 'high':
+        detection.recommendations.push(`${name} is actively configured and being used`)
+        detection.recommendations.push('Consider creating custom AI rules for your specific project patterns')
+        break
+    }
+
+    return detection
+  }
+
+  /**
    * Common helper: Ensure directory exists, create if not
    * @param {string} dirPath - Directory path to ensure
    * @returns {boolean} True if directory exists or was created
@@ -363,9 +458,7 @@ export class BaseIntegration {
       confidence: this.getConfidence(),
       indicatorCount: this.getIndicators().length,
       recommendationCount: this.getRecommendations().length,
-      lastChecked: this._detectionCacheTime
-        ? new Date(this._detectionCacheTime).toISOString()
-        : null,
+      lastChecked: this._detectionCacheTime ? new Date(this._detectionCacheTime).toISOString() : null,
     }
   }
 }

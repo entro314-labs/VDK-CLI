@@ -2,22 +2,23 @@
  * Context Converter
  * ----------------
  * Converts existing AI contexts from various formats to VDK schema format.
- * Supports conversion from Claude Code, Cursor, GitHub Copilot, Windsurf, and generic formats.
+ * Supports conversion from Claude Code CLI, Cursor, GitHub Copilot, Windsurf, and generic formats.
  */
 
 import path from 'node:path'
 import matter from 'gray-matter'
 import { v4 as uuidv4 } from 'uuid'
+import { generateBlueprintId } from '../../utils/filename-generator.js'
 
 export class ContextConverter {
   constructor() {
     // Conversion strategy mapping
     this.conversionStrategies = {
       'claude-code': this.convertClaudeCode.bind(this),
-      'cursor': this.convertCursor.bind(this),
+      cursor: this.convertCursor.bind(this),
       'github-copilot': this.convertGitHubCopilot.bind(this),
-      'windsurf': this.convertWindsurf.bind(this),
-      'generic-ai': this.convertGenericAI.bind(this)
+      windsurf: this.convertWindsurf.bind(this),
+      'generic-ai': this.convertGenericAI.bind(this),
     }
   }
 
@@ -45,7 +46,7 @@ export class ContextConverter {
         originalSource: context.source,
         originalPath: context.relativePath,
         migrationDate: new Date().toISOString(),
-        vdkVersion: '2.5.0'
+        vdkVersion: '2.5.0',
       }
     } catch (error) {
       throw new Error(`Failed to convert ${context.filePath}: ${error.message}`)
@@ -53,8 +54,8 @@ export class ContextConverter {
   }
 
   /**
-   * Convert Claude Code contexts
-   * @param {Object} context Claude Code context
+   * Convert Claude Code CLI contexts
+   * @param {Object} context Claude Code CLI context
    * @returns {Object} VDK blueprint or command
    */
   async convertClaudeCode(context) {
@@ -67,7 +68,7 @@ export class ContextConverter {
     if (isCommand) {
       return this.convertToCommand(context, {
         target: 'claude-code',
-        commandType: claudeSpecific?.hasSlashCommands ? 'slash' : 'custom-slash'
+        commandType: claudeSpecific?.hasSlashCommands ? 'slash' : 'custom-slash',
       })
     }
 
@@ -81,9 +82,9 @@ export class ContextConverter {
         'claude-code': {
           compatible: true,
           memory: true,
-          mcpIntegration: claudeSpecific?.hasMCPReferences
-        }
-      }
+          mcpIntegration: claudeSpecific?.hasMCPReferences,
+        },
+      },
     })
   }
 
@@ -101,32 +102,32 @@ export class ContextConverter {
         category: 'core',
         scope: 'project',
         platforms: {
-          'cursor': {
+          cursor: {
             compatible: true,
             activation: 'always',
             globs: cursorSpecific?.hasFileGlobs ? this.extractGlobs(bodyContent) : ['**/*'],
-            priority: 'high'
+            priority: 'high',
           },
           'claude-code': {
             compatible: true,
-            memory: true
-          }
-        }
+            memory: true,
+          },
+        },
       })
     }
 
     return this.convertToBlueprint(context, {
       category: this.inferCategory(bodyContent),
       platforms: {
-        'cursor': {
+        cursor: {
           compatible: true,
-          activation: 'auto-attached'
+          activation: 'auto-attached',
         },
         'claude-code': {
           compatible: true,
-          memory: true
-        }
-      }
+          memory: true,
+        },
+      },
     })
   }
 
@@ -138,9 +139,11 @@ export class ContextConverter {
   async convertGitHubCopilot(context) {
     const { bodyContent, copilotSpecific } = context
 
-    const reviewType = copilotSpecific?.hasSecurityRules ? 'security'
-      : copilotSpecific?.hasReviewRules ? 'code-quality'
-      : 'style'
+    const reviewType = copilotSpecific?.hasSecurityRules
+      ? 'security'
+      : copilotSpecific?.hasReviewRules
+        ? 'code-quality'
+        : 'style'
 
     return this.convertToBlueprint(context, {
       category: copilotSpecific?.hasSecurityRules ? 'security' : 'task',
@@ -148,13 +151,13 @@ export class ContextConverter {
         'github-copilot': {
           compatible: true,
           priority: copilotSpecific?.hasSecurityRules ? 9 : 7,
-          reviewType
+          reviewType,
         },
         'claude-code': {
           compatible: true,
-          memory: true
-        }
-      }
+          memory: true,
+        },
+      },
     })
   }
 
@@ -169,17 +172,17 @@ export class ContextConverter {
     return this.convertToBlueprint(context, {
       category: windsurfSpecific?.hasAgentRules ? 'assistant' : this.inferCategory(bodyContent),
       platforms: {
-        'windsurf': {
+        windsurf: {
           compatible: true,
           mode: 'workspace',
           xmlTag: this.extractXMLTag(bodyContent),
-          characterLimit: Math.max(bodyContent.length * 1.2, 1000)
+          characterLimit: Math.max(bodyContent.length * 1.2, 1000),
         },
         'claude-code': {
           compatible: true,
-          memory: true
-        }
-      }
+          memory: true,
+        },
+      },
     })
   }
 
@@ -196,13 +199,13 @@ export class ContextConverter {
       platforms: {
         'claude-code': {
           compatible: true,
-          memory: true
+          memory: true,
         },
-        'cursor': {
+        cursor: {
           compatible: true,
-          activation: 'manual'
-        }
-      }
+          activation: 'manual',
+        },
+      },
     })
   }
 
@@ -236,13 +239,13 @@ export class ContextConverter {
       platforms: options.platforms || this.getDefaultPlatforms(),
       tags: this.extractTags(bodyContent, metadata.tags),
       author: metadata.author || 'Migrated from ' + context.source,
-      
+
       // Content organization
       content: this.organizeContent(bodyContent, sections),
-      contentSections: sections.map(s => s.title),
-      
+      contentSections: sections.map((s) => s.title),
+
       // Output file information
-      outputFile: this.generateOutputFileName(id, 'blueprint')
+      outputFile: this.generateOutputFileName(id, 'blueprint'),
     }
 
     // Add optional fields if present
@@ -276,36 +279,38 @@ export class ContextConverter {
       version: metadata.version || '1.0.0',
       scope: options.scope || 'project',
       category: this.inferCommandCategory(bodyContent),
-      
+
       claudeCode: {
         slashCommand: this.extractSlashCommand(bodyContent),
         arguments: {
           supports: this.hasArguments(bodyContent),
           placeholder: '$ARGUMENTS',
-          examples: this.extractArgumentExamples(bodyContent)
+          examples: this.extractArgumentExamples(bodyContent),
         },
         fileReferences: {
           supports: claudeSpecific?.hasFileReferences || bodyContent.includes('@'),
-          autoInclude: this.extractAutoIncludeFiles(bodyContent)
+          autoInclude: this.extractAutoIncludeFiles(bodyContent),
         },
         bashCommands: {
           supports: this.hasBashCommands(bodyContent),
-          commands: this.extractBashCommands(bodyContent)
+          commands: this.extractBashCommands(bodyContent),
         },
-        mcpIntegration: claudeSpecific?.hasMCPReferences ? {
-          requiredServers: this.extractMCPServers(bodyContent)
-        } : undefined,
-        memoryFiles: claudeSpecific?.hasMemoryFiles ? ['CLAUDE.md'] : []
+        mcpIntegration: claudeSpecific?.hasMCPReferences
+          ? {
+              requiredServers: this.extractMCPServers(bodyContent),
+            }
+          : undefined,
+        memoryFiles: claudeSpecific?.hasMemoryFiles ? ['CLAUDE.md'] : [],
       },
 
       examples: this.extractCommandExamples(bodyContent),
       tags: this.extractTags(bodyContent, metadata.tags),
       author: metadata.author || 'Migrated from ' + context.source,
       lastUpdated: new Date().toISOString().split('T')[0],
-      
+
       // Content
       content: bodyContent,
-      outputFile: this.generateOutputFileName(id, 'command')
+      outputFile: this.generateOutputFileName(id, 'command'),
     }
 
     return command
@@ -328,9 +333,9 @@ export class ContextConverter {
         'claude-code': {
           compatible: true,
           memory: true,
-          namespace: 'project'
-        }
-      }
+          namespace: 'project',
+        },
+      },
     })
   }
 
@@ -341,13 +346,7 @@ export class ContextConverter {
    */
   generateId(context) {
     const baseName = path.basename(context.fileName, path.extname(context.fileName))
-    const sanitized = baseName
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
-    
-    return sanitized || `migrated-${Date.now()}`
+    return generateBlueprintId(baseName) || `migrated-${Date.now()}`
   }
 
   /**
@@ -371,8 +370,7 @@ export class ContextConverter {
 
     // Use filename as fallback
     const baseName = path.basename(fileName, path.extname(fileName))
-    return baseName.replace(/[-_]/g, ' ')
-      .replace(/\b\w/g, l => l.toUpperCase())
+    return baseName.replace(/[-_]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
   }
 
   /**
@@ -388,7 +386,7 @@ export class ContextConverter {
     }
 
     // Use first paragraph after title
-    const lines = content.split('\n').filter(line => line.trim())
+    const lines = content.split('\n').filter((line) => line.trim())
     for (let i = 0; i < Math.min(lines.length, 5); i++) {
       const line = lines[i].trim()
       if (line && !line.startsWith('#') && !line.includes(':') && line.length > 20) {
@@ -427,18 +425,18 @@ export class ContextConverter {
    */
   inferCommandCategory(content) {
     const category = this.inferCategory(content)
-    
+
     // Map blueprint categories to command categories
     const categoryMap = {
-      'core': 'development',
-      'testing': 'testing',
-      'security': 'security',
-      'performance': 'performance',
-      'git': 'git',
-      'debugging': 'debugging',
-      'documentation': 'documentation',
-      'refactoring': 'refactoring',
-      'development': 'development'
+      core: 'development',
+      testing: 'testing',
+      security: 'security',
+      performance: 'performance',
+      git: 'git',
+      debugging: 'debugging',
+      documentation: 'documentation',
+      refactoring: 'refactoring',
+      development: 'development',
     }
 
     return categoryMap[category] || 'development'
@@ -487,9 +485,25 @@ export class ContextConverter {
 
     // Common technology tags
     const techTags = [
-      'react', 'vue', 'angular', 'node', 'typescript', 'javascript',
-      'python', 'java', 'go', 'rust', 'php', 'ruby', 'swift',
-      'docker', 'kubernetes', 'aws', 'azure', 'gcp', 'database'
+      'react',
+      'vue',
+      'angular',
+      'node',
+      'typescript',
+      'javascript',
+      'python',
+      'java',
+      'go',
+      'rust',
+      'php',
+      'ruby',
+      'swift',
+      'docker',
+      'kubernetes',
+      'aws',
+      'azure',
+      'gcp',
+      'database',
     ]
 
     for (const tech of techTags) {
@@ -538,8 +552,8 @@ export class ContextConverter {
     return {
       'claude-code': {
         compatible: true,
-        memory: true
-      }
+        memory: true,
+      },
     }
   }
 
@@ -561,7 +575,7 @@ export class ContextConverter {
   }
 
   extractXMLTag(content) {
-    const xmlMatch = content.match(/<([a-zA-Z][a-zA-Z0-9-_]*)[^>]*>/);
+    const xmlMatch = content.match(/<([a-zA-Z][a-zA-Z0-9-_]*)[^>]*>/)
     return xmlMatch ? xmlMatch[1] : 'context'
   }
 
@@ -573,10 +587,11 @@ export class ContextConverter {
   extractCommandName(content, fileName) {
     const nameMatch = content.match(/(?:name|command):\s*(.+)/i)
     if (nameMatch) return nameMatch[1].trim()
-    
-    return path.basename(fileName, path.extname(fileName))
+
+    return path
+      .basename(fileName, path.extname(fileName))
       .replace(/[-_]/g, ' ')
-      .replace(/\b\w/g, l => l.toUpperCase())
+      .replace(/\b\w/g, (l) => l.toUpperCase())
   }
 
   hasArguments(content) {
@@ -586,11 +601,7 @@ export class ContextConverter {
   extractArgumentExamples(content) {
     // Extract example arguments from content
     const examples = []
-    const examplePatterns = [
-      /example[s]?:\s*(.+)/gi,
-      /e\.g\.?\s+(.+)/gi,
-      /usage:\s*(.+)/gi
-    ]
+    const examplePatterns = [/example[s]?:\s*(.+)/gi, /e\.g\.?\s+(.+)/gi, /usage:\s*(.+)/gi]
 
     for (const pattern of examplePatterns) {
       let match
@@ -604,7 +615,7 @@ export class ContextConverter {
 
   extractAutoIncludeFiles(content) {
     const fileMatches = content.match(/@[\w/.,-]+/g) || []
-    return fileMatches.map(match => match.substring(1))
+    return fileMatches.map((match) => match.substring(1))
   }
 
   hasBashCommands(content) {
@@ -637,16 +648,16 @@ export class ContextConverter {
 
   extractCommandExamples(content) {
     const examples = []
-    
+
     // Look for usage examples
     const usagePattern = /usage:\s*(.+?)(?:\n\n|\n[A-Z]|$)/gi
     let match
-    
+
     while ((match = usagePattern.exec(content)) !== null) {
       examples.push({
         usage: match[1].trim(),
         description: 'Basic usage example',
-        context: 'General usage'
+        context: 'General usage',
       })
     }
 

@@ -139,9 +139,7 @@ export class PatternDetector {
         console.log(chalk.gray(`File naming convention: ${this.namingConventions.files.dominant}`))
       }
       if (this.namingConventions.directories.dominant) {
-        console.log(
-          chalk.gray(`Directory naming convention: ${this.namingConventions.directories.dominant}`)
-        )
+        console.log(chalk.gray(`Directory naming convention: ${this.namingConventions.directories.dominant}`))
       }
     }
   }
@@ -309,8 +307,7 @@ export class PatternDetector {
       this.architecturalPatterns.push({
         name: 'Feature-based',
         confidence: featureBasedScore,
-        description:
-          'Feature-based organization with code grouped by feature rather than technical layer.',
+        description: 'Feature-based organization with code grouped by feature rather than technical layer.',
         source: 'directory-structure',
       })
     }
@@ -338,18 +335,10 @@ export class PatternDetector {
     }
 
     // Look for files with these names
-    const fileBasenames = projectStructure.files.map((f) =>
-      path.basename(f.name, path.extname(f.name)).toLowerCase()
-    )
-    const modelFiles = fileBasenames.filter(
-      (name) => name.endsWith('model') || name.endsWith('models')
-    )
-    const viewFiles = fileBasenames.filter(
-      (name) => name.endsWith('view') || name.endsWith('views')
-    )
-    const controllerFiles = fileBasenames.filter(
-      (name) => name.endsWith('controller') || name.endsWith('controllers')
-    )
+    const fileBasenames = projectStructure.files.map((f) => path.basename(f.name, path.extname(f.name)).toLowerCase())
+    const modelFiles = fileBasenames.filter((name) => name.endsWith('model') || name.endsWith('models'))
+    const viewFiles = fileBasenames.filter((name) => name.endsWith('view') || name.endsWith('views'))
+    const controllerFiles = fileBasenames.filter((name) => name.endsWith('controller') || name.endsWith('controllers'))
 
     if (modelFiles.length > 0) {
       score += 15
@@ -387,21 +376,12 @@ export class PatternDetector {
     }
 
     // Look for files with these names
-    const fileBasenames = projectStructure.files.map((f) =>
-      path.basename(f.name, path.extname(f.name)).toLowerCase()
-    )
-    const modelFiles = fileBasenames.filter(
-      (name) => name.endsWith('model') || name.endsWith('models')
-    )
-    const viewFiles = fileBasenames.filter(
-      (name) => name.endsWith('view') || name.endsWith('views')
-    )
+    const fileBasenames = projectStructure.files.map((f) => path.basename(f.name, path.extname(f.name)).toLowerCase())
+    const modelFiles = fileBasenames.filter((name) => name.endsWith('model') || name.endsWith('models'))
+    const viewFiles = fileBasenames.filter((name) => name.endsWith('view') || name.endsWith('views'))
     const viewModelFiles = fileBasenames.filter(
       (name) =>
-        name.endsWith('viewmodel') ||
-        name.endsWith('viewmodels') ||
-        name.includes('_vm') ||
-        name.includes('-vm')
+        name.endsWith('viewmodel') || name.endsWith('viewmodels') || name.includes('_vm') || name.includes('-vm')
     )
 
     if (modelFiles.length > 0) {
@@ -452,12 +432,8 @@ export class PatternDetector {
     }
 
     // Check for common patterns in filenames
-    const fileBasenames = projectStructure.files.map((f) =>
-      path.basename(f.name, path.extname(f.name)).toLowerCase()
-    )
-    const repositoryFiles = fileBasenames.filter(
-      (name) => name.endsWith('repository') || name.includes('repo')
-    )
+    const fileBasenames = projectStructure.files.map((f) => path.basename(f.name, path.extname(f.name)).toLowerCase())
+    const repositoryFiles = fileBasenames.filter((name) => name.endsWith('repository') || name.includes('repo'))
     const serviceFiles = fileBasenames.filter((name) => name.endsWith('service'))
     const entityFiles = fileBasenames.filter((name) => name.endsWith('entity'))
     const dtoFiles = fileBasenames.filter((name) => name.endsWith('dto'))
@@ -490,11 +466,7 @@ export class PatternDetector {
     let score = 0
 
     // Check for services, apis, or microservices directory
-    if (
-      dirNames.includes('services') ||
-      dirNames.includes('apis') ||
-      dirNames.includes('microservices')
-    ) {
+    if (dirNames.includes('services') || dirNames.includes('apis') || dirNames.includes('microservices')) {
       score += 40
     }
 
@@ -509,9 +481,7 @@ export class PatternDetector {
 
     // Check for Docker/Kubernetes configuration
     const dockerFiles = projectStructure.files.filter(
-      (f) =>
-        f.name.toLowerCase().includes('dockerfile') ||
-        f.name.toLowerCase().includes('docker-compose')
+      (f) => f.name.toLowerCase().includes('dockerfile') || f.name.toLowerCase().includes('docker-compose')
     )
 
     const k8sFiles = projectStructure.files.filter(
@@ -578,28 +548,17 @@ export class PatternDetector {
    */
   async detectDependencyBasedPatterns(projectStructure, techData = {}) {
     if (this.verbose) {
-      console.log(
-        chalk.gray(
-          'Performing advanced architectural pattern detection with dependency analysis...'
-        )
-      )
+      console.log(chalk.gray('Performing advanced architectural pattern detection with dependency analysis...'))
     }
 
     try {
       // Use the DependencyAnalyzer to build and analyze the dependency graph
-      const dependencyAnalysis = await this.dependencyAnalyzer.analyzeDependencies(
-        projectStructure,
-        techData
-      )
+      const dependencyAnalysis = await this.dependencyAnalyzer.analyzeDependencies(projectStructure, techData)
 
       // If we couldn't build a dependency graph, return early
       if (!dependencyAnalysis || dependencyAnalysis.moduleCount === 0) {
         if (this.verbose) {
-          console.log(
-            chalk.yellow(
-              'No dependencies found for analysis. Using directory-based detection only.'
-            )
-          )
+          console.log(chalk.yellow('No dependencies found for analysis. Using directory-based detection only.'))
         }
         return
       }
@@ -678,10 +637,7 @@ export class PatternDetector {
       const mergedPattern = {
         name,
         // Take highest confidence level and boost it slightly for multiple detections
-        confidence: Math.min(
-          Math.max(...patterns.map((p) => p.confidence)) + (patterns.length > 1 ? 10 : 0),
-          100
-        ),
+        confidence: Math.min(Math.max(...patterns.map((p) => p.confidence)) + (patterns.length > 1 ? 10 : 0), 100),
         description: patterns.map((p) => p.description).join(' '),
         source: patterns.map((p) => p.source).join('+'),
         detectionCount: patterns.length,
@@ -864,9 +820,7 @@ export class PatternDetector {
     }
 
     if (this.verbose) {
-      console.log(
-        chalk.gray(`Analyzed ${totalFilesAnalyzed} files, skipped ${skippedFiles} non-code files`)
-      )
+      console.log(chalk.gray(`Analyzed ${totalFilesAnalyzed} files, skipped ${skippedFiles} non-code files`))
     }
 
     // Determine dominant conventions
@@ -877,19 +831,13 @@ export class PatternDetector {
 
     if (this.verbose) {
       if (this.namingConventions.variables.dominant) {
-        console.log(
-          chalk.gray(`Variable naming convention: ${this.namingConventions.variables.dominant}`)
-        )
+        console.log(chalk.gray(`Variable naming convention: ${this.namingConventions.variables.dominant}`))
       }
       if (this.namingConventions.functions.dominant) {
-        console.log(
-          chalk.gray(`Function naming convention: ${this.namingConventions.functions.dominant}`)
-        )
+        console.log(chalk.gray(`Function naming convention: ${this.namingConventions.functions.dominant}`))
       }
       if (this.namingConventions.classes.dominant) {
-        console.log(
-          chalk.gray(`Class naming convention: ${this.namingConventions.classes.dominant}`)
-        )
+        console.log(chalk.gray(`Class naming convention: ${this.namingConventions.classes.dominant}`))
       }
     }
   }
@@ -1018,21 +966,14 @@ export class PatternDetector {
     // Calculate naming consistency
     const namingScores = []
     for (const [_category, data] of Object.entries(this.namingConventions)) {
-      if (
-        data.dominant &&
-        data.dominant !== 'mixed' &&
-        data.patterns &&
-        data.patterns[data.dominant]
-      ) {
+      if (data.dominant && data.dominant !== 'mixed' && data.patterns && data.patterns[data.dominant]) {
         namingScores.push(data.patterns[data.dominant] / 100)
       }
     }
 
     metrics.namingConsistency =
       namingScores.length > 0
-        ? Math.round(
-            (namingScores.reduce((sum, score) => sum + score, 0) / namingScores.length) * 100
-          )
+        ? Math.round((namingScores.reduce((sum, score) => sum + score, 0) / namingScores.length) * 100)
         : 0
 
     // Calculate architectural consistency
@@ -1040,14 +981,10 @@ export class PatternDetector {
       this.architecturalPatterns.length > 0 ? this.architecturalPatterns[0].confidence : 0
 
     // Calculate overall consistency
-    const scores = [metrics.namingConsistency, metrics.architecturalConsistency].filter(
-      (score) => score > 0
-    )
+    const scores = [metrics.namingConsistency, metrics.architecturalConsistency].filter((score) => score > 0)
 
     metrics.overallConsistency =
-      scores.length > 0
-        ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
-        : 0
+      scores.length > 0 ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : 0
 
     this.consistencyMetrics = metrics
   }

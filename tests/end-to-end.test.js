@@ -66,11 +66,7 @@ describe('End-to-End Integration', () => {
       tempDir = await createTempDir('e2e-status-project')
 
       // Run status without configuration
-      const result1 = await runCLI([
-        'status',
-        '--configPath',
-        path.join(tempDir, 'vdk.config.json'),
-      ])
+      const result1 = await runCLI(['status', '--configPath', path.join(tempDir, 'vdk.config.json')])
       expect(result1.code).toBeDefined()
       expect(result1.stdout + result1.stderr).toMatch(/(not found|warning|configuration)/i)
 
@@ -78,8 +74,8 @@ describe('End-to-End Integration', () => {
       const configPath = path.join(tempDir, 'vdk.config.json')
       const config = {
         project: { name: 'test-project' },
-        ide: 'claude-code',
-        rulesPath: './.ai/rules',
+        ide: 'claude-code-cli',
+        rulesPath: './.vdk/rules',
         lastUpdated: new Date().toISOString(),
       }
       await fs.writeFile(configPath, JSON.stringify(config, null, 2))
@@ -128,11 +124,9 @@ describe('End-to-End Integration', () => {
     })
 
     it('should handle integration detection', async () => {
-      const { ClaudeCodeIntegration } = await import(
-        '../src/integrations/claude-code-integration.js'
-      )
+      const { ClaudeCodeCLIIntegration } = await import('../src/integrations/claude-code-integration.js')
 
-      const integration = new ClaudeCodeIntegration(global.TEST_ROOT)
+      const integration = new ClaudeCodeCLIIntegration(global.TEST_ROOT)
       const detection = integration.detectUsage()
 
       expect(detection).toBeDefined()
@@ -245,7 +239,7 @@ describe('End-to-End Integration', () => {
         version: '1.0.0',
         category: 'task',
         platforms: {
-          'claude-code': { compatible: true },
+          'claude-code-cli': { compatible: true },
         },
       }
 
@@ -278,10 +272,7 @@ describe('End-to-End Integration', () => {
 
     it('should handle command template generation', async () => {
       // Test command template functionality
-      const templatePath = path.join(
-        global.TEST_ROOT,
-        'src/templates/commands/claude-code-command-template.md'
-      )
+      const templatePath = path.join(global.TEST_ROOT, 'src/templates/commands/claude-code-cli-command-template.md')
 
       try {
         const template = await fs.readFile(templatePath, 'utf8')

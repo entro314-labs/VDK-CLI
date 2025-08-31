@@ -8,26 +8,26 @@
  * - Validates that YAML frontmatter is parseable
  */
 
-import fs from 'node:fs/promises'
-import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import chalk from 'chalk'
+import { logger, validation } from '../utils/console.js'
+import { fileSystem, pathUtils } from '../utils/file-system.js'
+import { fileValidation } from '../utils/validation.js'
 
 // Get directory paths for ES modules
 const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const __dirname = pathUtils.getDirname(__filename)
 
 // Rule repository paths
-const rulesRootDir = path.join(__dirname, '../..')
+const rulesRootDir = pathUtils.join(__dirname, '../..')
 const ruleDirectories = [
-  '.ai/rules',
-  '.ai/rules/assistants',
-  '.ai/rules/languages',
-  '.ai/rules/stacks',
-  '.ai/rules/tasks',
-  '.ai/rules/technologies',
-  '.ai/rules/tools',
+  '.vdk/rules',
+  '.vdk/rules/assistants',
+  '.vdk/rules/languages',
+  '.vdk/rules/stacks',
+  '.vdk/rules/tasks',
+  '.vdk/rules/technologies',
+  '.vdk/rules/tools',
 ]
 
 // Track all rule IDs to check for duplicates
@@ -91,111 +91,83 @@ function isValidYaml(yamlContent) {
 
 // Get all MDC files recursively
 async function getAllMdcFiles(dirPath) {
-  const files = []
-
   try {
-    const entries = await fs.readdir(dirPath, { withFileTypes: true })
-
-    for (const entry of entries) {
-      const fullPath = path.join(dirPath, entry.name)
-
-      if (entry.isFile() && (entry.name.endsWith('.mdc') || entry.name.endsWith('.md'))) {
-        // Skip common non-rule files
-        if (!['README.md', 'CONTRIBUTING.md', 'CHANGELOG.md'].includes(entry.name)) {
-          files.push(fullPath)
-        }
-      }
-      // Don't recursively scan subdirectories since we list them explicitly
-    }
+    const files = await fileSystem.findFiles(dirPath, /\.(mdc|md)$/)
+    // Filter out common non-rule files
+    return files.filter((file) => {
+      const basename = pathUtils.getBasename(file)
+      return !['README.md', 'CONTRIBUTING.md', 'CHANGELOG.md'].includes(basename)
+    })
   } catch {
     // Directory doesn't exist, skip
+    return []
   }
-
-  return files
 }
 
 // Main validation function
 async function validateRules() {
-  let errors = 0
-  let warnings = 0
   let validFiles = 0
+  let invalidFiles = 0
+  let duplicateIds = 0
 
-  console.log(chalk.blue.bold('🔎 Validating MDC rule files...\n'))
+  logger.title('🔎 Validating MDC rule files...')
+  logger.blank()
 
   // Get all MDC files from all directories
   const allFiles = []
   for (const dir of ruleDirectories) {
-    const dirPath = path.join(rulesRootDir, dir)
+    const dirPath = pathUtils.join(rulesRootDir, dir)
     const files = await getAllMdcFiles(dirPath)
     allFiles.push(...files)
   }
 
   if (allFiles.length === 0) {
-    console.log(chalk.yellow('No MDC files found in any directory.'))
+    logger.warning('No MDC files found in any directory.')
     process.exit(0)
   }
 
-  console.log(chalk.cyan(`Found ${allFiles.length} MDC files to validate\n`))
+  logger.info(`Found ${allFiles.length} MDC files to validate`)
+  logger.blank()
 
-  // Validate each file
-  for (const filePath of allFiles) {
-    const relativePath = path.relative(rulesRootDir, filePath)
+  // Use centralized validation
+  const results = await fileValidation.validateMDCFiles(allFiles)
 
-    try {
-      // Read file content
-      const content = await fs.readFile(filePath, 'utf-8')
+  // Display results
+  for (const filePath of results.valid) {
+    const relativePath = pathUtils.relative(rulesRootDir, filePath)
+    validation.valid(relativePath)
+    validFiles++
+  }
 
-      // Check for YAML frontmatter
-      const yamlContent = parseYamlFrontmatter(content)
+  for (const { file, errors } of results.invalid) {
+    const relativePath = pathUtils.relative(rulesRootDir, file)
+    validation.invalid(relativePath, errors.join(', '))
+    invalidFiles++
+  }
 
-      if (!yamlContent) {
-        console.log(chalk.yellow(`  ⚠ ${relativePath}:`), chalk.yellow('No YAML frontmatter found'))
-        warnings++
-      } else if (!isValidYaml(yamlContent)) {
-        console.log(
-          chalk.red(`  ✘ ${relativePath}:`),
-          chalk.red('Invalid YAML frontmatter structure')
-        )
-        errors++
-      } else {
-        console.log(chalk.green(`  ✓ ${relativePath}`))
-        validFiles++
-      }
-
-      // Check for duplicate rule IDs (based on filename)
-      const fileName = path.basename(filePath)
-      const ruleId = path.basename(fileName, path.extname(fileName)).toLowerCase()
-
-      if (ruleIds.has(ruleId)) {
-        console.log(
-          chalk.red(`  ✘ Duplicate rule ID: ${ruleId}`),
-          chalk.red(`\n    Current: ${relativePath}`),
-          chalk.red(`\n    Existing: ${ruleIds.get(ruleId)}`)
-        )
-        errors++
-      } else {
-        ruleIds.set(ruleId, relativePath)
-      }
-    } catch (err) {
-      console.log(chalk.red(`  ✘ ${relativePath}: Error reading file: ${err.message}`))
-      errors++
-    }
+  // Handle duplicate IDs
+  for (const [ruleId, { current, existing }] of results.duplicateIds) {
+    const currentRel = pathUtils.relative(rulesRootDir, current)
+    const existingRel = pathUtils.relative(rulesRootDir, existing)
+    logger.error(`Duplicate rule ID: ${ruleId}`)
+    logger.red(`    Current: ${currentRel}`)
+    logger.red(`    Existing: ${existingRel}`)
+    duplicateIds++
   }
 
   // Summary
-  console.log(chalk.blue.bold('\nValidation Summary:'))
-  console.log(chalk.green(`  Valid files: ${validFiles}`))
-  console.log(chalk.yellow(`  Warnings: ${warnings}`))
-  console.log(chalk.red(`  Errors: ${errors}`))
+  const totalErrors = invalidFiles + duplicateIds
+  validation.summary(validFiles, invalidFiles, 0)
 
-  if (errors > 0) {
-    console.log(chalk.red.bold('\n❌ Validation failed. Please fix the errors above.'))
+  if (duplicateIds > 0) {
+    logger.red(`  Duplicate IDs: ${duplicateIds}`)
+  }
+
+  if (totalErrors > 0) {
+    logger.error('\nValidation failed. Please fix the errors above.')
     process.exit(1)
-  } else if (warnings > 0) {
-    console.log(chalk.yellow.bold('\n⚠️ Validation passed with warnings.'))
-    process.exit(0)
   } else {
-    console.log(chalk.green.bold('\n✅ All rules are valid!'))
+    logger.success('\nAll rules are valid!')
     process.exit(0)
   }
 }

@@ -58,11 +58,7 @@ export class ZedIntegration extends BaseIntegration {
     }
 
     // Check for Zed-specific files
-    const zedFiles = [
-      '.zed/keymap.json',
-      '.zed/themes/',
-      '.zed/extensions.json'
-    ]
+    const zedFiles = ['.zed/keymap.json', '.zed/themes/', '.zed/extensions.json']
 
     for (const file of zedFiles) {
       if (fs.existsSync(path.join(this.projectPath, file))) {
@@ -76,7 +72,7 @@ export class ZedIntegration extends BaseIntegration {
       recommendations.push('Use .zed/ai-rules/ folder for VDK Blueprint rules')
       recommendations.push('Enable Zed AI features in settings for enhanced code assistance')
       recommendations.push('Consider enabling collaborative features for team development')
-      
+
       if (!fs.existsSync(path.join(this.projectPath, '.zed', 'ai-rules'))) {
         recommendations.push('Create .zed/ai-rules/ directory for AI integration')
       }
@@ -88,7 +84,7 @@ export class ZedIntegration extends BaseIntegration {
       isUsed: confidence !== 'none',
       confidence,
       indicators,
-      recommendations
+      recommendations,
     }
   }
 
@@ -97,7 +93,7 @@ export class ZedIntegration extends BaseIntegration {
    */
   getGlobalConfigPath() {
     const homeDir = os.homedir()
-    
+
     // Zed configuration path varies by OS
     switch (process.platform) {
       case 'darwin': // macOS
@@ -118,9 +114,8 @@ export class ZedIntegration extends BaseIntegration {
     try {
       const { execSync } = require('node:child_process')
       const processes = execSync('ps aux', { encoding: 'utf8' })
-      
-      return processes.toLowerCase().includes('zed') || 
-             processes.toLowerCase().includes('zed-editor')
+
+      return processes.toLowerCase().includes('zed') || processes.toLowerCase().includes('zed-editor')
     } catch (error) {
       return false
     }
@@ -135,7 +130,7 @@ export class ZedIntegration extends BaseIntegration {
       rulesPath: path.join(this.projectPath, '.zed', 'ai-rules'),
       globalConfig: this.getGlobalConfigPath(),
       settingsFile: path.join(this.projectPath, '.zed', 'settings.json'),
-      keymapFile: path.join(this.projectPath, '.zed', 'keymap.json')
+      keymapFile: path.join(this.projectPath, '.zed', 'keymap.json'),
     }
   }
 
@@ -167,14 +162,14 @@ export class ZedIntegration extends BaseIntegration {
       // Create basic settings file if it doesn't exist
       if (!fs.existsSync(configPaths.settingsFile)) {
         const defaultSettings = {
-          "ai": {
-            "enabled": true,
-            "inline_completions": true
+          ai: {
+            enabled: true,
+            inline_completions: true,
           },
-          "collaborative": {
-            "enabled": false
+          collaborative: {
+            enabled: false,
           },
-          "performance": "high"
+          performance: 'high',
         }
 
         fs.writeFileSync(configPaths.settingsFile, JSON.stringify(defaultSettings, null, 2))
@@ -207,7 +202,7 @@ export class ZedIntegration extends BaseIntegration {
       rulesPath: configPaths.rulesPath,
       aiFeatures: true,
       collaborative: true,
-      performance: 'high'
+      performance: 'high',
     }
   }
 }

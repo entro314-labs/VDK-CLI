@@ -12,34 +12,34 @@ import matter from 'gray-matter'
 export class RuleDetector {
   constructor(projectPath) {
     this.projectPath = projectPath
-    
+
     // Known AI context patterns and their characteristics
     this.contextPatterns = {
-      'claude-code': {
+      'claude-code-cli': {
         patterns: ['.claude/**/*.md', 'CLAUDE.md', '**/CLAUDE.md', '.claude/commands/**/*'],
-        indicators: ['CLAUDE.md', '.claude/', 'claude-code', 'mcp'],
-        confidence: 'high'
+        indicators: ['CLAUDE.md', '.claude/', 'claude-code-cli', 'mcp'],
+        confidence: 'high',
       },
-      'cursor': {
+      cursor: {
         patterns: ['.cursor/**/*', '.cursorrules', 'cursorrules', '.cursor-rules'],
         indicators: ['.cursorrules', '.cursor/', 'cursor', '@'],
-        confidence: 'high'
+        confidence: 'high',
       },
       'github-copilot': {
         patterns: ['.github/copilot/**/*', '.copilotrc*', '.github/copilot.*'],
         indicators: ['copilot', 'github.com', 'pull_request_template', 'review'],
-        confidence: 'medium'
+        confidence: 'medium',
       },
-      'windsurf': {
+      windsurf: {
         patterns: ['.windsurf/**/*', '.windsurfrc', 'windsurf.config.*'],
         indicators: ['windsurf', 'cascade', 'codeium'],
-        confidence: 'high'
+        confidence: 'high',
       },
       'generic-ai': {
-        patterns: ['.ai/**/*', 'ai-rules/**/*', 'prompts/**/*', '.prompts/**/*'],
+        patterns: ['.vdk/**/*', 'ai-rules/**/*', 'prompts/**/*', '.prompts/**/*'],
         indicators: ['prompt', 'ai', 'assistant', 'context', 'memory'],
-        confidence: 'low'
-      }
+        confidence: 'low',
+      },
     }
   }
 
@@ -58,7 +58,7 @@ export class RuleDetector {
       const fileName = path.basename(filePath)
       const dirName = path.dirname(filePath)
       const relativePath = path.relative(this.projectPath, filePath)
-      
+
       // Detect context type based on file path and name
       const contextType = this.detectContextType(filePath, fileName, dirName)
       if (!contextType) {
@@ -68,7 +68,7 @@ export class RuleDetector {
       // Read and analyze file content
       const content = await fs.promises.readFile(filePath, 'utf-8')
       const analysis = this.analyzeContent(content, contextType, fileName)
-      
+
       if (!analysis) {
         return null
       }
@@ -82,7 +82,7 @@ export class RuleDetector {
         confidence: this.calculateConfidence(contextType, fileName, content),
         size: stats.size,
         lastModified: stats.mtime.toISOString(),
-        ...analysis
+        ...analysis,
       }
     } catch (error) {
       // File might not exist or be readable, skip silently
@@ -116,13 +116,13 @@ export class RuleDetector {
     }
 
     // Check for specific file names
-    if (fileName === 'CLAUDE.md') return 'claude-code'
+    if (fileName === 'CLAUDE.md') return 'claude-code-cli'
     if (['.cursorrules', 'cursorrules', '.cursor-rules'].includes(fileName)) return 'cursor'
     if (fileName.startsWith('.copilotrc')) return 'github-copilot'
     if (fileName.startsWith('.windsurfrc') || fileName.startsWith('windsurf.config')) return 'windsurf'
 
     // Check directory-based detection
-    if (lowerDirName.includes('.claude')) return 'claude-code'
+    if (lowerDirName.includes('.claude')) return 'claude-code-cli'
     if (lowerDirName.includes('.cursor')) return 'cursor'
     if (lowerDirName.includes('copilot')) return 'github-copilot'
     if (lowerDirName.includes('.windsurf')) return 'windsurf'
@@ -154,7 +154,7 @@ export class RuleDetector {
       wordCount: content.split(/\s+/).length,
       lineCount: content.split('\n').length,
       sections: this.extractSections(content),
-      metadata: {}
+      metadata: {},
     }
 
     // Parse frontmatter if present
@@ -172,7 +172,7 @@ export class RuleDetector {
 
     // Extract specific patterns based on context type
     switch (contextType) {
-      case 'claude-code':
+      case 'claude-code-cli':
         analysis.claudeSpecific = this.analyzeClaudeContent(content)
         break
       case 'cursor':
@@ -197,17 +197,17 @@ export class RuleDetector {
    */
   detectContentType(content, fileName) {
     const extension = path.extname(fileName).toLowerCase()
-    
+
     if (extension === '.json') return 'json'
     if (extension === '.yaml' || extension === '.yml') return 'yaml'
     if (extension === '.md') return 'markdown'
     if (extension === '.js') return 'javascript'
-    
+
     // Detect by content
     if (content.trim().startsWith('{') && content.trim().endsWith('}')) return 'json'
     if (content.includes('---\n') && content.includes('\n---')) return 'yaml-frontmatter'
     if (content.includes('#') || content.includes('**')) return 'markdown'
-    
+
     return 'text'
   }
 
@@ -219,15 +219,15 @@ export class RuleDetector {
    */
   hasCommands(content, contextType) {
     const commandPatterns = {
-      'claude-code': ['/[a-z]', 'mcp:', 'claude-code', 'tool'],
-      'cursor': ['@', 'cursor:', 'ctrl+', 'cmd+'],
+      'claude-code-cli': ['/[a-z]', 'mcp:', 'claude-code-cli', 'tool'],
+      cursor: ['@', 'cursor:', 'ctrl+', 'cmd+'],
       'github-copilot': ['copilot:', 'gh ', 'github.com'],
-      'windsurf': ['cascade:', 'windsurf:', 'agent:'],
-      'generic-ai': ['/command', '!', 'run:', 'execute:']
+      windsurf: ['cascade:', 'windsurf:', 'agent:'],
+      'generic-ai': ['/command', '!', 'run:', 'execute:'],
     }
-    
+
     const patterns = commandPatterns[contextType] || commandPatterns['generic-ai']
-    return patterns.some(pattern => content.toLowerCase().includes(pattern.toLowerCase()))
+    return patterns.some((pattern) => content.toLowerCase().includes(pattern.toLowerCase()))
   }
 
   /**
@@ -237,13 +237,26 @@ export class RuleDetector {
    */
   hasRules(content) {
     const ruleKeywords = [
-      'rule:', 'rules:', 'guideline', 'principle', 'convention',
-      'standard', 'pattern', 'practice', 'requirement', 'constraint',
-      'always', 'never', 'should', 'must', 'avoid', 'prefer'
+      'rule:',
+      'rules:',
+      'guideline',
+      'principle',
+      'convention',
+      'standard',
+      'pattern',
+      'practice',
+      'requirement',
+      'constraint',
+      'always',
+      'never',
+      'should',
+      'must',
+      'avoid',
+      'prefer',
     ]
-    
+
     const lowerContent = content.toLowerCase()
-    return ruleKeywords.some(keyword => lowerContent.includes(keyword))
+    return ruleKeywords.some((keyword) => lowerContent.includes(keyword))
   }
 
   /**
@@ -253,13 +266,22 @@ export class RuleDetector {
    */
   hasMemory(content) {
     const memoryKeywords = [
-      'memory:', 'remember:', 'context:', 'background:',
-      'history:', 'preferences:', 'settings:', 'configuration:',
-      'project:', 'codebase:', 'architecture:', 'stack:'
+      'memory:',
+      'remember:',
+      'context:',
+      'background:',
+      'history:',
+      'preferences:',
+      'settings:',
+      'configuration:',
+      'project:',
+      'codebase:',
+      'architecture:',
+      'stack:',
     ]
-    
+
     const lowerContent = content.toLowerCase()
-    return memoryKeywords.some(keyword => lowerContent.includes(keyword))
+    return memoryKeywords.some((keyword) => lowerContent.includes(keyword))
   }
 
   /**
@@ -269,14 +291,14 @@ export class RuleDetector {
    */
   hasTemplating(content) {
     const templatePatterns = [
-      /\{\{[\s\S]*?\}\}/,  // Handlebars
-      /\$\{[\s\S]*?\}/,    // Template literals
-      /<[\w-]+>/,          // XML-like tags
-      /\[\[[\s\S]*?\]\]/,  // Double brackets
-      /%[\w-]+%/           // Percent variables
+      /\{\{[\s\S]*?\}\}/, // Handlebars
+      /\$\{[\s\S]*?\}/, // Template literals
+      /<[\w-]+>/, // XML-like tags
+      /\[\[[\s\S]*?\]\]/, // Double brackets
+      /%[\w-]+%/, // Percent variables
     ]
-    
-    return templatePatterns.some(pattern => pattern.test(content))
+
+    return templatePatterns.some((pattern) => pattern.test(content))
   }
 
   /**
@@ -288,10 +310,10 @@ export class RuleDetector {
     const sections = []
     const lines = content.split('\n')
     let currentSection = null
-    
+
     for (const line of lines) {
       const trimmed = line.trim()
-      
+
       // Markdown headers
       const headerMatch = trimmed.match(/^(#{1,6})\s+(.+)/)
       if (headerMatch) {
@@ -301,11 +323,11 @@ export class RuleDetector {
         currentSection = {
           level: headerMatch[1].length,
           title: headerMatch[2],
-          content: []
+          content: [],
         }
         continue
       }
-      
+
       // YAML-style sections
       const yamlMatch = trimmed.match(/^([a-zA-Z][a-zA-Z0-9_-]*):/)
       if (yamlMatch && trimmed.endsWith(':')) {
@@ -315,25 +337,25 @@ export class RuleDetector {
         currentSection = {
           level: 1,
           title: yamlMatch[1],
-          content: []
+          content: [],
         }
         continue
       }
-      
+
       if (currentSection && trimmed) {
         currentSection.content.push(line)
       }
     }
-    
+
     if (currentSection) {
       sections.push(currentSection)
     }
-    
+
     return sections
   }
 
   /**
-   * Analyze Claude Code specific content
+   * Analyze Claude Code CLI specific content
    * @param {string} content File content
    * @returns {Object} Claude-specific analysis
    */
@@ -344,7 +366,7 @@ export class RuleDetector {
       hasToolReferences: content.toLowerCase().includes('tool'),
       hasFileReferences: content.includes('@'),
       hasHooks: content.toLowerCase().includes('hook'),
-      hasMemoryFiles: content.toLowerCase().includes('claude.md')
+      hasMemoryFiles: content.toLowerCase().includes('claude.md'),
     }
   }
 
@@ -358,7 +380,7 @@ export class RuleDetector {
       hasFileGlobs: /\*\*?\//.test(content),
       hasInstructions: content.toLowerCase().includes('instruction'),
       hasTabTriggers: content.includes('@'),
-      hasIgnorePatterns: content.toLowerCase().includes('ignore')
+      hasIgnorePatterns: content.toLowerCase().includes('ignore'),
     }
   }
 
@@ -372,7 +394,7 @@ export class RuleDetector {
       hasReviewRules: content.toLowerCase().includes('review'),
       hasSecurityRules: content.toLowerCase().includes('security'),
       hasWorkflowRules: content.toLowerCase().includes('workflow'),
-      hasGitHubReferences: content.toLowerCase().includes('github')
+      hasGitHubReferences: content.toLowerCase().includes('github'),
     }
   }
 
@@ -386,7 +408,7 @@ export class RuleDetector {
       hasCascadeRules: content.toLowerCase().includes('cascade'),
       hasAgentRules: content.toLowerCase().includes('agent'),
       hasFlowRules: content.toLowerCase().includes('flow'),
-      hasContextRules: content.toLowerCase().includes('context')
+      hasContextRules: content.toLowerCase().includes('context'),
     }
   }
 
@@ -400,21 +422,22 @@ export class RuleDetector {
   calculateConfidence(contextType, fileName, content) {
     let score = 0
     const config = this.contextPatterns[contextType]
-    
+
     // Base confidence from pattern configuration
-    const baseConfidence = {
-      'high': 80,
-      'medium': 60,
-      'low': 40
-    }[config.confidence] || 40
-    
+    const baseConfidence =
+      {
+        high: 80,
+        medium: 60,
+        low: 40,
+      }[config.confidence] || 40
+
     score += baseConfidence
-    
+
     // Boost for exact file name matches
-    if (fileName === 'CLAUDE.md' && contextType === 'claude-code') score += 20
+    if (fileName === 'CLAUDE.md' && contextType === 'claude-code-cli') score += 20
     if (['.cursorrules', 'cursorrules'].includes(fileName) && contextType === 'cursor') score += 20
     if (fileName.startsWith('.copilotrc') && contextType === 'github-copilot') score += 15
-    
+
     // Boost for content indicators
     const indicators = config.indicators || []
     for (const indicator of indicators) {
@@ -422,10 +445,10 @@ export class RuleDetector {
         score += 5
       }
     }
-    
+
     // Reduce for generic patterns
     if (contextType === 'generic-ai') score -= 20
-    
+
     // Convert score to confidence level
     if (score >= 85) return 'high'
     if (score >= 65) return 'medium'
@@ -440,13 +463,13 @@ export class RuleDetector {
    */
   getContextSource(contextType) {
     const sourceMap = {
-      'claude-code': 'Claude Code',
-      'cursor': 'Cursor',
+      'claude-code-cli': 'Claude Code CLI',
+      cursor: 'Cursor',
       'github-copilot': 'GitHub Copilot',
-      'windsurf': 'Windsurf',
-      'generic-ai': 'Generic AI'
+      windsurf: 'Windsurf',
+      'generic-ai': 'Generic AI',
     }
-    
+
     return sourceMap[contextType] || 'Unknown'
   }
 }

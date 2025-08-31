@@ -195,7 +195,7 @@ describe('Utility Functions', () => {
       expect(typeof techAnalyzer).toBe('object')
     })
 
-    it('should provide Claude Code adapter', async () => {
+    it('should provide Claude Code CLI adapter', async () => {
       const claudeAdapter = await import('../src/scanner/core/ClaudeCodeAdapter.js')
 
       expect(claudeAdapter).toBeDefined()

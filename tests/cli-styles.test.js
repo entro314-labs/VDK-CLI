@@ -422,20 +422,14 @@ describe('CLI Styles Utilities', () => {
       const bannerOutput = banner()
 
       // Check for box border characters
-      expect(
-        bannerOutput.includes('╔') || bannerOutput.includes('┌') || bannerOutput.includes('╭')
-      ).toBe(true)
+      expect(bannerOutput.includes('╔') || bannerOutput.includes('┌') || bannerOutput.includes('╭')).toBe(true)
     })
   })
 
   describe('Integration Tests', () => {
     it('should work together - status with table and symbols', () => {
       const table = tables.status()
-      table.push([
-        'Test Item',
-        status.success('Working'),
-        format.keyValue('Count', format.count(5)),
-      ])
+      table.push(['Test Item', status.success('Working'), format.keyValue('Count', format.count(5))])
 
       const output = table.toString()
       expect(output).toContain('Test Item')

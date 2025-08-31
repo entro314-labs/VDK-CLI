@@ -171,9 +171,8 @@ export class GenericIDEIntegration extends BaseIntegration {
             configFolder: path.join(this.projectPath, ide.configFolder),
             rulesFolder: path.join(this.projectPath, ide.rulesFolder),
             configFiles:
-              ide.configFiles?.map((f) =>
-                f.startsWith('~') ? this.expandPath(f) : path.join(this.projectPath, f)
-              ) || [],
+              ide.configFiles?.map((f) => (f.startsWith('~') ? this.expandPath(f) : path.join(this.projectPath, f))) ||
+              [],
           }
         }
       }
@@ -195,7 +194,7 @@ export class GenericIDEIntegration extends BaseIntegration {
       if (verbose) {
         console.log('No IDEs detected - setting up generic configuration')
       }
-      // Set up generic .ai/rules configuration
+      // Set up generic .vdk/rules configuration
       await this.setupGenericConfiguration(options)
       return true
     }
@@ -230,11 +229,11 @@ export class GenericIDEIntegration extends BaseIntegration {
   }
 
   /**
-   * Set up generic .ai/rules configuration
+   * Set up generic .vdk/rules configuration
    * @param {Object} options - Configuration options
    */
   async setupGenericConfiguration(options = {}) {
-    const genericRulesPath = path.join(this.projectPath, '.ai', 'rules')
+    const genericRulesPath = path.join(this.projectPath, '.vdk', 'rules')
     await this.ensureDirectory(genericRulesPath)
     await this.createInitialRules(genericRulesPath, 'generic', options)
   }

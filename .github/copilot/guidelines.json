@@ -1,0 +1,19 @@
+{
+  "guidelines": [
+    {
+      "title": "VDK Integration Standards",
+      "description": "Follow VDK CLI naming conventions. Use unified rule formats. Include proper error handling and logging patterns. Update documentation when adding features.",
+      "paths": []
+    },
+    {
+      "title": "Security Best Practices",
+      "description": "Never commit secrets or API keys. Validate all user inputs. Use environment variables for configuration. Implement proper authentication patterns.",
+      "paths": []
+    }
+  ],
+  "generated": {
+    "timestamp": "2025-08-28T20:57:04.553Z",
+    "source": "vdk-cli",
+    "projectAnalysis": {}
+  }
+}

@@ -684,16 +684,7 @@ export class PackageAnalyzer {
     }
 
     // Framework priority order (more specific frameworks first)
-    const frameworkPriority = [
-      'Next.js',
-      'Nuxt.js',
-      'Remix',
-      'Gatsby',
-      'Angular',
-      'React',
-      'Vue.js',
-      'Svelte',
-    ]
+    const frameworkPriority = ['Next.js', 'Nuxt.js', 'Remix', 'Gatsby', 'Angular', 'React', 'Vue.js', 'Svelte']
 
     // Find the first framework that exists in detected technologies
     for (const framework of frameworkPriority) {

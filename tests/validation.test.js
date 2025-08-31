@@ -52,9 +52,7 @@ describe('Validation Modules', () => {
 
   describe('Validation Integration', () => {
     it('should integrate with schema validation', async () => {
-      const { validateBlueprint, validateCommand } = await import(
-        '../src/utils/schema-validator.js'
-      )
+      const { validateBlueprint, validateCommand } = await import('../src/utils/schema-validator.js')
       const validateRules = await import('../src/validation/validate-rules.js')
 
       expect(validateBlueprint).toBeDefined()

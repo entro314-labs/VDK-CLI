@@ -79,10 +79,7 @@ export class GitHubCopilotIntegration extends BaseIntegration {
 
     // 2. Check for GitHub CLI configuration
     const platformPaths = this.getPlatformPaths()
-    const githubPaths = [
-      path.join(platformPaths.home, '.config', 'gh'),
-      path.join(platformPaths.home, '.gitconfig'),
-    ]
+    const githubPaths = [path.join(platformPaths.home, '.config', 'gh'), path.join(platformPaths.home, '.gitconfig')]
 
     githubPaths.forEach((githubPath) => {
       if (this.directoryExists(githubPath) || this.fileExists(githubPath)) {
@@ -136,9 +133,7 @@ export class GitHubCopilotIntegration extends BaseIntegration {
     // 6. Check .gitignore for GitHub-specific patterns
     const gitignorePatterns = this.checkGitignore(['.github'])
     if (gitignorePatterns.length > 0) {
-      detection.indicators.push(
-        `GitHub patterns found in .gitignore: ${gitignorePatterns.join(', ')}`
-      )
+      detection.indicators.push(`GitHub patterns found in .gitignore: ${gitignorePatterns.join(', ')}`)
     }
 
     // 7. Generate recommendations based on detection
@@ -149,14 +144,10 @@ export class GitHubCopilotIntegration extends BaseIntegration {
       detection.recommendations.push('Install GitHub CLI: https://cli.github.com/')
     } else if (detection.confidence === 'low') {
       detection.recommendations.push('GitHub detected but Copilot guidelines not configured')
-      detection.recommendations.push(
-        'Run: vdk init --ide-integration to set up Copilot integration'
-      )
+      detection.recommendations.push('Run: vdk init --ide-integration to set up Copilot integration')
     } else if (detection.confidence === 'medium') {
       detection.recommendations.push('GitHub repository detected')
-      detection.recommendations.push(
-        'Configure Copilot Enterprise guidelines in repository settings'
-      )
+      detection.recommendations.push('Configure Copilot Enterprise guidelines in repository settings')
     } else if (detection.confidence === 'high') {
       detection.recommendations.push('GitHub Copilot guidelines are configured')
       detection.recommendations.push('Consider reviewing and updating guidelines with VDK patterns')
@@ -329,10 +320,7 @@ Use these patterns to scope guidelines to specific files:
         })
       }
 
-      if (
-        options.techStack.frameworks?.includes('Node.js') ||
-        options.techStack.frameworks?.includes('Express')
-      ) {
+      if (options.techStack.frameworks?.includes('Node.js') || options.techStack.frameworks?.includes('Express')) {
         guidelines.push({
           title: 'API Validation Requirements',
           description:

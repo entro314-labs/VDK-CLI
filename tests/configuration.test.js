@@ -39,10 +39,7 @@ describe('Configuration & Environment', () => {
       expect(process.env.VDK_GITHUB_TOKEN).toBe('test-token-123')
 
       // Test token is used in requests (we won't make actual requests)
-      const clientSource = await fs.readFile(
-        path.join(global.TEST_ROOT, 'src/blueprints-client.js'),
-        'utf8'
-      )
+      const clientSource = await fs.readFile(path.join(global.TEST_ROOT, 'src/blueprints-client.js'), 'utf8')
       expect(clientSource).toContain('VDK_GITHUB_TOKEN')
     })
 
@@ -73,8 +70,8 @@ describe('Configuration & Environment', () => {
       const configPath = path.join(tempDir, 'vdk.config.json')
       const config = {
         project: { name: 'test-project' },
-        ide: 'claude-code',
-        rulesPath: './.ai/rules',
+        ide: 'claude-code-cli',
+        rulesPath: './.vdk/rules',
         lastUpdated: new Date().toISOString(),
       }
 
@@ -82,7 +79,7 @@ describe('Configuration & Environment', () => {
 
       const savedConfig = JSON.parse(await fs.readFile(configPath, 'utf8'))
       expect(savedConfig.project.name).toBe('test-project')
-      expect(savedConfig.ide).toBe('claude-code')
+      expect(savedConfig.ide).toBe('claude-code-cli')
     })
 
     it('should handle missing configuration gracefully', async () => {
@@ -102,7 +99,7 @@ describe('Configuration & Environment', () => {
 
       const validConfig = {
         project: { name: 'test' },
-        ide: 'claude-code',
+        ide: 'claude-code-cli',
         rulesPath: './rules',
       }
 
@@ -127,7 +124,7 @@ describe('Configuration & Environment', () => {
   describe('CLI Configuration Loading', () => {
     it('should load dotenv configuration', async () => {
       // Test that CLI loads environment from .env files
-      const cliSource = await fs.readFile(path.join(global.TEST_ROOT, 'cli.js'), 'utf8')
+      const cliSource = await fs.readFile(path.join(global.TEST_ROOT, 'cli-new.js'), 'utf8')
 
       expect(cliSource).toContain('dotenv.config')
       expect(cliSource).toContain('.env.local')
@@ -135,7 +132,7 @@ describe('Configuration & Environment', () => {
     })
 
     it('should read package.json version', async () => {
-      const cliSource = await fs.readFile(path.join(global.TEST_ROOT, 'cli.js'), 'utf8')
+      const cliSource = await fs.readFile(path.join(global.TEST_ROOT, 'cli-new.js'), 'utf8')
 
       expect(cliSource).toContain("require('./package.json')")
       expect(cliSource).toContain('pkg.version')
@@ -144,11 +141,9 @@ describe('Configuration & Environment', () => {
 
   describe('IDE Configuration', () => {
     it('should handle IDE-specific configurations', async () => {
-      const { ClaudeCodeIntegration } = await import(
-        '../src/integrations/claude-code-integration.js'
-      )
+      const { ClaudeCodeCLIIntegration } = await import('../src/integrations/claude-code-integration.js')
 
-      const integration = new ClaudeCodeIntegration(global.TEST_ROOT)
+      const integration = new ClaudeCodeCLIIntegration(global.TEST_ROOT)
       const configPaths = integration.getConfigPaths()
 
       expect(configPaths.userSettings).toBeDefined()
@@ -175,16 +170,33 @@ describe('Configuration & Environment', () => {
       const { IDE_CONFIGURATIONS } = await import('../src/shared/ide-configuration.js')
 
       const expectedPlatforms = [
-        'vscode', 'vscode-insiders', 'vscodium',
-        'cursor', 'windsurf', 'windsurf-next',
-        'claude', 'claude-desktop', 'zed',
-        'jetbrains', 'intellij', 'webstorm', 'pycharm', 'phpstorm',
-        'rubymine', 'clion', 'datagrip', 'goland', 'rider', 'android-studio',
-        'github-copilot', 'generic-ai', 'generic'
+        'vscode',
+        'vscode-insiders',
+        'vscodium',
+        'cursor',
+        'windsurf',
+        'windsurf-next',
+        'claude-code-cli',
+        'claude-desktop',
+        'zed',
+        'jetbrains',
+        'intellij',
+        'webstorm',
+        'pycharm',
+        'phpstorm',
+        'rubymine',
+        'clion',
+        'datagrip',
+        'goland',
+        'rider',
+        'android-studio',
+        'github-copilot',
+        'generic-ai',
+        'generic',
       ]
 
-      const configIds = IDE_CONFIGURATIONS.map(ide => ide.id)
-      
+      const configIds = IDE_CONFIGURATIONS.map((ide) => ide.id)
+
       for (const platform of expectedPlatforms) {
         expect(configIds).toContain(platform)
       }
@@ -200,7 +212,7 @@ describe('Configuration & Environment', () => {
       await fs.mkdir(path.join(tempDir, '.idea'), { recursive: true })
 
       const results = detectSpecificJetBrainsIDEs(tempDir)
-      
+
       expect(Array.isArray(results)).toBe(true)
       // Results may be empty for empty .idea folder, but function should work
     })
@@ -232,10 +244,7 @@ describe('Configuration & Environment', () => {
 
       // Create basic project structure
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true })
-      await fs.writeFile(
-        path.join(tempDir, 'package.json'),
-        JSON.stringify({ name: 'test-project', version: '1.0.0' })
-      )
+      await fs.writeFile(path.join(tempDir, 'package.json'), JSON.stringify({ name: 'test-project', version: '1.0.0' }))
 
       const packageJson = JSON.parse(await fs.readFile(path.join(tempDir, 'package.json'), 'utf8'))
 

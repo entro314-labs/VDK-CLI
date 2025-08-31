@@ -1,0 +1,23 @@
+{
+  "vdk": {
+    "enabled": true,
+    "version": "1.0.0",
+    "integration": "github-copilot",
+    "projectName": "VDK-CLI"
+  },
+  "copilot": {
+    "codeReview": true,
+    "codeCompletion": true,
+    "guidelinesVersion": "1.0"
+  },
+  "guidelines": {
+    "maxGuidelines": 6,
+    "enforcementLevel": "strict",
+    "languageSupport": ["javascript", "typescript", "python"],
+    "autoUpdate": true
+  },
+  "generated": {
+    "timestamp": "2025-08-15T04:54:33.405Z",
+    "source": "vdk-cli"
+  }
+}

@@ -113,6 +113,6 @@ export const PATTERN_RULE_MAP = {
 
 // Default values
 export const DEFAULTS = {
-  OUTPUT_PATH: './.ai/rules',
+  OUTPUT_PATH: './.vdk/rules',
   PROJECT_NAME: 'Your Project',
 }

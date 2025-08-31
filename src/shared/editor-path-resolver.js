@@ -44,8 +44,7 @@ function expandPath(filePath) {
  */
 function getMCPConfigPaths(ideId, projectPath, preferGlobal = false) {
   const ideConfig =
-    IDE_CONFIGURATIONS.find((ide) => ide.id === ideId) ||
-    IDE_CONFIGURATIONS.find((ide) => ide.id === 'generic')
+    IDE_CONFIGURATIONS.find((ide) => ide.id === ideId) || IDE_CONFIGURATIONS.find((ide) => ide.id === 'generic')
 
   const result = {
     projectConfig: null,
@@ -113,13 +112,9 @@ function getAllEditorConfigPaths(projectPath) {
 
     editorPaths[ide.id] = {
       name: ide.name,
-      projectConfigPath: mcpPaths.projectConfig
-        ? path.relative(projectPath, mcpPaths.projectConfig)
-        : null,
+      projectConfigPath: mcpPaths.projectConfig ? path.relative(projectPath, mcpPaths.projectConfig) : null,
       globalConfigPath: mcpPaths.globalConfig,
-      activeConfigPath: mcpPaths.activeConfig
-        ? path.relative(projectPath, mcpPaths.activeConfig)
-        : null,
+      activeConfigPath: mcpPaths.activeConfig ? path.relative(projectPath, mcpPaths.activeConfig) : null,
       rulesFolder: ide.rulesFolder,
     }
   })

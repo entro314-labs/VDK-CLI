@@ -52,24 +52,20 @@ describe('IDE Integrations', () => {
     })
   })
 
-  describe('Claude Code Integration', () => {
-    it('should load claude code integration', async () => {
-      const { ClaudeCodeIntegration } = await import(
-        '../src/integrations/claude-code-integration.js'
-      )
+  describe('Claude Code CLI Integration', () => {
+    it('should load claude code cli integration', async () => {
+      const { ClaudeCodeCLIIntegration } = await import('../src/integrations/claude-code-integration.js')
 
-      expect(ClaudeCodeIntegration).toBeDefined()
-      expect(typeof ClaudeCodeIntegration).toBe('function')
+      expect(ClaudeCodeCLIIntegration).toBeDefined()
+      expect(typeof ClaudeCodeCLIIntegration).toBe('function')
     })
 
-    it('should create claude code integration instance', async () => {
-      const { ClaudeCodeIntegration } = await import(
-        '../src/integrations/claude-code-integration.js'
-      )
+    it('should create claude code cli integration instance', async () => {
+      const { ClaudeCodeCLIIntegration } = await import('../src/integrations/claude-code-integration.js')
 
-      const integration = new ClaudeCodeIntegration(global.TEST_ROOT)
+      const integration = new ClaudeCodeCLIIntegration(global.TEST_ROOT)
       expect(integration).toBeDefined()
-      expect(integration.name).toBe('Claude Code')
+      expect(integration.name).toBe('Claude Code CLI')
 
       const configPaths = integration.getConfigPaths()
       expect(configPaths).toBeDefined()
@@ -77,11 +73,9 @@ describe('IDE Integrations', () => {
     })
 
     it('should detect usage', async () => {
-      const { ClaudeCodeIntegration } = await import(
-        '../src/integrations/claude-code-integration.js'
-      )
+      const { ClaudeCodeCLIIntegration } = await import('../src/integrations/claude-code-integration.js')
 
-      const integration = new ClaudeCodeIntegration(global.TEST_ROOT)
+      const integration = new ClaudeCodeCLIIntegration(global.TEST_ROOT)
       const detection = integration.detectUsage()
 
       expect(detection).toBeDefined()
@@ -180,7 +174,9 @@ describe('IDE Integrations', () => {
 
   describe('VS Code Variants Integration', () => {
     it('should load vscode variants integration', async () => {
-      const { VSCodeInsidersIntegration, VSCodiumIntegration } = await import('../src/integrations/vscode-variants-integration.js')
+      const { VSCodeInsidersIntegration, VSCodiumIntegration } = await import(
+        '../src/integrations/vscode-variants-integration.js'
+      )
 
       expect(VSCodeInsidersIntegration).toBeDefined()
       expect(VSCodiumIntegration).toBeDefined()
@@ -245,14 +241,14 @@ describe('IDE Integrations', () => {
       // Check that new integrations are attempted to be loaded
       const expectedModules = [
         './jetbrains-integration.js',
-        './zed-integration.js', 
+        './zed-integration.js',
         './vscode-variants-integration.js',
-        './generic-ai-integration.js'
+        './generic-ai-integration.js',
       ]
 
-      const allModules = [...results.loaded, ...results.failed].map(r => r.module)
+      const allModules = [...results.loaded, ...results.failed].map((r) => r.module)
       for (const expectedModule of expectedModules) {
-        expect(allModules.some(module => module.includes(expectedModule.replace('./', '')))).toBe(true)
+        expect(allModules.some((module) => module.includes(expectedModule.replace('./', '')))).toBe(true)
       }
     })
   })

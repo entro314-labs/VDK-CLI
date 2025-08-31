@@ -1,13 +1,14 @@
 {
   "name": "@vibe-dev-kit/cli",
-  "version": "2.10.0",
+  "version": "3.0.0",
   "type": "module",
   "description": "Advanced Command-line toolkit that analyzes your codebase, migrates existing AI contexts from any platform, and deploys project-aware rules, memories, commands and agents to any AI coding assistant - VDK is the world's first Vibe Development Kit",
-  "main": "cli.js",
+  "main": "cli-new.js",
   "bin": {
-    "vdk": "./cli.js"
+    "vdk": "./cli-new.js"
   },
   "files": [
+    "cli-new.js",
     "cli.js",
     "src/",
     "LICENSE",
@@ -58,9 +59,10 @@
   "license": "MIT",
   "dependencies": {
     "@clack/prompts": "^0.11.0",
+    "@octokit/rest": "^22.0.0",
     "acorn": "^8.15.0",
     "boxen": "^8.0.1",
-    "chalk": "^5.5.0",
+    "chalk": "^5.6.0",
     "cli-table3": "^0.6.5",
     "commander": "^14.0.0",
     "dotenv": "^17.2.1",
@@ -75,13 +77,13 @@
     "handlebars": "^4.7.8",
     "js-yaml": "^4.1.0",
     "jscodeshift": "^17.3.0",
-    "marked": "^16.1.2",
+    "marked": "^16.2.0",
     "marked-terminal": "^7.3.0",
     "open": "^10.2.0",
     "ora": "^8.2.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.1.4",
+    "@biomejs/biome": "^2.2.2",
     "@vitest/coverage-v8": "^3.2.4",
     "markdownlint-cli2": "^0.18.1",
     "strip-ansi": "^7.1.0",

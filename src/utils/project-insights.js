@@ -30,7 +30,7 @@ function log(message, color = 'reset') {
  * @returns {Object} Project insights
  */
 function generateProjectInsights(projectPath = process.cwd()) {
-  const rulesPath = path.join(projectPath, '.ai', 'rules')
+  const rulesPath = path.join(projectPath, '.vdk', 'rules')
 
   if (!fs.existsSync(rulesPath)) {
     return {
@@ -102,11 +102,7 @@ function generateProjectInsights(projectPath = process.cwd()) {
         }
       }
 
-      if (
-        file.includes('language') ||
-        content.includes('TypeScript') ||
-        content.includes('Python')
-      ) {
+      if (file.includes('language') || content.includes('TypeScript') || content.includes('Python')) {
         insights.ruleTypes.language = true
 
         // Extract language info
@@ -142,9 +138,7 @@ function generateProjectInsights(projectPath = process.cwd()) {
 
     // Generate recommendations
     if (insights.rulesCount < 3) {
-      insights.recommendations.push(
-        'Consider running the setup wizard again to generate more comprehensive rules'
-      )
+      insights.recommendations.push('Consider running the setup wizard again to generate more comprehensive rules')
     }
 
     if (!insights.ruleTypes.errorHandling) {

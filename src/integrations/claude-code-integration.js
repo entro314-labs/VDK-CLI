@@ -1,8 +1,15 @@
 /**
- * Claude Code Integration Module
- * ---------------------------
- * Provides enhanced integration with Claude Code CLI, including memory management,
- * slash command support, and project-specific configurations.
+ * Claude Code CLI Integration Module
+ * ----------------------------------
+ * Context Platform Integration: Claude Code CLI
+ *
+ * Claude Code CLI is Anthropic's command-line coding tool that creates and manages
+ * its own context ecosystem (.claude/ directory, CLAUDE.md memory files, commands).
+ * This tool works across multiple IDEs via plugins/extensions.
+ *
+ * Context Format: Claude-specific (.claude/ ecosystem)
+ * Multi-IDE: Works with VS Code, JetBrains, Zed, etc. via plugins
+ * Priority: HIGH (Context-creating platform)
  */
 
 import fs from 'node:fs'
@@ -14,9 +21,9 @@ import { BaseIntegration } from './base-integration.js'
 /**
  * Claude Code configuration and integration utilities
  */
-export class ClaudeCodeIntegration extends BaseIntegration {
+export class ClaudeCodeCLIIntegration extends BaseIntegration {
   constructor(projectPath = process.cwd()) {
-    super('Claude Code', projectPath)
+    super('Claude Code CLI', projectPath)
     this.claudeConfigPath = path.join(projectPath, '.claude')
     this.globalClaudeConfigPath = path.join(os.homedir(), '.claude')
   }
@@ -76,10 +83,7 @@ export class ClaudeCodeIntegration extends BaseIntegration {
     }
 
     // 2. Check for CLAUDE.md files (main indicator)
-    const memoryPaths = [
-      path.join(this.projectPath, 'CLAUDE.md'),
-      path.join(this.projectPath, 'CLAUDE.local.md'),
-    ]
+    const memoryPaths = [path.join(this.projectPath, 'CLAUDE.md'), path.join(this.projectPath, 'CLAUDE.local.md')]
 
     memoryPaths.forEach((memoryPath) => {
       if (this.fileExists(memoryPath)) {
@@ -157,9 +161,7 @@ export class ClaudeCodeIntegration extends BaseIntegration {
     // Check .gitignore for Claude Code patterns
     const gitignorePatterns = this.checkGitignore(['.claude', 'claude-code'])
     if (gitignorePatterns.length > 0) {
-      detection.indicators.push(
-        `Claude Code paths found in .gitignore: ${gitignorePatterns.join(', ')}`
-      )
+      detection.indicators.push(`Claude Code paths found in .gitignore: ${gitignorePatterns.join(', ')}`)
     }
 
     // 5. Check for recent Claude Code activity
@@ -181,22 +183,16 @@ export class ClaudeCodeIntegration extends BaseIntegration {
 
     // 6. Generate recommendations based on detection
     if (detection.confidence === 'none') {
-      detection.recommendations.push(
-        'Claude Code not detected. Install with: npm install -g @anthropic-ai/claude-code'
-      )
+      detection.recommendations.push('Claude Code not detected. Install with: npm install -g @anthropic-ai/claude-code')
     } else if (detection.confidence === 'low') {
-      detection.recommendations.push(
-        'Claude Code may be installed but not configured for this project'
-      )
+      detection.recommendations.push('Claude Code may be installed but not configured for this project')
       detection.recommendations.push('Run: vdk claude-code --setup to configure integration')
     } else if (detection.confidence === 'medium') {
       detection.recommendations.push('Claude Code appears to be configured')
       detection.recommendations.push('Run: vdk claude-code --check to verify integration')
     } else if (detection.confidence === 'high') {
       detection.recommendations.push('Claude Code is actively configured and being used')
-      detection.recommendations.push(
-        'Consider running: vdk claude-code --update-memory to sync latest project context'
-      )
+      detection.recommendations.push('Consider running: vdk claude-code --update-memory to sync latest project context')
     }
 
     return detection
@@ -225,18 +221,7 @@ export class ClaudeCodeIntegration extends BaseIntegration {
 
       // Create project-specific Claude Code settings following official format
       const claudeSettings = {
-        allowedTools: [
-          'Bash',
-          'Edit',
-          'MultiEdit',
-          'Read',
-          'Write',
-          'Glob',
-          'Grep',
-          'LS',
-          'WebFetch',
-          'WebSearch',
-        ],
+        allowedTools: ['Bash', 'Edit', 'MultiEdit', 'Read', 'Write', 'Glob', 'Grep', 'LS', 'WebFetch', 'WebSearch'],
         disallowedTools: ['Bash(rm:*)', 'Bash(sudo:*)'],
         hooks: {},
       }
@@ -279,9 +264,7 @@ export class ClaudeCodeIntegration extends BaseIntegration {
       if (!this.fileExists(claudeMemoryPath)) {
         await this.createProjectMemoryFile(options)
       } else if (this.verbose) {
-        console.log(
-          'CLAUDE.md already exists, skipping basic template creation (likely created by ClaudeCodeAdapter)'
-        )
+        console.log('CLAUDE.md already exists, skipping basic template creation (likely created by ClaudeCodeAdapter)')
       }
 
       // Ensure .claude/settings.local.json is in .gitignore
@@ -295,6 +278,52 @@ export class ClaudeCodeIntegration extends BaseIntegration {
       return true
     } catch (error) {
       console.error('Failed to initialize Claude Code configuration:', error.message)
+      return false
+    }
+  }
+
+  /**
+   * Deploy ClaudeCodeAdapter results to filesystem
+   * Handles the file writing responsibility separated from the adapter
+   * @param {Object} adaptationResults - Results from ClaudeCodeAdapter
+   * @returns {boolean} Success status
+   */
+  async deployAdaptationResults(adaptationResults) {
+    try {
+      // Ensure all required directories exist
+      for (const dir of adaptationResults.directories || []) {
+        await this.ensureDirectory(dir)
+      }
+
+      // Write all files generated by the adapter
+      const filesWritten = []
+      for (const fileObj of adaptationResults.files || []) {
+        if (typeof fileObj === 'object' && fileObj.path && fileObj.content) {
+          // This is the new format with type information
+          await this.ensureDirectory(path.dirname(fileObj.path))
+
+          if (fileObj.type === 'settings') {
+            // For settings files, use JSON formatting
+            await this.writeJsonFile(fileObj.path, JSON.parse(fileObj.content))
+          } else {
+            // For content files, write directly
+            await fs.promises.writeFile(fileObj.path, fileObj.content, 'utf8')
+          }
+          filesWritten.push(fileObj.path)
+
+          if (this.verbose) {
+            console.log(`📝 Wrote ${fileObj.type}: ${path.basename(fileObj.path)}`)
+          }
+        } else if (typeof fileObj === 'string') {
+          // Legacy format support - just file path
+          filesWritten.push(fileObj)
+        }
+      }
+
+      console.log(`✅ Deployed ${filesWritten.length} Claude Code files`)
+      return true
+    } catch (error) {
+      console.error('Failed to deploy Claude Code adaptation results:', error.message)
       return false
     }
   }
@@ -321,7 +350,7 @@ This project uses VDK CLI for AI assistant integration and follows specific patt
 - **Framework**: ${options.framework || 'Not detected'}
 
 ### Important Conventions
-- All AI rules are stored in \`.ai/rules/\` directory
+- All AI rules are stored in \`.vdk/rules/\` directory
 - Rules follow unified YAML frontmatter format
 - Project follows VDK CLI naming conventions
 - Memory persistence is enabled for context continuity
@@ -369,7 +398,7 @@ claudeCode:
     supports: false
   fileReferences:
     supports: true
-    autoInclude: ["CLAUDE.md", ".ai/rules/", "package.json"]
+    autoInclude: ["CLAUDE.md", ".vdk/rules/", "package.json"]
 
 permissions:
   allowedTools: ["Read", "Glob", "Grep"]
@@ -403,7 +432,7 @@ Analyze the current project using VDK CLI capabilities and provide actionable re
 ### File References
 Auto-included files:
 - \`@CLAUDE.md\` - Project context and conventions
-- \`@.ai/rules/\` - Current VDK rules directory
+- \`@.vdk/rules/\` - Current VDK rules directory
 - \`@package.json\` - Project dependencies
 
 ## Analysis Areas
@@ -414,7 +443,7 @@ Auto-included files:
    - Analyze technology stack and dependencies
 
 2. **Rule Status Review**
-   - Check existing VDK rules in \`.ai/rules/\`
+   - Check existing VDK rules in \`.vdk/rules/\`
    - Validate rule format and content
    - Identify missing or outdated rules
 
@@ -459,7 +488,7 @@ claudeCode:
     supports: false
   fileReferences:
     supports: true
-    autoInclude: ["CLAUDE.md", ".ai/rules/", "package.json"]
+    autoInclude: ["CLAUDE.md", ".vdk/rules/", "package.json"]
 
 permissions:
   allowedTools: ["Read", "Write", "Edit", "Bash(git:*)"]
@@ -543,7 +572,7 @@ claudeCode:
     supports: false
   fileReferences:
     supports: true
-    autoInclude: ["CLAUDE.md", ".ai/rules/", "package.json"]
+    autoInclude: ["CLAUDE.md", ".vdk/rules/", "package.json"]
   bashCommands:
     supports: true
     commands: ["git status", "git log --oneline -10"]
@@ -641,10 +670,7 @@ ${
 ${
   projectContext.patterns
     ? Object.entries(projectContext.patterns)
-        .map(
-          ([key, value]) =>
-            `- **${key}**: ${Array.isArray(value) ? value.join(', ') : JSON.stringify(value)}`
-        )
+        .map(([key, value]) => `- **${key}**: ${Array.isArray(value) ? value.join(', ') : JSON.stringify(value)}`)
         .join('\n')
     : 'Not analyzed'
 }

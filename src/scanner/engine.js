@@ -50,9 +50,7 @@ export async function runScanner(options) {
         const gitignorePatterns = await GitIgnoreParser.parseGitIgnore(projectPath)
         ignorePatterns = [...ignorePatterns, ...gitignorePatterns]
         if (options.verbose && gitignorePatterns.length > 0) {
-          spinner.info(
-            `Successfully parsed .gitignore file with ${gitignorePatterns.length} patterns.`
-          )
+          spinner.info(`Successfully parsed .gitignore file with ${gitignorePatterns.length} patterns.`)
         }
       } catch (error) {
         spinner.warn('Could not parse .gitignore file. Proceeding without it.')
@@ -81,11 +79,7 @@ export async function runScanner(options) {
     const techAnalyzer = new TechnologyAnalyzer({ verbose: options.verbose })
     const techData = await techAnalyzer.analyzeTechnologies(projectData)
     const techSummary = [
-      ...new Set([
-        ...(techData.frameworks || []),
-        ...(techData.primaryLanguages || []),
-        ...(techData.stacks || []),
-      ]),
+      ...new Set([...(techData.frameworks || []), ...(techData.primaryLanguages || []), ...(techData.stacks || [])]),
     ]
       .filter(Boolean)
       .join(', ')
@@ -156,11 +150,9 @@ export async function runScanner(options) {
       await validator.validateRuleDirectory(outputPath)
       spinner.succeed('All generated rules are valid.')
     } else {
-      // Skip validation for IDE-specific file generation (like Claude Code memory files)
+      // Skip validation for IDE-specific file generation (like Claude Code CLI memory files)
       if (options.verbose) {
-        console.log(
-          chalk.gray('Skipping traditional rule validation - using IDE-specific file generation')
-        )
+        console.log(chalk.gray('Skipping traditional rule validation - using IDE-specific file generation'))
       }
     }
 
@@ -187,23 +179,17 @@ export async function runScanner(options) {
         if (initializedIDEs.length > 0) {
           console.log(chalk.green(`IDE integrations initialized: ${initializedIDEs.join(', ')}`))
 
-          // Provide user guidance for Claude Code integration
+          // Provide user guidance for Claude Code CLI integration
           if (
-            initializedIDEs.includes('Claude Code') &&
+            initializedIDEs.includes('Claude Code CLI') &&
             !options.interactive &&
             !options.categories &&
             options.preset === 'auto'
           ) {
-            console.log(
-              chalk.cyan('\n💡 Claude Code detected! You can customize command selection:')
-            )
+            console.log(chalk.cyan('\n💡 Claude Code CLI detected! You can customize command selection:'))
             console.log(chalk.gray('   • Use --interactive for guided category selection'))
-            console.log(
-              chalk.gray('   • Use --preset development for development-focused commands')
-            )
-            console.log(
-              chalk.gray('   • Use --categories development,quality for specific categories')
-            )
+            console.log(chalk.gray('   • Use --preset development for development-focused commands'))
+            console.log(chalk.gray('   • Use --categories development,quality for specific categories'))
             console.log(chalk.gray('   • Use --help to see all options'))
           }
         } else {
@@ -239,6 +225,7 @@ export async function runScanner(options) {
     return {
       projectName: path.basename(projectPath),
       initializedIDEs,
+      detectedPrimaryIDE: ideIntegration?.getPrimaryIDE()?.name || null,
       generatedFiles,
       ideIntegration,
     }

@@ -76,9 +76,7 @@ class RuleValidator {
       const successRate = this.results.validRules / this.results.totalRules
 
       if (successRate >= 0.98) {
-        spinner.succeed(
-          `Rule validation complete: ${chalk.green(Math.round(successRate * 100))}% of rules are valid`
-        )
+        spinner.succeed(`Rule validation complete: ${chalk.green(Math.round(successRate * 100))}% of rules are valid`)
         return {
           success: true,
           message: `${this.results.validRules} of ${this.results.totalRules} rules are valid`,
@@ -95,9 +93,7 @@ class RuleValidator {
           results: this.results,
         }
       }
-      spinner.fail(
-        `Rule validation failed: ${chalk.red(Math.round(successRate * 100))}% of rules are valid`
-      )
+      spinner.fail(`Rule validation failed: ${chalk.red(Math.round(successRate * 100))}% of rules are valid`)
       return {
         success: false,
         message: `Only ${this.results.validRules} of ${this.results.totalRules} rules are valid`,

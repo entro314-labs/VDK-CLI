@@ -66,12 +66,7 @@ export async function analyzeTypeScript(content, filePath) {
       // Extract React components (functional components)
       const componentPattern = /(?:const|let|var|function)\s+([A-Z][a-zA-Z0-9_$]*)/g
       while ((match = componentPattern.exec(content)) !== null) {
-        if (
-          match[1] &&
-          (content.includes('JSX.Element') ||
-            content.includes('React.FC') ||
-            content.includes('</'))
-        ) {
+        if (match[1] && (content.includes('JSX.Element') || content.includes('React.FC') || content.includes('</'))) {
           jsAnalysis.components.push(match[1])
         }
       }
@@ -119,29 +114,17 @@ export async function analyzeTypeScript(content, filePath) {
     }
 
     // Detect decorators (Angular patterns)
-    if (
-      content.includes('@Component') ||
-      content.includes('@NgModule') ||
-      content.includes('@Injectable')
-    ) {
+    if (content.includes('@Component') || content.includes('@NgModule') || content.includes('@Injectable')) {
       tsAnalysis.patterns.push('Angular Decorators')
     }
 
     // Detect NestJS patterns
-    if (
-      content.includes('@Controller') ||
-      content.includes('@Injectable') ||
-      content.includes('@Module')
-    ) {
+    if (content.includes('@Controller') || content.includes('@Injectable') || content.includes('@Module')) {
       tsAnalysis.patterns.push('NestJS Decorators')
     }
 
     // Detect TypeORM patterns
-    if (
-      content.includes('@Entity') ||
-      content.includes('@Column') ||
-      content.includes('@Repository')
-    ) {
+    if (content.includes('@Entity') || content.includes('@Column') || content.includes('@Repository')) {
       tsAnalysis.patterns.push('TypeORM')
     }
 

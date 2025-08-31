@@ -8,12 +8,12 @@
  * - Local Handlebars template generation (fallback)
  * - Remote .mdc rule fetching from repository (primary)
  * - IDE-specific rule adaptation
- * 
- * TODO: Platform Configuration Flow
- * - Extract platform-specific configurations from blueprint frontmatter
- * - Pass platformConfig to RuleAdapter.adaptRules() calls (lines 160-171)
- * - Implement getPlatformConfig() method to extract config for each integration
- * 
+ *
+ * Platform Configuration Flow - IMPLEMENTED ✅
+ * - Extract platform-specific configurations from blueprint frontmatter ✅
+ * - Pass platformConfig to RuleAdapter.adaptRules() calls (lines 187, 1943) ✅
+ * - Implement getPlatformConfig() method to extract config for each integration ✅
+ *
  * TODO: Dependency Resolution System
  * - Implement blueprint dependency resolution in loadStandardizedRules()
  * - Process relationship fields (requires, suggests, conflicts, supersedes)
@@ -24,6 +24,7 @@
  */
 
 import fs from 'node:fs/promises'
+import fsSync from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -33,8 +34,9 @@ import yaml from 'js-yaml'
 import { createIntegrationManager } from '../../integrations/index.js'
 import { validateBlueprint } from '../../utils/schema-validator.js'
 import { applyLightTemplating, prepareTemplateVariables } from '../utils/light-templating.js'
-import { ClaudeCodeAdapter } from './ClaudeCodeAdapter.js'
+import { generateCommandName, generateBlueprintId, generateSafeFilename } from '../../utils/filename-generator.js'
 import { RuleAdapter } from './RuleAdapter.js'
+import { ClaudeCodeAdapter } from './ClaudeCodeAdapter.js'
 
 // Ensure fetch is available (Node.js 18+ has it built-in)
 if (typeof globalThis.fetch === 'undefined') {
@@ -45,11 +47,11 @@ if (typeof globalThis.fetch === 'undefined') {
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export class RuleGenerator {
-  constructor(outputPath = './.ai/rules', template = 'default', overwrite = false, options = {}) {
+  constructor(outputPath = './.vdk/rules', template = 'default', overwrite = false, options = {}) {
     // Support both (outputPath, template, overwrite) and (options) constructor signatures
     if (typeof outputPath === 'object') {
       options = outputPath
-      outputPath = options.outputPath || './.ai/rules'
+      outputPath = options.outputPath || './.vdk/rules'
       template = options.template || 'default'
       overwrite = options.overwrite
     }
@@ -70,8 +72,7 @@ export class RuleGenerator {
     // VDK Ecosystem configuration
     this.ecosystemVersion = '2.1.0'
     this.hubEndpoint = options.hubEndpoint || 'https://vdk.tools'
-    this.repositoryEndpoint =
-      options.repositoryEndpoint || 'https://api.github.com/repos/entro314-labs/VDK-Blueprints'
+    this.repositoryEndpoint = options.repositoryEndpoint || 'https://api.github.com/repos/entro314-labs/VDK-Blueprints'
     this.enableRemoteFetch = options.enableRemoteFetch !== false
     this.enableAnalytics = options.enableAnalytics !== false
     this.schemaValidation = options.schemaValidation !== false
@@ -91,17 +92,37 @@ export class RuleGenerator {
       ecosystemVersion: this.ecosystemVersion,
     }
 
-    // Claude Code adapter with sophisticated memory hierarchy
-    this.ruleAdapters.claude = new ClaudeCodeAdapter({ ...adapterOptions, ruleGenerator: this })
+    // Single RuleAdapter instance for all IDEs (consolidated approach)
+    this.ruleAdapter = new RuleAdapter({ ...adapterOptions })
 
-    // Generic adapters for other IDEs
-    this.ruleAdapters.cursor = new RuleAdapter({ ...adapterOptions, targetIDE: 'cursor' })
-    this.ruleAdapters.windsurf = new RuleAdapter({ ...adapterOptions, targetIDE: 'windsurf' })
-    this.ruleAdapters.vscode = new RuleAdapter({ ...adapterOptions, targetIDE: 'vscode' })
-    this.ruleAdapters.copilot = new RuleAdapter({ ...adapterOptions, targetIDE: 'copilot' })
+    // Initialize specialized adapters for enhanced IDE-specific functionality
+    this.initializeSpecializedAdapters(adapterOptions)
+  }
 
-    // Set default adapter for VDK ecosystem
-    this.ruleAdapter = this.ruleAdapters.claude // Claude Code as primary
+  /**
+   * Initialize specialized adapters for enhanced IDE-specific functionality
+   * @param {Object} adapterOptions - Options for adapter initialization
+   */
+  initializeSpecializedAdapters(adapterOptions) {
+    // Initialize specialized adapters that provide enhanced functionality
+    // beyond the generic RuleAdapter
+
+    // Claude Code CLI gets specialized adapter for memory hierarchy and commands
+    const claudeAdapterOptions = { ...adapterOptions, ruleGenerator: this }
+    this.ruleAdapters['claude'] = new ClaudeCodeAdapter(claudeAdapterOptions)
+    this.ruleAdapters['claude-code-cli'] = new ClaudeCodeAdapter(claudeAdapterOptions)
+
+    // All other IDEs use the comprehensive RuleAdapter with robust IDE-specific implementations
+    // RuleAdapter already provides specialized adaptForCursor, adaptForWindsurf, adaptForGitHubCopilot, etc.
+    this.ruleAdapters['cursor'] = this.ruleAdapter
+    this.ruleAdapters['cursor-ai'] = this.ruleAdapter
+    this.ruleAdapters['windsurf'] = this.ruleAdapter
+    this.ruleAdapters['github-copilot'] = this.ruleAdapter
+    this.ruleAdapters['zed'] = this.ruleAdapter
+    this.ruleAdapters['vscode'] = this.ruleAdapter
+    this.ruleAdapters['vscode-insiders'] = this.ruleAdapter
+    this.ruleAdapters['vscodium'] = this.ruleAdapter
+    this.ruleAdapters['generic-ai'] = this.ruleAdapter
   }
 
   /**
@@ -116,19 +137,13 @@ export class RuleGenerator {
     }
 
     // Initialize integration manager
-    this.integrationManager = createIntegrationManager(
-      analysisData.projectStructure?.root || process.cwd()
-    )
+    this.integrationManager = createIntegrationManager(analysisData.projectStructure?.root || process.cwd())
 
     // Detect active integrations
     this.detectedIntegrations = await this.detectActiveIntegrations()
 
     if (this.verbose) {
-      console.log(
-        chalk.gray(
-          `Detected integrations: ${this.detectedIntegrations.map((i) => i.name).join(', ')}`
-        )
-      )
+      console.log(chalk.gray(`Detected integrations: ${this.detectedIntegrations.map((i) => i.name).join(', ')}`))
     }
 
     // First, try to fetch remote blueprints
@@ -166,21 +181,13 @@ export class RuleGenerator {
       try {
         let adaptedRules
 
-        // For Claude Code, use the enhanced adapter with category filtering support
-        if (integration.name === 'Claude Code') {
-          adaptedRules = await this.ruleAdapters.claude.adaptForClaude(
-            standardizedRules,
-            analysisData,
-            categoryFilter
-          )
-        } else {
-          // For other IDEs, use the standard adapter
-          adaptedRules = await this.ruleAdapter.adaptRules(
-            standardizedRules,
-            this.mapIntegrationToIDE(integration.name),
-            analysisData
-          )
-        }
+        // Extract platform configuration for this integration
+        const ideId = this.mapIntegrationToIDE(integration.name)
+        const platformConfig = this.getPlatformConfig(standardizedRules, ideId)
+
+        // Use specialized adapter if available, otherwise fall back to generic adapter
+        const adapter = this.ruleAdapters[ideId] || this.ruleAdapter
+        adaptedRules = await adapter.adaptRules(standardizedRules, ideId, analysisData, platformConfig)
 
         if (this.verbose && process.env.VDK_DEBUG) {
           console.log('Debug adaptedRules structure:', JSON.stringify(adaptedRules, null, 2))
@@ -205,9 +212,7 @@ export class RuleGenerator {
     // Generate fallback universal rules if no specific integrations detected
     if (this.detectedIntegrations.length === 0) {
       if (this.verbose) {
-        console.log(
-          chalk.yellow('No specific IDE integrations detected, generating universal rules...')
-        )
+        console.log(chalk.yellow('No specific IDE integrations detected, generating universal rules...'))
       }
 
       const universalRules = await this.generateUniversalRules(analysisData)
@@ -224,15 +229,16 @@ export class RuleGenerator {
    * @returns {Array} List of active integrations
    */
   async detectActiveIntegrations() {
-    const activeIntegrations = []
+    const candidateIntegrations = []
     const allIntegrations = this.integrationManager.getAllIntegrations()
 
+    // First pass: collect all integrations with medium/high confidence
     for (const integration of allIntegrations) {
       const detection = integration.detectUsage()
 
       // Consider integration active if confidence is medium or high
       if (detection.confidence === 'medium' || detection.confidence === 'high') {
-        activeIntegrations.push({
+        candidateIntegrations.push({
           name: integration.name,
           confidence: detection.confidence,
           integration,
@@ -240,7 +246,121 @@ export class RuleGenerator {
       }
     }
 
-    return activeIntegrations
+    // Second pass: apply priority filtering to avoid conflicts
+    return this.filterIntegrationsByPriority(candidateIntegrations)
+  }
+
+  /**
+   * Filter integrations to select PRIMARY IDE based on actual usage context
+   * @param {Array} integrations - Candidate integrations
+   * @returns {Array} Single primary IDE integration
+   */
+  filterIntegrationsByPriority(integrations) {
+    if (integrations.length <= 1) {
+      return integrations
+    }
+
+    // Check if user explicitly specified an IDE in vdk.config.json
+    const projectPath = this.projectPath || process.cwd()
+    const configPath = path.join(projectPath, 'vdk.config.json')
+    let explicitIDE = null
+    try {
+      if (fsSync.existsSync(configPath)) {
+        const config = JSON.parse(fsSync.readFileSync(configPath, 'utf8'))
+        explicitIDE = config.ide
+      }
+    } catch (error) {
+      // Config file doesn't exist or is invalid, continue with detection
+    }
+
+    // If user explicitly set an IDE, use that (unless it's not detected)
+    if (explicitIDE) {
+      const explicitMatch = integrations.find((i) => i.name === explicitIDE)
+      if (explicitMatch) {
+        console.log(chalk.cyan(`🎯 Using explicitly configured IDE: ${explicitIDE}`))
+        return [explicitMatch]
+      }
+    }
+
+    // Detect PRIMARY IDE based on actual usage indicators (not just installation)
+    const primaryIDE = this.detectPrimaryIDE(integrations)
+    if (primaryIDE) {
+      console.log(chalk.cyan(`🎯 Detected primary IDE: ${primaryIDE.name} (${primaryIDE.confidence} confidence)`))
+      return [primaryIDE]
+    }
+
+    // Fallback: if no clear primary IDE, ask user to specify
+    const ideNames = integrations.map((i) => i.name).join(', ')
+    console.log(chalk.yellow(`\n⚠️  Multiple IDEs detected: ${ideNames}`))
+    console.log(chalk.yellow('💡 To avoid ambiguity, specify your primary IDE:'))
+    console.log(chalk.gray('   • Run: vdk init --ide "Your IDE Name"'))
+    console.log(chalk.gray('   • Or edit vdk.config.json: {"ide": "Your IDE Name"}'))
+
+    // Default to highest confidence for now
+    const highestConfidence = integrations.sort((a, b) => {
+      const confidenceScore = { high: 3, medium: 2, low: 1 }
+      return confidenceScore[b.confidence] - confidenceScore[a.confidence]
+    })[0]
+
+    console.log(chalk.yellow(`📝 Using ${highestConfidence.name} as fallback`))
+    return [highestConfidence]
+  }
+
+  /**
+   * Detect the PRIMARY IDE the user is actually using (not just installed)
+   * @param {Array} integrations - Candidate integrations
+   * @returns {Object|null} Primary IDE or null if ambiguous
+   */
+  detectPrimaryIDE(integrations) {
+    // FIRST: Look for project-specific configuration files (highest priority)
+    // These indicate the user's intentional choice for THIS project
+    const projectIndicators = {
+      Cursor: ['.cursorrules', '.cursor/', '.cursorignore'],
+      'VS Code': ['.vscode/settings.json', '.vscode/launch.json'],
+      Windsurf: ['.windsurf/', '.windsurfrules'],
+      'JetBrains IDEs': ['.idea/', '*.iml'],
+      'Zed Editor': ['.zed/'],
+      'Claude Code CLI': ['CLAUDE.md', '.claude/'],
+    }
+
+    for (const [ideName, files] of Object.entries(projectIndicators)) {
+      const integration = integrations.find((i) => i.name === ideName || i.name.includes(ideName.split(' ')[0]))
+      if (!integration) continue
+
+      const hasProjectConfig = files.some((file) => {
+        const projectPath = this.projectPath || process.cwd()
+        const fullPath = path.join(projectPath, file)
+        return fsSync.existsSync(fullPath) || (file.endsWith('/') && fsSync.existsSync(fullPath))
+      })
+
+      if (hasProjectConfig) {
+        return integration
+      }
+    }
+
+    // SECOND: Look for strong indicators of active usage (fallback only)
+    for (const integration of integrations) {
+      const detection = integration.integration.detectUsage()
+
+      // Strong indicators that this IDE is actively being used
+      const strongIndicators = [
+        'Currently running in',
+        'Active workspace',
+        'Recent activity',
+        'Open project',
+        'Current session',
+      ]
+
+      const hasStrongIndicator = detection.indicators?.some((indicator) =>
+        strongIndicators.some((strong) => indicator.includes(strong))
+      )
+
+      if (hasStrongIndicator && detection.confidence === 'high') {
+        return integration
+      }
+    }
+
+    return null // No clear primary IDE detected
   }
 
   /**
@@ -249,7 +369,7 @@ export class RuleGenerator {
    * @returns {Array} Array of rule objects with frontmatter and templated content
    */
   async loadStandardizedRules(analysisData = {}) {
-    const rulesDir = path.resolve(__dirname, '../../../.ai/rules')
+    const rulesDir = path.resolve(__dirname, '../../../.vdk/rules')
     const rules = []
 
     try {
@@ -318,6 +438,28 @@ export class RuleGenerator {
     }
 
     return files
+  }
+
+  /**
+   * Extract platform-specific configuration for a given IDE/integration
+   * @param {Array} rules - Array of rule objects with frontmatter
+   * @param {string} ideId - IDE identifier (e.g., 'claude', 'cursor', 'windsurf')
+   * @returns {Object} Aggregated platform configuration
+   */
+  getPlatformConfig(rules, ideId) {
+    const platformConfig = {}
+
+    for (const rule of rules) {
+      const rulePlatforms = rule.frontmatter?.platforms || {}
+      const rulePlatformConfig = rulePlatforms[ideId]
+
+      if (rulePlatformConfig) {
+        // Merge platform configurations, with later rules taking precedence
+        Object.assign(platformConfig, rulePlatformConfig)
+      }
+    }
+
+    return platformConfig
   }
 
   /**
@@ -420,9 +562,9 @@ export class RuleGenerator {
    */
   mapIntegrationToIDE(integrationName) {
     const mapping = {
-      'Cursor AI': 'cursor',
+      Cursor: 'cursor',
       Windsurf: 'windsurf',
-      'Claude Code': 'claude',
+      'Claude Code CLI': 'claude',
       'GitHub Copilot': 'github-copilot',
     }
 
@@ -435,26 +577,11 @@ export class RuleGenerator {
    */
   async writeAdaptedRules(adaptedRules) {
     if (!adaptedRules?.files) {
-      console.error(
-        chalk.red('No files to write - adaptedRules or adaptedRules.files is undefined')
-      )
+      console.error(chalk.red('No files to write - adaptedRules or adaptedRules.files is undefined'))
       return
     }
 
-    // Handle ClaudeCodeAdapter structure (files are already written, just paths returned)
-    if (typeof adaptedRules.files[0] === 'string') {
-      if (this.verbose) {
-        console.log(
-          chalk.gray(`Claude Code files already written: ${adaptedRules.files.length} files`)
-        )
-        adaptedRules.files.forEach((filePath) => {
-          console.log(chalk.gray(`  - ${filePath}`))
-        })
-      }
-      return
-    }
-
-    // Handle standard RuleAdapter structure (file objects with path and content)
+    // Handle RuleAdapter structure (file objects with path and content)
     for (const file of adaptedRules.files) {
       try {
         if (!file.path) {
@@ -483,13 +610,9 @@ export class RuleGenerator {
    * @returns {Array} Generated file paths
    */
   async generateUniversalRules(analysisData) {
-    // Set output to .ai/rules for universal compatibility
+    // Set output to .vdk/rules for universal compatibility
     const originalOutputPath = this.outputPath
-    this.outputPath = path.join(
-      analysisData.projectStructure?.root || process.cwd(),
-      '.ai',
-      'rules'
-    )
+    this.outputPath = path.join(analysisData.projectStructure?.root || process.cwd(), '.ai', 'rules')
 
     try {
       // Generate basic fallback rules with standard templates
@@ -510,14 +633,14 @@ export class RuleGenerator {
     const projectRoot = analysisData.projectStructure?.root || process.cwd()
 
     switch (ideName) {
-      case 'Cursor AI':
+      case 'Cursor':
         return path.join(projectRoot, '.cursor', 'rules')
 
       case 'Windsurf':
         return path.join(projectRoot, '.windsurf', 'rules')
 
-      case 'Claude Code':
-        // Claude Code uses project root for memory files
+      case 'Claude Code CLI':
+        // Claude Code CLI uses project root for memory files
         return projectRoot
 
       case 'GitHub Copilot':
@@ -535,11 +658,11 @@ export class RuleGenerator {
    */
   getIDEFormat(ideName) {
     switch (ideName) {
-      case 'Cursor AI':
+      case 'Cursor':
         return 'mdc' // MDC format with YAML frontmatter
       case 'Windsurf':
         return 'md' // Markdown with XML tags
-      case 'Claude Code':
+      case 'Claude Code CLI':
         return 'md' // Pure markdown for memory
       case 'GitHub Copilot':
         return 'json' // JSON configuration
@@ -571,9 +694,7 @@ export class RuleGenerator {
       if (remoteTemplates.length > 0) {
         await this.generateRulesFromRemoteTemplates(remoteTemplates, analysisData)
         if (this.verbose) {
-          console.log(
-            chalk.green(`📝 Generated ${remoteTemplates.length} rules from remote templates`)
-          )
+          console.log(chalk.green(`📝 Generated ${remoteTemplates.length} rules from remote templates`))
         }
       }
 
@@ -615,12 +736,7 @@ export class RuleGenerator {
    * @param {Object} categoryFilter - Category filtering options
    * @returns {Array} Fetched templates/content
    */
-  async fetchFromRepository(
-    analysisData,
-    contentType = 'rules',
-    platform = null,
-    categoryFilter = null
-  ) {
+  async fetchFromRepository(analysisData, contentType = 'rules', platform = null, categoryFilter = null) {
     if (!this.enableRemoteFetch) {
       return []
     }
@@ -634,12 +750,7 @@ export class RuleGenerator {
       const projectSignature = this.generateProjectSignature(analysisData)
       // Include analysisData in signature for templating
       projectSignature.analysisData = analysisData
-      const templates = await this.fetchRepositoryContent(
-        projectSignature,
-        contentType,
-        platform,
-        categoryFilter
-      )
+      const templates = await this.fetchRepositoryContent(projectSignature, contentType, platform, categoryFilter)
 
       if (this.verbose) {
         console.log(chalk.green(`📚 Fetched ${templates.length} ${contentType} items`))
@@ -697,16 +808,11 @@ export class RuleGenerator {
    * @param {string} platform - Platform/IDE specific directory (for commands)
    * @param {Object} categoryFilter - Category filtering options
    */
-  async fetchRepositoryContent(
-    projectSignature,
-    contentType = 'rules',
-    platform = null,
-    categoryFilter = null
-  ) {
+  async fetchRepositoryContent(projectSignature, contentType = 'rules', platform = null, categoryFilter = null) {
     try {
       // Build the API URL based on content type
-      // For commands, we fetch from .ai/commands/ root and filter by platform later
-      const apiUrl = `${this.repositoryEndpoint}/contents/.ai/${contentType}`
+      // For commands, we fetch from blueprints/vdk/commands/ root and filter by platform later
+      const apiUrl = `${this.repositoryEndpoint}/contents/blueprints/vdk/${contentType}`
 
       const headers = {
         Accept: 'application/vnd.github.v3+json',
@@ -738,9 +844,7 @@ export class RuleGenerator {
       }
       if (this.verbose) {
         console.log(
-          chalk.gray(
-            `📁 Repository contents: ${contents.map((item) => `${item.name}(${item.type})`).join(', ')}`
-          )
+          chalk.gray(`📁 Repository contents: ${contents.map((item) => `${item.name}(${item.type})`).join(', ')}`)
         )
       }
 
@@ -756,48 +860,40 @@ export class RuleGenerator {
         )
       } else {
         // First expand directories to get all template files
-        allTemplates = await this.expandRepositoryDirectories(
-          contents,
-          projectSignature,
-          contentType
-        )
+        allTemplates = await this.expandRepositoryDirectories(contents, projectSignature, contentType)
       }
 
       if (this.verbose) {
-        console.log(
-          chalk.gray(
-            `📁 After directory expansion: ${allTemplates.length} ${contentType} files found`
-          )
-        )
+        console.log(chalk.gray(`📁 After directory expansion: ${allTemplates.length} ${contentType} files found`))
         if (categoryFilter?.categories) {
-          console.log(
-            chalk.gray(`🎯 Category filter applied: ${categoryFilter.categories.join(', ')}`)
-          )
+          console.log(chalk.gray(`🎯 Category filter applied: ${categoryFilter.categories.join(', ')}`))
         }
       }
 
-      const relevantTemplates = this.filterRelevantTemplates(
-        allTemplates,
-        projectSignature,
-        contentType
-      )
+      const relevantTemplates = this.filterRelevantTemplates(allTemplates, projectSignature, contentType)
 
       if (this.verbose) {
-        console.log(
-          chalk.gray(`🎯 Relevant templates after filtering: ${relevantTemplates.length}`)
-        )
+        console.log(chalk.gray(`🎯 Relevant templates after filtering: ${relevantTemplates.length}`))
         relevantTemplates.slice(0, 3).forEach((template) => {
           console.log(chalk.gray(`   - ${template.name} (${template.path})`))
         })
       }
 
       const templates = []
-      // For commands, allow more templates since they're all potentially useful
-      // For rules, allow more templates to include technology-specific rules
-      // Increased limits to include more technology-specific rules
-      const limit = contentType === 'commands' ? 25 : contentType === 'rules' ? 20 : 10
-      for (const template of relevantTemplates.slice(0, limit)) {
-        // Allow more rules for better coverage
+      // Use relevance-based selection instead of hard limits
+      // Set quality thresholds to prevent irrelevant content
+      const qualityThreshold = contentType === 'commands' ? 0.2 : contentType === 'rules' ? 0.3 : 0.4
+      const maxLimit = contentType === 'commands' ? 30 : contentType === 'rules' ? 25 : 15
+
+      // Filter templates that meet quality threshold or are in top results with decent scores
+      const qualityTemplates = relevantTemplates
+        .filter(
+          (template, index) =>
+            template.relevanceScore >= qualityThreshold || (index < 10 && template.relevanceScore >= 0.1) // Top 10 with minimum relevance
+        )
+        .slice(0, maxLimit)
+
+      for (const template of qualityTemplates) {
         try {
           const rawTemplateContent = await this.fetchTemplateContent(template.download_url)
 
@@ -809,12 +905,16 @@ export class RuleGenerator {
             console.log(chalk.gray(`Applied light templating to remote template ${template.name}`))
           }
 
+          // Parse frontmatter from the templated content
+          const frontmatter = this.parseFrontmatter(templatedContent)
+
           templates.push({
             name: template.name,
             content: templatedContent,
             source: 'repository',
             path: template.path,
             relevanceScore: template.relevanceScore,
+            frontmatter: frontmatter,
           })
         } catch (err) {
           if (this.verbose) {
@@ -840,24 +940,14 @@ export class RuleGenerator {
    * @param {number} maxDepth - Maximum recursion depth
    * @param {number} currentDepth - Current recursion depth
    */
-  async expandRepositoryDirectories(
-    contents,
-    projectSignature,
-    contentType = 'rules',
-    maxDepth = 2,
-    currentDepth = 0
-  ) {
+  async expandRepositoryDirectories(contents, projectSignature, contentType = 'rules', maxDepth = 2, currentDepth = 0) {
     const allTemplates = []
 
     // Determine file extensions based on content type
     const fileExtensions = this.getFileExtensions(contentType)
 
     if (this.verbose && currentDepth === 0) {
-      console.log(
-        chalk.gray(
-          `🔍 Looking for ${contentType} files with extensions: ${fileExtensions.join(', ')}`
-        )
-      )
+      console.log(chalk.gray(`🔍 Looking for ${contentType} files with extensions: ${fileExtensions.join(', ')}`))
     }
 
     for (const item of contents) {
@@ -897,15 +987,11 @@ export class RuleGenerator {
             allTemplates.push(...subdirTemplates)
 
             if (this.verbose && subdirTemplates.length > 0) {
-              console.log(
-                chalk.gray(`   📁 Found ${subdirTemplates.length} templates in ${item.name}/`)
-              )
+              console.log(chalk.gray(`   📁 Found ${subdirTemplates.length} templates in ${item.name}/`))
             }
           } else if (this.verbose) {
             console.log(
-              chalk.yellow(
-                `   ⚠️ Failed to fetch ${item.name}: ${subdirResponse.status} ${subdirResponse.statusText}`
-              )
+              chalk.yellow(`   ⚠️ Failed to fetch ${item.name}: ${subdirResponse.status} ${subdirResponse.statusText}`)
             )
           }
         } catch (error) {
@@ -929,13 +1015,7 @@ export class RuleGenerator {
    * @param {Object} categoryFilter - Category filtering options
    * @returns {Array} Array of filtered templates
    */
-  async expandRepositoryDirectoriesWithCategories(
-    contents,
-    _projectSignature,
-    contentType,
-    platform,
-    categoryFilter
-  ) {
+  async expandRepositoryDirectoriesWithCategories(contents, _projectSignature, contentType, platform, categoryFilter) {
     const allTemplates = []
     const fileExtensions = this.getFileExtensions(contentType)
 
@@ -957,9 +1037,7 @@ export class RuleGenerator {
       }
 
       const platformContents = await platformResponse.json()
-      const discoveredCategories = platformContents
-        .filter((item) => item.type === 'dir')
-        .map((item) => item.name)
+      const discoveredCategories = platformContents.filter((item) => item.type === 'dir').map((item) => item.name)
 
       if (this.verbose) {
         console.log(chalk.cyan(`🔍 Discovered categories: ${discoveredCategories.join(', ')}`))
@@ -972,14 +1050,10 @@ export class RuleGenerator {
       let categoriesToFetch
       if (categoryFilter?.categories && categoryFilter.categories.length > 0) {
         // Use specified categories, but validate they exist
-        categoriesToFetch = categoryFilter.categories.filter((cat) =>
-          discoveredCategories.includes(cat)
-        )
+        categoriesToFetch = categoryFilter.categories.filter((cat) => discoveredCategories.includes(cat))
 
         if (categoriesToFetch.length !== categoryFilter.categories.length) {
-          const missing = categoryFilter.categories.filter(
-            (cat) => !discoveredCategories.includes(cat)
-          )
+          const missing = categoryFilter.categories.filter((cat) => !discoveredCategories.includes(cat))
           if (this.verbose) {
             console.log(chalk.yellow(`⚠️ Categories not found in repository: ${missing.join(', ')}`))
           }
@@ -995,9 +1069,7 @@ export class RuleGenerator {
 
       // Fetch commands from each selected category
       for (const category of categoriesToFetch) {
-        const categoryDir = platformContents.find(
-          (item) => item.name === category && item.type === 'dir'
-        )
+        const categoryDir = platformContents.find((item) => item.name === category && item.type === 'dir')
         if (!categoryDir) {
           continue
         }
@@ -1009,10 +1081,7 @@ export class RuleGenerator {
 
             // Filter for command files and add category metadata
             const categoryTemplates = categoryContents
-              .filter(
-                (item) =>
-                  item.type === 'file' && fileExtensions.some((ext) => item.name.endsWith(ext))
-              )
+              .filter((item) => item.type === 'file' && fileExtensions.some((ext) => item.name.endsWith(ext)))
               .map((template) => ({
                 ...template,
                 category, // Add category metadata
@@ -1022,9 +1091,7 @@ export class RuleGenerator {
             allTemplates.push(...categoryTemplates)
 
             if (this.verbose && categoryTemplates.length > 0) {
-              console.log(
-                chalk.gray(`   📁 Found ${categoryTemplates.length} commands in ${category}/`)
-              )
+              console.log(chalk.gray(`   📁 Found ${categoryTemplates.length} commands in ${category}/`))
             }
           }
         } catch (error) {
@@ -1037,15 +1104,13 @@ export class RuleGenerator {
       // Apply specific command filtering if provided
       if (categoryFilter?.specificCommands) {
         const filteredTemplates = allTemplates.filter((template) => {
-          const commandName = template.name.replace(/\.(md|mdc)$/, '')
+          const commandName = generateCommandName(template.name)
           return categoryFilter.specificCommands.includes(commandName)
         })
 
         if (this.verbose) {
           console.log(
-            chalk.cyan(
-              `🎯 Filtered to specific commands: ${filteredTemplates.length}/${allTemplates.length}`
-            )
+            chalk.cyan(`🎯 Filtered to specific commands: ${filteredTemplates.length}/${allTemplates.length}`)
           )
         }
 
@@ -1053,9 +1118,7 @@ export class RuleGenerator {
       }
     } catch (error) {
       if (this.verbose) {
-        console.log(
-          chalk.yellow(`Could not expand platform directory ${platform}: ${error.message}`)
-        )
+        console.log(chalk.yellow(`Could not expand platform directory ${platform}: ${error.message}`))
       }
     }
 
@@ -1126,9 +1189,7 @@ export class RuleGenerator {
       if (item.type === 'file' && fileExtensions.some((ext) => item.name.endsWith(ext))) {
         const relevanceScore = this.calculateTemplateRelevance(item, projectSignature, contentType)
         if (this.verbose && relevanceScore > 0.05) {
-          console.log(
-            chalk.gray(`   💯 ${contentType}: ${item.name} - Score: ${relevanceScore.toFixed(2)}`)
-          )
+          console.log(chalk.gray(`   💯 ${contentType}: ${item.name} - Score: ${relevanceScore.toFixed(2)}`))
         }
 
         // For commands, use a lower threshold since they're all generally useful
@@ -1142,7 +1203,10 @@ export class RuleGenerator {
       }
     }
 
-    return relevantTemplates.sort((a, b) => b.relevanceScore - a.relevanceScore)
+    // Filter out templates with 0 relevance score (excluded by calculateTemplateRelevance)
+    const filteredTemplates = relevantTemplates.filter((template) => template.relevanceScore > 0)
+
+    return filteredTemplates.sort((a, b) => b.relevanceScore - a.relevanceScore)
   }
 
   /**
@@ -1156,17 +1220,31 @@ export class RuleGenerator {
     const fileName = template.name.toLowerCase()
     const filePath = (template.path || '').toLowerCase()
 
+    // Helper function for word boundary matching to prevent false positives
+    const containsWord = (text, word) => {
+      const regex = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i')
+      return regex.test(text) || text.includes(word.toLowerCase())
+    }
+
+    // Helper function for framework matching with common variations
+    const matchesFramework = (text, framework) => {
+      const variations = [
+        framework,
+        framework.replace('-', ''),
+        framework.replace('.', ''),
+        framework.replace('/', ''),
+        framework.replace(' ', ''),
+      ]
+      return variations.some((variation) => containsWord(text, variation))
+    }
+
     // Content-type specific base scoring
     if (contentType === 'commands') {
       // All commands get a baseline score since they're generally useful
       score += 0.1
 
       // Commands get higher relevance for development workflows
-      if (
-        fileName.includes('develop') ||
-        fileName.includes('debug') ||
-        fileName.includes('review')
-      ) {
+      if (fileName.includes('develop') || fileName.includes('debug') || fileName.includes('review')) {
         score += 0.7
       }
       if (fileName.includes('workflow') || fileName.includes('quality')) {
@@ -1175,11 +1253,7 @@ export class RuleGenerator {
       if (fileName.includes('git') || fileName.includes('commit') || fileName.includes('pr')) {
         score += 0.5
       }
-      if (
-        fileName.includes('test') ||
-        fileName.includes('security') ||
-        fileName.includes('audit')
-      ) {
+      if (fileName.includes('test') || fileName.includes('security') || fileName.includes('audit')) {
         score += 0.4
       }
     } else if (contentType === 'rules') {
@@ -1207,23 +1281,8 @@ export class RuleGenerator {
     // Framework matching (highest priority for stack-specific rules)
     for (const framework of projectSignature.frameworks || []) {
       const frameworkLower = framework.toLowerCase()
-      const normalizedFramework = frameworkLower
-        .replace('next.js', 'nextjs')
-        .replace('react.js', 'react')
-        .replace('vue.js', 'vue')
-        .replace('tailwind css', 'tailwind')
-        .replace('shadcn/ui', 'shadcnui')
-        .replace('-', '')
-        .replace('.', '')
-        .replace('/', '')
-        .replace(' ', '')
 
-      if (
-        fileName.includes(normalizedFramework) ||
-        filePath.includes(normalizedFramework) ||
-        fileName.includes(frameworkLower) ||
-        filePath.includes(frameworkLower)
-      ) {
+      if (matchesFramework(fileName, frameworkLower) || matchesFramework(filePath, frameworkLower)) {
         score += 0.8
       }
 
@@ -1236,10 +1295,7 @@ export class RuleGenerator {
       }
 
       // Special handling for stack combinations
-      if (
-        frameworkLower.includes('supabase') &&
-        (fileName.includes('supabase') || filePath.includes('supabase'))
-      ) {
+      if (frameworkLower.includes('supabase') && (fileName.includes('supabase') || filePath.includes('supabase'))) {
         score += 0.9 // Even higher for specific integrations
       }
       if (frameworkLower.includes('nextjs') && fileName.includes('nextjs')) {
@@ -1260,12 +1316,17 @@ export class RuleGenerator {
       return (
         fw.includes('next.js') ||
         fw.includes('nextjs') ||
-        (fw.includes('react') && !fw.includes('react native')) ||
+        (fw.includes('react') &&
+          !fw.includes('react native') &&
+          !fw.includes('react-native') &&
+          !fw.includes('reactnative')) ||
         fw.includes('vue.js') ||
+        fw.includes('vue') ||
         fw.includes('angular') ||
         fw.includes('nuxt') ||
         fw.includes('remix') ||
-        fw.includes('gatsby')
+        fw.includes('gatsby') ||
+        fw.includes('astro')
       )
     })
 
@@ -1305,22 +1366,18 @@ export class RuleGenerator {
     if (
       isMobileProject &&
       !isWebProject &&
-      (fileName.includes('react-native') ||
-        fileName.includes('expo') ||
-        fileName.includes('mobile'))
+      (fileName.includes('react-native') || fileName.includes('expo') || fileName.includes('mobile'))
     ) {
       score += 0.7 // Boost mobile rules for mobile projects
     }
 
     // If no JavaScript/TypeScript, heavily penalize frontend frameworks
     if (
-      !detectedLanguages.some((lang) =>
-        ['javascript', 'typescript'].includes(lang.toLowerCase())
-      ) &&
-      (fileName.includes('next') ||
-        fileName.includes('react') ||
-        fileName.includes('vue') ||
-        fileName.includes('angular'))
+      !detectedLanguages.some((lang) => ['javascript', 'typescript'].includes(lang.toLowerCase())) &&
+      (containsWord(fileName, 'next') ||
+        containsWord(fileName, 'react') ||
+        containsWord(fileName, 'vue') ||
+        containsWord(fileName, 'angular'))
     ) {
       score = Math.max(0, score - 0.6) // Heavy penalty for frontend frameworks in non-JS projects
     }
@@ -1349,9 +1406,7 @@ export class RuleGenerator {
         fileName.includes('xamarin')
       ) {
         if (this.verbose) {
-          console.log(
-            chalk.yellow(`🚫 Excluding mobile language rule for web project: ${fileName}`)
-          )
+          console.log(chalk.yellow(`🚫 Excluding mobile language rule for web project: ${fileName}`))
         }
         return 0
       }
@@ -1366,19 +1421,40 @@ export class RuleGenerator {
         fileName.includes('csharp')
       ) {
         if (this.verbose) {
-          console.log(
-            chalk.yellow(`🚫 Excluding system language rule for web project: ${fileName}`)
-          )
+          console.log(chalk.yellow(`🚫 Excluding system language rule for web project: ${fileName}`))
         }
         return 0
       }
     }
 
     // For documentation/content projects (Astro Starlight), be even more restrictive
-    const isContentProject = detectedFrameworks.some((framework) => {
-      const fw = framework.toLowerCase()
-      return fw.includes('astro') || fw.includes('starlight') || fw.includes('content')
-    })
+    // Only classify as content project if it's primarily a content site, not just has documentation
+    const isContentProject =
+      detectedFrameworks.some((framework) => {
+        const fw = framework.toLowerCase()
+        return (
+          fw.includes('astro') ||
+          fw.includes('starlight') ||
+          fw.includes('docusaurus') ||
+          fw.includes('gatsby') ||
+          fw.includes('hugo') ||
+          fw.includes('jekyll')
+        )
+      }) &&
+      !detectedFrameworks.some((framework) => {
+        const fw = framework.toLowerCase()
+        // Only exclude if it has significant backend/API frameworks
+        return (
+          fw.includes('express') ||
+          fw.includes('fastify') ||
+          fw.includes('koa') ||
+          fw.includes('django') ||
+          fw.includes('flask') ||
+          fw.includes('rails') ||
+          fw.includes('spring') ||
+          fw.includes('laravel')
+        )
+      })
 
     if (isContentProject) {
       // Only allow Astro, TypeScript, and basic web technologies
@@ -1398,28 +1474,49 @@ export class RuleGenerator {
         )
       ) {
         // Check if it's a completely different technology stack
-        if (
-          fileName.includes('nextjs') ||
-          fileName.includes('react') ||
-          fileName.includes('vue') ||
-          fileName.includes('supabase') ||
-          fileName.includes('trpc') ||
-          fileName.includes('ecommerce') ||
-          fileName.includes('enterprise') ||
-          fileName.includes('clerk') ||
-          fileName.includes('python') ||
-          fileName.includes('swift') ||
-          fileName.includes('kotlin') ||
-          fileName.includes('cpp') ||
-          fileName.includes('node') ||
-          fileName.includes('express')
-        ) {
+        // Define irrelevant blueprints for Astro content projects
+        const irrelevantForAstro = [
+          // Non-JavaScript languages
+          'python',
+          'swift',
+          'kotlin',
+          'cpp',
+          'java',
+          'ruby',
+          'php',
+          'go',
+          'rust',
+          'csharp',
+          // Non-Astro frameworks/stacks
+          'nextjs',
+          'react-native',
+          'vue3',
+          'svelte5',
+          'trpc',
+          'ecommerce',
+          'enterprise',
+          'clerk',
+          'supabase',
+          'fastapi',
+          'flutter',
+          'tauri',
+          'swiftdata',
+          'swiftui',
+          'pysideui',
+          'shadcnui',
+          // DevOps/Infrastructure (irrelevant for content sites)
+          'docker',
+          'kubernetes',
+          'microservices',
+          'deployment',
+          'container',
+        ]
+
+        if (irrelevantForAstro.some((term) => fileName.includes(term))) {
           if (this.verbose) {
-            console.log(
-              chalk.yellow(`🚫 Excluding non-content rule for Astro content project: ${fileName}`)
-            )
+            console.log(chalk.yellow(`🚫 Excluding non-Astro rule: ${fileName}`))
           }
-          score = Math.max(0, score - 0.8) // Heavy penalty instead of complete exclusion for backward compatibility
+          return 0 // Actually exclude irrelevant blueprints by returning 0 score
         }
       }
     }
@@ -1427,9 +1524,7 @@ export class RuleGenerator {
     // Language matching (important for language-specific rules)
     for (const language of projectSignature.languages || []) {
       const languageLower = language.toLowerCase()
-      const normalizedLanguage = languageLower
-        .replace('typescript', 'ts')
-        .replace('javascript', 'js')
+      const normalizedLanguage = languageLower.replace('typescript', 'ts').replace('javascript', 'js')
 
       if (
         fileName.includes(languageLower) ||
@@ -1441,10 +1536,7 @@ export class RuleGenerator {
       }
 
       // Special boosting for TypeScript since it's very common
-      if (
-        languageLower === 'typescript' &&
-        (fileName.includes('typescript') || fileName.includes('ts'))
-      ) {
+      if (languageLower === 'typescript' && (fileName.includes('typescript') || fileName.includes('ts'))) {
         score += 0.3 // Extra boost for TypeScript rules
       }
     }
@@ -1489,12 +1581,51 @@ export class RuleGenerator {
     }
 
     // Technology-specific rules get highest priority
-    if (
-      filePath.includes('technologies/') ||
-      filePath.includes('stacks/') ||
-      filePath.includes('languages/')
-    ) {
+    if (filePath.includes('technologies/') || filePath.includes('stacks/') || filePath.includes('languages/')) {
       score += 0.5 // High priority for technology rules
+    }
+
+    // CLI/Node.js project specific scoring
+    const isCliProject =
+      detectedFrameworks.some((fw) => {
+        const fwLower = fw.toLowerCase()
+        return (
+          fwLower.includes('cli') ||
+          fwLower.includes('command') ||
+          fwLower.includes('commander') ||
+          fwLower.includes('yargs') ||
+          fwLower.includes('inquirer') ||
+          fwLower.includes('chalk')
+        )
+      }) ||
+      (projectSignature.projectType && projectSignature.projectType.toLowerCase().includes('cli'))
+
+    if (isCliProject) {
+      // Boost CLI and Node.js related blueprints
+      if (
+        fileName.includes('node') ||
+        fileName.includes('cli') ||
+        fileName.includes('command') ||
+        fileName.includes('typescript') ||
+        fileName.includes('javascript') ||
+        fileName.includes('express')
+      ) {
+        score += 0.8
+      }
+
+      // Penalize UI/frontend specific blueprints for CLI projects
+      if (
+        fileName.includes('react') ||
+        fileName.includes('vue') ||
+        fileName.includes('angular') ||
+        fileName.includes('ui') ||
+        fileName.includes('component') ||
+        fileName.includes('clerk') ||
+        fileName.includes('ecommerce') ||
+        fileName.includes('supabase')
+      ) {
+        score = Math.max(0, score - 0.6)
+      }
     }
 
     // Assistant-specific rules - lower priority for technology rule fetching
@@ -1560,9 +1691,7 @@ export class RuleGenerator {
     }
 
     if (validationErrors.length > 0 && this.verbose) {
-      console.log(
-        chalk.yellow(`⚠️ Found ${validationErrors.length} VDK schema violations in remote templates`)
-      )
+      console.log(chalk.yellow(`⚠️ Found ${validationErrors.length} VDK schema violations in remote templates`))
       validationErrors.slice(0, 3).forEach((error) => {
         console.log(chalk.yellow(`   - ${error.template}: ${error.errors[0]}`))
       })
@@ -1768,7 +1897,9 @@ export class RuleGenerator {
         const ideId = this.mapIntegrationToIDE(integration.name)
         const adapter = this.ruleAdapters[ideId]
         if (adapter) {
-          const adapted = await adapter.adaptRules(templatedRules, ideId, analysisData)
+          // Extract platform configuration for this integration
+          const platformConfig = this.getPlatformConfig(templatedRules, ideId)
+          const adapted = await adapter.adaptRules(templatedRules, ideId, analysisData, platformConfig)
           deployedRules.push(...adapted.files)
         }
       }
@@ -1940,9 +2071,9 @@ export class RuleGenerator {
    */
   mapIntegrationToAssistant(integrationName) {
     const mapping = {
-      'Cursor AI': 'cursor',
+      Cursor: 'cursor',
       Windsurf: 'windsurf',
-      'Claude Code': 'claude-code',
+      'Claude Code CLI': 'claude-code-cli',
       'GitHub Copilot': 'github-copilot',
     }
 
@@ -1959,7 +2090,7 @@ export class RuleGenerator {
     const rules = []
 
     try {
-      const response = await fetch(`${this.repositoryEndpoint}/contents/.ai/rules/${ruleType}`)
+      const response = await fetch(`${this.repositoryEndpoint}/contents/blueprints/vdk/rules/${ruleType}`)
 
       if (!response.ok) {
         throw new Error(`Failed to fetch ${ruleType} directory: ${response.status}`)
@@ -2047,8 +2178,7 @@ export class RuleGenerator {
    */
   async generateBasicFallbackRules(ruleType, relevantItems, analysisData) {
     const rules = []
-    const projectName =
-      analysisData.projectContext?.name || path.basename(this.projectPath || process.cwd())
+    const projectName = analysisData.projectContext?.name || path.basename(this.projectPath || process.cwd())
     const frameworks = (analysisData.techStack?.frameworks || []).join(', ')
 
     for (const item of relevantItems) {
@@ -2119,11 +2249,7 @@ NOTE TO AI: Apply this rule when working with ${item} in this project.
       return
     }
 
-    const rulesOutputPath = path.join(
-      analysisData.projectStructure?.root || process.cwd(),
-      '.ai',
-      'rules'
-    )
+    const rulesOutputPath = path.join(analysisData.projectStructure?.root || process.cwd(), '.ai', 'rules')
     await fs.mkdir(rulesOutputPath, { recursive: true })
 
     for (const template of remoteTemplates) {
@@ -2145,9 +2271,7 @@ NOTE TO AI: Apply this rule when working with ${item} in this project.
         }
       } catch (error) {
         if (this.verbose) {
-          console.log(
-            chalk.yellow(`Failed to generate rule from template ${template.name}: ${error.message}`)
-          )
+          console.log(chalk.yellow(`Failed to generate rule from template ${template.name}: ${error.message}`))
         }
       }
     }
@@ -2159,21 +2283,33 @@ NOTE TO AI: Apply this rule when working with ${item} in this project.
    * @returns {string} Filename for the rule
    */
   generateRuleFilename(template) {
-    // Use the template's suggested filename or generate one
+    // Use the template's suggested filename or generate one using centralized utility
     if (template.filename) {
-      return template.filename.endsWith('.md') ? template.filename : `${template.filename}.md`
+      return generateSafeFilename(template.filename, {
+        maxLength: 40,
+        extension: '.md',
+      })
     }
 
     if (template.name) {
-      return `${template.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}.md`
+      return generateSafeFilename(template.name, {
+        maxLength: 40,
+        extension: '.md',
+      })
     }
 
     if (template.id) {
-      return `${template.id.toLowerCase().replace(/[^a-z0-9]/g, '-')}.md`
+      return generateSafeFilename(template.id, {
+        maxLength: 40,
+        extension: '.md',
+      })
     }
 
-    // Fallback to a generic name with timestamp
-    return `rule-${Date.now()}.md`
+    // Fallback using centralized utility with timestamp
+    return generateSafeFilename(`rule-${Date.now()}`, {
+      maxLength: 40,
+      extension: '.md',
+    })
   }
 
   /**
@@ -2218,9 +2354,7 @@ NOTE TO AI: Apply this rule when working with ${item} in this project.
         }
       } catch (error) {
         if (this.verbose) {
-          console.warn(
-            chalk.yellow(`Failed to generate ${ruleType} rule for ${item}: ${error.message}`)
-          )
+          console.warn(chalk.yellow(`Failed to generate ${ruleType} rule for ${item}: ${error.message}`))
         }
       }
     }

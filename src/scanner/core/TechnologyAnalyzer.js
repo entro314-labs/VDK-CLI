@@ -136,11 +136,7 @@ export class TechnologyAnalyzer {
     // Count files by extension
     for (const file of projectStructure.files) {
       // Skip files that are in the project's node_modules, build, or dist directories
-      if (
-        file.path.includes('/node_modules/') ||
-        file.path.includes('/dist/') ||
-        file.path.includes('/build/')
-      ) {
+      if (file.path.includes('/node_modules/') || file.path.includes('/dist/') || file.path.includes('/build/')) {
         continue
       }
 
@@ -164,10 +160,7 @@ export class TechnologyAnalyzer {
     for (const [ext, count] of extensionCount.entries()) {
       if (languageMap[ext]) {
         const language = languageMap[ext]
-        languagePercentage.set(
-          language,
-          (languagePercentage.get(language) || 0) + (count / totalFiles) * 100
-        )
+        languagePercentage.set(language, (languagePercentage.get(language) || 0) + (count / totalFiles) * 100)
       }
     }
 
@@ -215,37 +208,22 @@ export class TechnologyAnalyzer {
         if (packageAnalysis.technologies.ui && packageAnalysis.technologies.ui.length > 0) {
           this.libraries.push(...packageAnalysis.technologies.ui)
         }
-        if (
-          packageAnalysis.technologies.backend_services &&
-          packageAnalysis.technologies.backend_services.length > 0
-        ) {
+        if (packageAnalysis.technologies.backend_services && packageAnalysis.technologies.backend_services.length > 0) {
           this.libraries.push(...packageAnalysis.technologies.backend_services)
         }
-        if (
-          packageAnalysis.technologies.databases &&
-          packageAnalysis.technologies.databases.length > 0
-        ) {
+        if (packageAnalysis.technologies.databases && packageAnalysis.technologies.databases.length > 0) {
           this.libraries.push(...packageAnalysis.technologies.databases)
         }
-        if (
-          packageAnalysis.technologies.stateManagement &&
-          packageAnalysis.technologies.stateManagement.length > 0
-        ) {
+        if (packageAnalysis.technologies.stateManagement && packageAnalysis.technologies.stateManagement.length > 0) {
           this.libraries.push(...packageAnalysis.technologies.stateManagement)
         }
-        if (
-          packageAnalysis.technologies.dataFetching &&
-          packageAnalysis.technologies.dataFetching.length > 0
-        ) {
+        if (packageAnalysis.technologies.dataFetching && packageAnalysis.technologies.dataFetching.length > 0) {
           this.libraries.push(...packageAnalysis.technologies.dataFetching)
         }
         if (packageAnalysis.technologies.forms && packageAnalysis.technologies.forms.length > 0) {
           this.libraries.push(...packageAnalysis.technologies.forms)
         }
-        if (
-          packageAnalysis.technologies.styling &&
-          packageAnalysis.technologies.styling.length > 0
-        ) {
+        if (packageAnalysis.technologies.styling && packageAnalysis.technologies.styling.length > 0) {
           this.libraries.push(...packageAnalysis.technologies.styling)
         }
         if (packageAnalysis.technologies.api && packageAnalysis.technologies.api.length > 0) {
@@ -253,22 +231,13 @@ export class TechnologyAnalyzer {
         }
 
         // Add frameworks
-        if (
-          packageAnalysis.technologies.frontend &&
-          packageAnalysis.technologies.frontend.length > 0
-        ) {
+        if (packageAnalysis.technologies.frontend && packageAnalysis.technologies.frontend.length > 0) {
           this.frameworks.push(...packageAnalysis.technologies.frontend)
         }
-        if (
-          packageAnalysis.technologies.backend &&
-          packageAnalysis.technologies.backend.length > 0
-        ) {
+        if (packageAnalysis.technologies.backend && packageAnalysis.technologies.backend.length > 0) {
           this.frameworks.push(...packageAnalysis.technologies.backend)
         }
-        if (
-          packageAnalysis.technologies.serverless &&
-          packageAnalysis.technologies.serverless.length > 0
-        ) {
+        if (packageAnalysis.technologies.serverless && packageAnalysis.technologies.serverless.length > 0) {
           this.frameworks.push(...packageAnalysis.technologies.serverless)
         }
         if (packageAnalysis.technologies.mobile && packageAnalysis.technologies.mobile.length > 0) {
@@ -276,18 +245,12 @@ export class TechnologyAnalyzer {
         }
 
         // Add build tools
-        if (
-          packageAnalysis.technologies.buildTools &&
-          packageAnalysis.technologies.buildTools.length > 0
-        ) {
+        if (packageAnalysis.technologies.buildTools && packageAnalysis.technologies.buildTools.length > 0) {
           this.buildTools.push(...packageAnalysis.technologies.buildTools)
         }
 
         // Add testing frameworks
-        if (
-          packageAnalysis.technologies.testing &&
-          packageAnalysis.technologies.testing.length > 0
-        ) {
+        if (packageAnalysis.technologies.testing && packageAnalysis.technologies.testing.length > 0) {
           this.testingFrameworks.push(...packageAnalysis.technologies.testing)
         }
       }
@@ -303,9 +266,7 @@ export class TechnologyAnalyzer {
         .filter((file) => file.name === 'requirements.txt')
         .map((file) => file.path)
 
-      const _setupFiles = projectStructure.files
-        .filter((file) => file.name === 'setup.py')
-        .map((file) => file.path)
+      const _setupFiles = projectStructure.files.filter((file) => file.name === 'setup.py').map((file) => file.path)
 
       // Analyze requirements.txt files
       for (const requirementsPath of requirementsFiles) {
@@ -365,9 +326,7 @@ export class TechnologyAnalyzer {
           }
         } catch (error) {
           if (this.verbose) {
-            console.warn(
-              chalk.yellow(`Warning: Error analyzing requirements.txt: ${error.message}`)
-            )
+            console.warn(chalk.yellow(`Warning: Error analyzing requirements.txt: ${error.message}`))
           }
         }
       }
@@ -375,9 +334,7 @@ export class TechnologyAnalyzer {
 
     // Check for Ruby projects (Gemfile)
     if (this.primaryLanguages.includes('ruby')) {
-      const gemFiles = projectStructure.files
-        .filter((file) => file.name === 'Gemfile')
-        .map((file) => file.path)
+      const gemFiles = projectStructure.files.filter((file) => file.name === 'Gemfile').map((file) => file.path)
 
       for (const gemfilePath of gemFiles) {
         try {
@@ -434,10 +391,7 @@ export class TechnologyAnalyzer {
     // Check for Next.js config files
     const nextjsConfigFiles = projectStructure.files
       .filter(
-        (file) =>
-          file.name === 'next.config.js' ||
-          file.name === 'next.config.mjs' ||
-          file.name === 'next.config.ts'
+        (file) => file.name === 'next.config.js' || file.name === 'next.config.mjs' || file.name === 'next.config.ts'
       )
       .map((file) => file.path)
 
@@ -448,8 +402,7 @@ export class TechnologyAnalyzer {
 
     // Check for Next.js pages directory structure (traditional Next.js)
     const hasPagesDir = projectStructure.directories.some(
-      (dir) =>
-        dir.name === 'pages' && (dir.path.includes('/src/pages') || dir.path.endsWith('/pages'))
+      (dir) => dir.name === 'pages' && (dir.path.includes('/src/pages') || dir.path.endsWith('/pages'))
     )
 
     // Look for Next.js special files like page.js, layout.js in app directory
@@ -482,9 +435,7 @@ export class TechnologyAnalyzer {
             console.log(chalk.gray('  - Next.js detected: Found next dependency'))
           }
           if (hasAppDir && hasNextAppPageFiles) {
-            console.log(
-              chalk.gray('  - Next.js detected: Found app directory with Next.js page files')
-            )
+            console.log(chalk.gray('  - Next.js detected: Found app directory with Next.js page files'))
           }
           if (hasPagesDir) {
             console.log(chalk.gray('  - Next.js detected: Found pages directory'))
@@ -542,18 +493,14 @@ export class TechnologyAnalyzer {
     }
 
     // Check for Vue.js
-    const vueFiles = projectStructure.files
-      .filter((file) => file.name.endsWith('.vue'))
-      .map((file) => file.path)
+    const vueFiles = projectStructure.files.filter((file) => file.name.endsWith('.vue')).map((file) => file.path)
 
     if (vueFiles.length > 0 && !this.frameworks.includes('Vue.js')) {
       this.frameworks.push('Vue.js')
     }
 
     // Check for Angular
-    const angularFiles = projectStructure.files
-      .filter((file) => file.name === 'angular.json')
-      .map((file) => file.path)
+    const angularFiles = projectStructure.files.filter((file) => file.name === 'angular.json').map((file) => file.path)
 
     if (angularFiles.length > 0 && !this.frameworks.includes('Angular')) {
       this.frameworks.push('Angular')
@@ -576,8 +523,7 @@ export class TechnologyAnalyzer {
     const hasShadcnUIIndicators = projectStructure.files.some(
       (file) =>
         file.name === 'components.json' ||
-        (file.path.includes('/ui/') &&
-          (file.path.includes('/button/') || file.path.includes('/dialog/')))
+        (file.path.includes('/ui/') && (file.path.includes('/button/') || file.path.includes('/dialog/')))
     )
 
     const hasShadcnDependencies = [
@@ -624,10 +570,7 @@ export class TechnologyAnalyzer {
       }
 
       // If using both Next.js and Supabase, add the stack
-      if (
-        this.frameworks.includes('Next.js') &&
-        !this.frameworks.includes('Supabase-Next.js Stack')
-      ) {
+      if (this.frameworks.includes('Next.js') && !this.frameworks.includes('Supabase-Next.js Stack')) {
         this.frameworks.push('Supabase-Next.js Stack')
         if (this.verbose) {
           console.log(chalk.gray('  - Supabase-Next.js Stack detected'))
@@ -685,9 +628,7 @@ export class TechnologyAnalyzer {
       this.frameworks.push('Xcode')
 
       // Check for Swift UI
-      const swiftFiles = projectStructure.files
-        .filter((file) => file.extension === 'swift')
-        .map((file) => file.path)
+      const swiftFiles = projectStructure.files.filter((file) => file.extension === 'swift').map((file) => file.path)
 
       if (swiftFiles.length > 0) {
         // Sample a few Swift files to check for SwiftUI imports
@@ -722,9 +663,7 @@ export class TechnologyAnalyzer {
     }
 
     // Detect Flutter
-    const pubspecFiles = projectStructure.files
-      .filter((file) => file.name === 'pubspec.yaml')
-      .map((file) => file.path)
+    const pubspecFiles = projectStructure.files.filter((file) => file.name === 'pubspec.yaml').map((file) => file.path)
 
     if (pubspecFiles.length > 0) {
       for (const pubspecPath of pubspecFiles) {
@@ -759,10 +698,7 @@ export class TechnologyAnalyzer {
         file.name === 'tailwind.config.mjs'
     )
 
-    if (
-      (hasTailwindDependencies || hasTailwindConfig) &&
-      !this.frameworks.includes('Tailwind CSS')
-    ) {
+    if ((hasTailwindDependencies || hasTailwindConfig) && !this.frameworks.includes('Tailwind CSS')) {
       this.frameworks.push('Tailwind CSS')
       if (this.verbose) {
         console.log(chalk.gray('  - Tailwind CSS detected'))
@@ -880,14 +816,7 @@ export class TechnologyAnalyzer {
     }
 
     // Serverless Stack
-    const serverlessIndicators = [
-      'aws-lambda',
-      'vercel',
-      'netlify-functions',
-      '@vercel/node',
-      'serverless',
-      'aws-cdk',
-    ]
+    const serverlessIndicators = ['aws-lambda', 'vercel', 'netlify-functions', '@vercel/node', 'serverless', 'aws-cdk']
     if (serverlessIndicators.some((indicator) => this.libraries.includes(indicator))) {
       this.stacks.push('Serverless Stack')
     }

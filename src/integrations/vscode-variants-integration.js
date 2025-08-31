@@ -41,7 +41,7 @@ class VSCodeVariantIntegration extends BaseIntegration {
    */
   getGlobalConfigPath() {
     const homeDir = os.homedir()
-    
+
     switch (process.platform) {
       case 'darwin': // macOS
         switch (this.variant) {
@@ -63,7 +63,8 @@ class VSCodeVariantIntegration extends BaseIntegration {
             return path.join(homeDir, '.config', 'VSCodium', 'User', 'settings.json')
         }
         break
-      case 'win32': { // Windows
+      case 'win32': {
+        // Windows
         const appData = process.env.APPDATA || path.join(homeDir, 'AppData', 'Roaming')
         switch (this.variant) {
           case 'vscode':
@@ -96,12 +97,7 @@ class VSCodeVariantIntegration extends BaseIntegration {
       confidence = 'high'
 
       // Check for common VS Code files
-      const configFiles = [
-        'settings.json',
-        'launch.json',
-        'tasks.json',
-        'extensions.json'
-      ]
+      const configFiles = ['settings.json', 'launch.json', 'tasks.json', 'extensions.json']
 
       for (const file of configFiles) {
         const filePath = path.join(configPath, file)
@@ -141,7 +137,7 @@ class VSCodeVariantIntegration extends BaseIntegration {
     if (confidence !== 'none') {
       recommendations.push(`Use ${this.configFolder}/ai-rules/ folder for VDK Blueprint rules`)
       recommendations.push('Install AI-related extensions for enhanced coding assistance')
-      
+
       if (!fs.existsSync(path.join(this.projectPath, this.configFolder, 'ai-rules'))) {
         recommendations.push(`Create ${this.configFolder}/ai-rules/ directory for AI integration`)
       }
@@ -151,7 +147,7 @@ class VSCodeVariantIntegration extends BaseIntegration {
       isUsed: confidence !== 'none',
       confidence,
       indicators,
-      recommendations
+      recommendations,
     }
   }
 
@@ -162,15 +158,15 @@ class VSCodeVariantIntegration extends BaseIntegration {
     try {
       const { execSync } = require('node:child_process')
       const processes = execSync('ps aux', { encoding: 'utf8' })
-      
+
       const processNames = {
-        'vscode': ['code', 'Code'],
+        vscode: ['code', 'Code'],
         'vscode-insiders': ['code-insiders', 'Code - Insiders'],
-        'vscodium': ['codium', 'VSCodium']
+        vscodium: ['codium', 'VSCodium'],
       }
 
       const names = processNames[this.variant] || ['code']
-      return names.some(name => processes.includes(name))
+      return names.some((name) => processes.includes(name))
     } catch (error) {
       return false
     }
@@ -181,14 +177,14 @@ class VSCodeVariantIntegration extends BaseIntegration {
    */
   getConfigPaths() {
     const configPath = path.join(this.projectPath, this.configFolder)
-    
+
     return {
       projectConfig: configPath,
       rulesPath: path.join(configPath, 'ai-rules'),
       settingsFile: path.join(configPath, 'settings.json'),
       extensionsFile: path.join(configPath, 'extensions.json'),
       mcpConfig: path.join(configPath, 'mcp.json'),
-      globalConfig: this.getGlobalConfigPath()
+      globalConfig: this.getGlobalConfigPath(),
     }
   }
 
@@ -241,8 +237,17 @@ class VSCodeVariantIntegration extends BaseIntegration {
       configPath: configPaths.projectConfig,
       rulesPath: configPaths.rulesPath,
       mcpSupported: true,
-      extensionSystem: true
+      extensionSystem: true,
     }
+  }
+}
+
+/**
+ * VS Code Integration
+ */
+export class VSCodeIntegration extends VSCodeVariantIntegration {
+  constructor(projectPath = process.cwd()) {
+    super('VS Code', 'vscode', projectPath)
   }
 }
 
