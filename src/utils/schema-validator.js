@@ -50,8 +50,8 @@ async function validatePlatformsObject(platformsData, schema, errors) {
 
     // Find the appropriate definition
     let definition = null
-    if (schemaProperties[platformName]?.['$ref']) {
-      const refPath = schemaProperties[platformName]['$ref']
+    if (schemaProperties[platformName]?.$ref) {
+      const refPath = schemaProperties[platformName].$ref
       const defName = refPath.replace('#/definitions/', '')
       definition = schema.definitions[defName]
     } else {

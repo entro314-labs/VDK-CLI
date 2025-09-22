@@ -267,8 +267,8 @@ export class SchemaMigrator {
    * Infer maturity from existing metadata
    */
   inferMaturity(data) {
-    if (data.version && data.version.startsWith('0.')) return 'beta'
-    if (data.version && data.version.startsWith('1.')) return 'stable'
+    if (data.version?.startsWith('0.')) return 'beta'
+    if (data.version?.startsWith('1.')) return 'stable'
     if (data.experimental) return 'experimental'
     if (data.deprecated) return 'deprecated'
     return 'beta'
@@ -360,7 +360,7 @@ export async function migrateToSchemaV2(inputPath, outputPath = null, options = 
   const migrator = new SchemaMigrator(options)
 
   if (!outputPath) {
-    outputPath = inputPath + '_v2'
+    outputPath = `${inputPath}_v2`
   }
 
   const results = await migrator.migrateBlueprints(inputPath, outputPath, options)

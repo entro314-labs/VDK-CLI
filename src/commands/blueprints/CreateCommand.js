@@ -5,10 +5,10 @@
  * Supports both interactive and non-interactive modes.
  */
 
+import fs from 'node:fs/promises'
+import path from 'node:path'
 import { BaseCommand } from '../base/BaseCommand.js'
 import { commandContext } from '../shared/CommandContext.js'
-import path from 'node:path'
-import fs from 'node:fs/promises'
 
 export class CreateCommand extends BaseCommand {
   constructor() {
@@ -57,7 +57,7 @@ export class CreateCommand extends BaseCommand {
       const filePath = await this.writeBlueprintFile(blueprintData, options.output)
 
       this.logSuccess(`Blueprint created: ${this.formatPath(filePath)}`)
-      this.logInfo(`Run ${this.colorPrimary('vdk validate --file ' + filePath)} to validate the blueprint`)
+      this.logInfo(`Run ${this.colorPrimary(`vdk validate --file ${filePath}`)} to validate the blueprint`)
 
       this.trackSuccess({
         blueprintName: blueprintData.name,
@@ -148,7 +148,6 @@ export class CreateCommand extends BaseCommand {
     blueprintData.maturity = await select({
       message: 'Maturity level:',
       options: [
-        // biome-ignore lint/nursery/noSecrets: These are legitimate option labels
         { value: 'experimental', label: 'Experimental' },
         { value: 'beta', label: 'Beta' },
         { value: 'stable', label: 'Stable' },

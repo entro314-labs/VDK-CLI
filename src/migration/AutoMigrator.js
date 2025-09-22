@@ -6,17 +6,16 @@
  * project context for optimal results.
  */
 
-import fs from 'fs/promises'
-import path from 'path'
 import chalk from 'chalk'
-import ora from 'ora'
+import fs from 'fs/promises'
 import matter from 'gray-matter'
-
-import { ProjectScanner } from '../scanner/core/ProjectScanner.js'
-import { TechnologyAnalyzer } from '../scanner/core/TechnologyAnalyzer.js'
-import { PatternDetector } from '../scanner/core/PatternDetector.js'
-import { RuleGenerator } from '../scanner/core/RuleGenerator.js'
+import ora from 'ora'
+import path from 'path'
 import { createIntegrationManager } from '../integrations/index.js'
+import { PatternDetector } from '../scanner/core/PatternDetector.js'
+import { ProjectScanner } from '../scanner/core/ProjectScanner.js'
+import { RuleGenerator } from '../scanner/core/RuleGenerator.js'
+import { TechnologyAnalyzer } from '../scanner/core/TechnologyAnalyzer.js'
 
 export class AutoMigrator {
   constructor(projectPath) {
@@ -827,7 +826,7 @@ class CopilotConfigAdapter {
     } catch (error) {
       // If JSON parsing fails, treat as plain text
       return {
-        content: sourceContent + '\n\n' + this.generateTextGuidelines(targetContext),
+        content: `${sourceContent}\n\n${this.generateTextGuidelines(targetContext)}`,
         adaptations: ['Added project context as text'],
         projectContext: targetContext,
       }

@@ -6,9 +6,9 @@
  */
 
 import path from 'node:path'
+import { runScanner } from '../../scanner/index.js'
 import { BaseCommand } from '../base/BaseCommand.js'
 import { commandContext } from '../shared/CommandContext.js'
-import { runScanner } from '../../scanner/index.js'
 
 export class InitCommand extends BaseCommand {
   constructor() {
@@ -30,7 +30,6 @@ export class InitCommand extends BaseCommand {
       ])
       .option(
         '--use-gitignore',
-        // biome-ignore lint/nursery/noSecrets: This is a legitimate help text for CLI option
         'Automatically parse .gitignore files for additional ignore patterns',
         true
       )

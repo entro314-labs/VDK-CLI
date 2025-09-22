@@ -13,16 +13,15 @@
  * - Graceful fallback between Hub and repository sources
  */
 
-import fs from 'fs/promises'
-import path from 'path'
 import chalk from 'chalk'
+import fs from 'fs/promises'
 import ora from 'ora'
-
+import path from 'path'
+import { searchBlueprints } from '../blueprints-client.js'
+import { VDKHubClient } from '../hub/VDKHubClient.js'
+import { createIntegrationManager } from '../integrations/index.js'
 import { ProjectScanner } from '../scanner/core/ProjectScanner.js'
 import { RuleAdapter } from '../scanner/core/RuleAdapter.js'
-import { createIntegrationManager } from '../integrations/index.js'
-import { VDKHubClient } from '../hub/VDKHubClient.js'
-import { searchBlueprints } from '../blueprints-client.js'
 
 export class CommunityDeployer {
   constructor(projectPath) {
@@ -169,7 +168,7 @@ export class CommunityDeployer {
    */
   async analyzeProjectContext() {
     try {
-      const projectData = await this.projectScanner.scanProject()
+      const projectData = await this.projectScanner.scanProject(this.projectPath)
 
       // Enhanced project analysis
       const context = {
@@ -916,22 +915,27 @@ ${enhancement.content}
       content: hubBlueprint.content,
       author: hubBlueprint.author,
       platforms: hubBlueprint.platforms || {},
-      metadata: hubBlueprint,
+      metadata: hubBlueprint.metadata || {},
+      stats: hubBlueprint.stats,
+      created: hubBlueprint.created,
+      updated: hubBlueprint.updated,
+      source: 'hub',
     }
   }
 
   normalizeRepositoryBlueprint(repoBlueprint) {
     return {
-      id: repoBlueprint.metadata.id,
-      title: repoBlueprint.metadata.title,
-      description: repoBlueprint.metadata.description,
+      id: repoBlueprint.name || repoBlueprint.metadata?.id,
+      title: repoBlueprint.metadata?.title,
+      description: repoBlueprint.metadata?.description,
       content: repoBlueprint.content,
-      author: repoBlueprint.metadata.author,
+      author: repoBlueprint.metadata?.author,
       platforms: repoBlueprint.platforms || {},
-      framework: repoBlueprint.metadata.tags?.find((t) => ['react', 'vue', 'angular', 'nextjs'].includes(t)),
-      language: repoBlueprint.metadata.language,
-      architecture: repoBlueprint.metadata.architecture,
+      framework: repoBlueprint.metadata?.tags?.find((t) => ['react', 'vue', 'angular', 'nextjs'].includes(t)),
+      language: repoBlueprint.metadata?.language,
+      architecture: repoBlueprint.metadata?.architecture,
       metadata: repoBlueprint.metadata,
+      source: 'repository',
     }
   }
 

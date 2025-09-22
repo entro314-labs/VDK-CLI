@@ -49,51 +49,34 @@ export class GitHubCopilotIntegration extends BaseIntegration {
    * @returns {Object} Detection result with details
    */
   detectUsage() {
-    const detection = {
-      isUsed: false,
-      confidence: 'none', // none, low, medium, high
-      indicators: [],
-      recommendations: [],
+    const detection = this.createDetectionResult()
+
+    // 1. Check for .github directory and Copilot configuration (project-specific)
+    const projectPaths = {
+      'Project has .github directory': this.copilotConfigPath,
+      'GitHub Copilot guidelines directory': this.copilotGuidelinesPath,
+      'GitHub CODEOWNERS file': path.join(this.copilotConfigPath, 'CODEOWNERS'),
+      'GitHub pull request template': path.join(this.copilotConfigPath, 'pull_request_template.md'),
+      'GitHub Copilot instructions': path.join(this.projectPath, '.github', 'copilot-instructions.md'),
     }
 
-    // 1. Check for .github directory and Copilot configuration
-    if (this.directoryExists(this.copilotConfigPath)) {
-      detection.indicators.push('Project has .github directory')
+    this.checkPaths(detection, projectPaths, 'high', true) // isProjectSpecific = true
 
-      // Check for Copilot-specific files
-      const copilotFiles = ['copilot/', 'CODEOWNERS', 'pull_request_template.md']
-
-      copilotFiles.forEach((file) => {
-        const filePath = path.join(this.copilotConfigPath, file)
-        if (this.directoryExists(filePath) || this.fileExists(filePath)) {
-          detection.indicators.push(`Found .github/${file}`)
-          if (file === 'copilot/') {
-            detection.confidence = 'high'
-            detection.isUsed = true
-          } else if (detection.confidence === 'none') {
-            detection.confidence = 'low'
-          }
-        }
-      })
-    }
-
-    // 2. Check for GitHub CLI configuration
+    // 2. Check for GitHub CLI configuration (global)
     const platformPaths = this.getPlatformPaths()
-    const githubPaths = [path.join(platformPaths.home, '.config', 'gh'), path.join(platformPaths.home, '.gitconfig')]
+    const globalPaths = {
+      'GitHub CLI configuration': path.join(platformPaths.home, '.config', 'gh'),
+      'Global git configuration': path.join(platformPaths.home, '.gitconfig'),
+    }
 
-    githubPaths.forEach((githubPath) => {
-      if (this.directoryExists(githubPath) || this.fileExists(githubPath)) {
-        detection.indicators.push(`GitHub configuration found at ${githubPath}`)
-        if (detection.confidence === 'none') {
-          detection.confidence = 'low'
-        }
-      }
-    })
+    this.checkPaths(detection, globalPaths, 'low') // Global = not project-specific
 
     // 3. Check for GitHub CLI command availability
     if (this.commandExists('gh')) {
       detection.indicators.push('GitHub CLI (gh) is available')
-      if (detection.confidence === 'none') {
+      // Update confidence only if it's currently none
+      const confidenceOrder = { none: 0, low: 1, medium: 2, high: 3 }
+      if (confidenceOrder[detection.confidence] < confidenceOrder.low) {
         detection.confidence = 'low'
       }
 
@@ -105,7 +88,6 @@ export class GitHubCopilotIntegration extends BaseIntegration {
 
     // 4. Check for Git remote origins pointing to GitHub
     try {
-      // execSync is already imported at the top
       const remoteOutput = execSync('git remote -v', {
         cwd: this.projectPath,
         encoding: 'utf8',
@@ -115,7 +97,9 @@ export class GitHubCopilotIntegration extends BaseIntegration {
       if (remoteOutput.includes('github.com')) {
         detection.indicators.push('Repository has GitHub remote origin')
         detection.isUsed = true
-        if (detection.confidence === 'none' || detection.confidence === 'low') {
+        // Update confidence only if it's currently none or low
+        const confidenceOrder = { none: 0, low: 1, medium: 2, high: 3 }
+        if (confidenceOrder[detection.confidence] < confidenceOrder.medium) {
           detection.confidence = 'medium'
         }
       }
@@ -123,12 +107,8 @@ export class GitHubCopilotIntegration extends BaseIntegration {
       // Not a git repository or git not available
     }
 
-    // 5. Check for existing Copilot guidelines
-    if (this.directoryExists(this.copilotGuidelinesPath)) {
-      detection.indicators.push('Found GitHub Copilot guidelines directory')
-      detection.confidence = 'high'
-      detection.isUsed = true
-    }
+    // 5. Check for existing Copilot guidelines (already covered in projectPaths check above)
+    // This check is now redundant as copilotGuidelinesPath is already checked in projectPaths
 
     // 6. Check .gitignore for GitHub-specific patterns
     const gitignorePatterns = this.checkGitignore(['.github'])

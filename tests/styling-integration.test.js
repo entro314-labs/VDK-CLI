@@ -336,10 +336,10 @@ describe('Styling Integration', () => {
       expect(fullOutput).toContain('Quick Start')
     })
 
-    it('should simulate update command progress display', async () => {
+    it('should simulate sync command progress display', async () => {
       const styles = await import('../src/utils/cli-styles.js')
 
-      // Simulate update command progress
+      // Simulate sync command progress
       console.log(styles.headers.section('VDK Blueprint Update'))
       console.log(styles.status.progress('Checking for updates...'))
       console.log(styles.progress.simple(3, 10))

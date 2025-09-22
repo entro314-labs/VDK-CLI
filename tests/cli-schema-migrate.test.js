@@ -111,7 +111,7 @@ describe('CLI Schema Migrate Command', () => {
     it('should create backup before migration', async () => {
       await setupV1Blueprint(tempDir)
 
-      const result = await runCliCommand(['schema-migrate', '--backup'])
+      const result = await runCliCommand(['schema-migrate'])
 
       expect(result.exitCode).toBe(0)
       expect(result.stdout).toMatch(/Backup created:/)
@@ -149,7 +149,7 @@ describe('CLI Schema Migrate Command', () => {
       await setupV1Blueprint(tempDir)
 
       // Create migration with backup
-      await runCliCommand(['schema-migrate', '--backup'])
+      await runCliCommand(['schema-migrate'])
 
       // Get backup ID
       const backups = await runCliCommand(['schema-migrate', '--list-backups'])
@@ -324,7 +324,7 @@ describe('CLI Schema Migrate Command', () => {
     it('should auto-detect schema versions in mixed environments', async () => {
       await setupMixedSchemaVersions(tempDir)
 
-      const result = await runCliCommand(['schema-migrate', '--auto-detect', '--dry-run'])
+      const result = await runCliCommand(['schema-migrate', '--verbose', '--dry-run'])
 
       expect(result.exitCode).toBe(0)
       expect(result.stdout).toMatch(/Detected schema versions:/)

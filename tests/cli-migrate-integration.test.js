@@ -72,10 +72,10 @@ describe('CLI Migrate Command Integration', () => {
 
       // Migration may succeed or fail based on project analysis
       expect([0, 1]).toContain(result.exitCode)
-      
+
       // Should have some output
       expect(result.stdout.length).toBeGreaterThan(0)
-      
+
       if (result.exitCode === 0) {
         // Check for migration-related output
         expect(result.stdout).toMatch(/(migrat|analyz|complet)/i)
@@ -90,10 +90,10 @@ describe('CLI Migrate Command Integration', () => {
 
       // Migration may succeed or fail based on project analysis
       expect([0, 1]).toContain(result.exitCode)
-      
+
       // Should have some output
       expect(result.stdout.length).toBeGreaterThan(0)
-      
+
       if (result.exitCode === 0) {
         // Check for migration-related output
         expect(result.stdout).toMatch(/(migrat|analyz|complet)/i)
@@ -107,10 +107,10 @@ describe('CLI Migrate Command Integration', () => {
 
       // Migration may succeed or fail based on project analysis
       expect([0, 1]).toContain(result.exitCode)
-      
+
       // Should have some output
       expect(result.stdout.length).toBeGreaterThan(0)
-      
+
       if (result.exitCode === 0) {
         // Check for migration-related output
         expect(result.stdout).toMatch(/(preview|analyz|found)/i)
@@ -126,10 +126,10 @@ describe('CLI Migrate Command Integration', () => {
 
       // Migration may succeed or fail based on project analysis
       expect([0, 1]).toContain(result.exitCode)
-      
+
       // Should have some output
       expect(result.stdout.length).toBeGreaterThan(0)
-      
+
       // Check if .claude directory still exists
       const claudeDir = path.join(tempDir, '.claude')
       const claudeDirExists = await fs
@@ -146,10 +146,10 @@ describe('CLI Migrate Command Integration', () => {
 
       // Migration may succeed or fail based on project analysis
       expect([0, 1]).toContain(result.exitCode)
-      
+
       // Should have some output
       expect(result.stdout.length).toBeGreaterThan(0)
-      
+
       // Check if .claude directory still exists
       const claudeDir = path.join(tempDir, '.claude')
       const claudeDirExists = await fs
@@ -168,10 +168,10 @@ describe('CLI Migrate Command Integration', () => {
 
       // Migration may succeed or fail based on project analysis
       expect([0, 1]).toContain(result.exitCode)
-      
+
       // Should have some output
       expect(result.stdout.length).toBeGreaterThan(0)
-      
+
       if (result.exitCode === 0) {
         // Check for migration-related output
         expect(result.stdout).toMatch(/(migrat|analyz|detect)/i)
@@ -185,10 +185,10 @@ describe('CLI Migrate Command Integration', () => {
 
       // Migration may succeed or fail based on project analysis
       expect([0, 1]).toContain(result.exitCode)
-      
+
       // Should have some output
       expect(result.stdout.length).toBeGreaterThan(0)
-      
+
       // Check if .claude directory still exists
       const claudeDir = path.join(tempDir, '.claude')
       const claudeDirExists = await fs
@@ -205,13 +205,13 @@ describe('CLI Migrate Command Integration', () => {
 
       // Run dry-run first
       const dryRun = await runCliCommand(['migrate', '--dry-run'])
-      
+
       // Run actual migration
       const actualRun = await runCliCommand(['migrate'])
 
       // Both should have similar exit codes (both succeed or both fail)
       expect(dryRun.exitCode).toBe(actualRun.exitCode)
-      
+
       // Both should have output
       expect(dryRun.stdout.length).toBeGreaterThan(0)
       expect(actualRun.stdout.length).toBeGreaterThan(0)
@@ -221,13 +221,13 @@ describe('CLI Migrate Command Integration', () => {
       await setupComplexCursorRules(tempDir)
 
       const dryRun = await runCliCommand(['migrate', '--dry-run', '--verbose'])
-      
+
       // Run actual migration
       const actual = await runCliCommand(['migrate'])
 
       // Both should have similar exit codes
       expect(dryRun.exitCode).toBe(actual.exitCode)
-      
+
       // Both should have verbose output
       expect(dryRun.stdout.length).toBeGreaterThan(0)
       expect(actual.stdout.length).toBeGreaterThan(0)
@@ -242,7 +242,7 @@ describe('CLI Migrate Command Integration', () => {
 
       // Migration may succeed or fail based on project analysis
       expect([0, 1]).toContain(result.exitCode)
-      
+
       // Should have some output
       expect(result.stdout.length).toBeGreaterThan(0)
     })
@@ -255,10 +255,10 @@ describe('CLI Migrate Command Integration', () => {
 
       // Migration may succeed or fail based on project analysis
       expect([0, 1]).toContain(result.exitCode)
-      
+
       // Should have some output
       expect(result.stdout.length).toBeGreaterThan(0)
-      
+
       // Original .cursor directory should still exist
       const cursorDir = path.join(tempDir, '.cursor', 'rules')
       const cursorDirExists = await fs
@@ -444,7 +444,7 @@ async function setupLargeIndividualRules(tempDir) {
   await fs.mkdir(rulesDir, { recursive: true })
 
   // Reduced size for faster tests - 1000 lines instead of 10000
-  const largeContent = '# Large Rule\n' + 'Content line with migration rules and patterns\n'.repeat(1000)
+  const largeContent = `# Large Rule\n${'Content line with migration rules and patterns\n'.repeat(1000)}`
   await fs.writeFile(path.join(rulesDir, 'large.md'), largeContent)
 }
 
@@ -454,7 +454,7 @@ async function runCliCommand(args) {
   return new Promise((resolve) => {
     // Suppress dotenv output for cleaner test results
     const env = { ...process.env, DOTENV_CONFIG_PATH: '/dev/null', NODE_ENV: 'test' }
-    
+
     const child = spawn('node', [cliPath, ...args], {
       cwd: process.cwd(),
       stdio: 'pipe',
@@ -477,10 +477,10 @@ async function runCliCommand(args) {
       // Filter out dotenv messages from stdout for cleaner test results
       const cleanStdout = stdout
         .split('\n')
-        .filter(line => !line.includes('[dotenv@') && !line.includes('injecting env'))
+        .filter((line) => !(line.includes('[dotenv@') || line.includes('injecting env')))
         .join('\n')
         .trim()
-      
+
       resolve({
         exitCode: code,
         stdout: cleanStdout,
@@ -503,7 +503,7 @@ async function fixPermissionsRecursive(dirPath) {
   try {
     await fs.chmod(dirPath, 0o755)
     const entries = await fs.readdir(dirPath, { withFileTypes: true })
-    
+
     for (const entry of entries) {
       const fullPath = path.join(dirPath, entry.name)
       if (entry.isDirectory()) {

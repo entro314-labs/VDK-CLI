@@ -5,9 +5,9 @@
  * Supports multiple output formats and custom requirements.
  */
 
+import fs from 'node:fs/promises'
 import { BaseCommand } from '../base/BaseCommand.js'
 import { commandContext } from '../shared/CommandContext.js'
-import fs from 'node:fs/promises'
 
 export class HubGenerateCommand extends BaseCommand {
   constructor() {
@@ -95,7 +95,7 @@ export class HubGenerateCommand extends BaseCommand {
    * Display generation plan
    */
   displayGenerationPlan(analysisData, generateOptions) {
-    console.log('\n' + this.colorCyan('📋 Generation Plan:'))
+    console.log(`\n${this.colorCyan('📋 Generation Plan:')}`)
 
     if (analysisData.frameworks.length > 0) {
       console.log(`Frameworks: ${analysisData.frameworks.join(', ')}`)
@@ -178,7 +178,7 @@ export class HubGenerateCommand extends BaseCommand {
   displayDownloadInfo(packageResult) {
     console.log(`\nDownload URL: ${packageResult.downloadUrl}`)
     console.log(`Expires: ${new Date(packageResult.expiresAt).toLocaleString()}`)
-    console.log('\n' + this.colorCyan('💡 To save the package:'))
+    console.log(`\n${this.colorCyan('💡 To save the package:')}`)
     console.log(`curl -o vdk-package.sh "${packageResult.downloadUrl}"`)
     console.log('chmod +x vdk-package.sh && ./vdk-package.sh')
   }

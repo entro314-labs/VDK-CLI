@@ -20,7 +20,7 @@ export const assertions = {
     const calls = mockFn.mock.calls
     const hasMatchingCall = calls.some((call) => {
       return Object.entries(partialArgs).every(([key, expectedValue]) => {
-        const actualValue = call[0] && call[0][key]
+        const actualValue = call[0]?.[key]
         return JSON.stringify(actualValue) === JSON.stringify(expectedValue)
       })
     })

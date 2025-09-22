@@ -17,10 +17,10 @@
  * - Comprehensive telemetry collection
  */
 
+import chalk from 'chalk'
 import fs from 'fs/promises'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import chalk from 'chalk'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -33,8 +33,8 @@ export class VDKHubClient {
     this.baseUrl = config.hubUrl || process.env.VDK_HUB_URL || 'https://vdk.tools'
     this.apiUrl = `${this.baseUrl}/api`
     this.apiKey = config.apiKey || process.env.VDK_HUB_API_KEY
-    this.timeout = config.timeout || parseInt(process.env.VDK_HUB_TIMEOUT || '30000')
-    this.retryAttempts = config.retryAttempts || parseInt(process.env.VDK_HUB_RETRY_ATTEMPTS || '3')
+    this.timeout = config.timeout || parseInt(process.env.VDK_HUB_TIMEOUT || '30000', 10)
+    this.retryAttempts = config.retryAttempts || parseInt(process.env.VDK_HUB_RETRY_ATTEMPTS || '3', 10)
     this.telemetryEnabled = config.telemetryEnabled !== false && process.env.VDK_TELEMETRY_ENABLED !== 'false'
 
     // Authentication
@@ -57,6 +57,7 @@ export class VDKHubClient {
       const response = await this.makeRequest('/health', {
         method: 'GET',
         timeout: 5000, // Shorter timeout for ping
+        returnResponse: true, // Get raw response to handle status ourselves
       })
 
       const latency = Date.now() - startTime
@@ -232,7 +233,7 @@ export class VDKHubClient {
         content,
         contentType,
         packageType,
-        ruleCount: ruleCount ? parseInt(ruleCount) : undefined,
+        ruleCount: ruleCount ? parseInt(ruleCount, 10) : undefined,
         fileName: this.extractFileName(contentDisposition),
         headers: {
           contentType,
@@ -276,6 +277,7 @@ export class VDKHubClient {
         body: JSON.stringify(eventArray),
         authenticated: false, // Anonymous telemetry
         skipRetry: true, // Don't retry telemetry to avoid spamming
+        returnResponse: true, // Get raw response to check status
       })
 
       if (response.ok) {
@@ -557,6 +559,7 @@ export class VDKHubClient {
       const response = await this.makeRequest(`/community/blueprints/${blueprintId}`, {
         method: 'GET',
         authenticated: false, // Optional auth
+        returnResponse: true, // Return raw response to handle 404 ourselves
       })
 
       if (!response.ok) {
@@ -576,11 +579,11 @@ export class VDKHubClient {
       return {
         id: data.id || data.blueprint_id,
         slug: data.slug,
-        title: data.title,
+        title: data.title || data.name,
         description: data.description,
-        content: data.content,
+        content: data.content || data.body,
         author: data.author,
-        metadata: data.metadata,
+        metadata: data.metadata || data.meta || {},
         stats: data.stats,
         created: data.created,
         updated: data.updated,
@@ -626,6 +629,7 @@ export class VDKHubClient {
       const response = await this.makeRequest(endpoint, {
         method: 'GET',
         authenticated: false, // Optional auth
+        returnResponse: true, // Return raw response to check status
       })
 
       if (!response.ok) {
@@ -675,6 +679,7 @@ export class VDKHubClient {
       const response = await this.makeRequest(endpoint, {
         method: 'GET',
         authenticated: false,
+        returnResponse: true, // Return raw response to check status
       })
 
       if (!response.ok) {
@@ -756,6 +761,7 @@ export class VDKHubClient {
       const response = await this.makeRequest('/community/categories', {
         method: 'GET',
         authenticated: false,
+        returnResponse: true, // Return raw response to check status
       })
 
       if (!response.ok) {
@@ -799,7 +805,9 @@ export class VDKHubClient {
         'X-VDK-Version': '2.0.0',
         ...options.headers,
       },
-      signal: AbortSignal.timeout(options.timeout || this.timeout),
+      ...(typeof AbortSignal?.timeout === 'function'
+        ? { signal: AbortSignal.timeout(options.timeout || this.timeout) }
+        : {}),
     }
 
     // Add authentication if required and available
@@ -938,11 +946,20 @@ export class VDKHubClient {
     console.log(chalk.cyan('🔐 VDK Hub Authentication'))
     console.log(chalk.gray('VDK Hub provides instant sharing with temporary links and analytics'))
     console.log('')
-    console.log(chalk.yellow('Would you like to authenticate? (y/n)'))
 
-    // For now, return true to simulate user consent
-    // In a real implementation, you'd prompt for user input
-    return true
+    // Import readline for user input
+    const readline = await import('readline')
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    })
+
+    return new Promise((resolve) => {
+      rl.question(chalk.yellow('Would you like to authenticate? (y/n): '), (answer) => {
+        rl.close()
+        resolve(answer.toLowerCase().startsWith('y'))
+      })
+    })
   }
 
   /**
@@ -952,36 +969,57 @@ export class VDKHubClient {
     try {
       console.log(chalk.cyan('🔐 Starting Hub authentication...'))
 
-      // Generate state for OAuth security
-      const state = Math.random().toString(36).substring(2, 15)
+      // For now, use a simplified token-based approach
+      // TODO: Implement full OAuth flow with callback server
+      console.log(chalk.yellow('📋 Please visit the VDK Hub to generate an API token:'))
+      console.log(chalk.blue(`${this.baseUrl}/profile`))
+      console.log('')
 
-      // OAuth URL for GitHub authentication
-      const authUrl = `${this.baseUrl}/auth/github?state=${state}&client=cli`
+      // Import readline for token input
+      const readline = await import('readline')
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+      })
 
-      console.log(chalk.gray('Opening browser for authentication...'))
+      return new Promise((resolve, reject) => {
+        rl.question(chalk.yellow('Enter your API token: '), async (token) => {
+          rl.close()
 
-      // Import open dynamically to handle cases where it might not be available
-      try {
-        const { default: open } = await import('open')
-        await open(authUrl)
-      } catch (openError) {
-        console.log(chalk.yellow(`Please open this URL in your browser: ${authUrl}`))
-      }
+          if (!token || token.trim().length === 0) {
+            reject(new Error('No token provided'))
+            return
+          }
 
-      console.log(chalk.yellow('⏳ Waiting for authentication...'))
-      console.log(chalk.gray('Please complete authentication in your browser'))
+          try {
+            // Validate token by making a test API call
+            const testResponse = await this.makeRequest('/api/v1/user/profile', {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${token.trim()}`
+              },
+              authenticated: false
+            })
 
-      // Simulate successful auth for demo
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+            if (testResponse) {
+              await this.saveAuthToken(token.trim())
+              this.authToken = token.trim()
+              console.log(chalk.green('✅ Authentication successful!'))
+              resolve(true)
+            } else {
+              reject(new Error('Invalid token'))
+            }
+          } catch (error) {
+            reject(new Error(`Token validation failed: ${error.message}`))
+          }
+        })
 
-      // Mock token for demo purposes
-      const mockToken = 'vdk_hub_' + Math.random().toString(36).substring(2, 15)
-      await this.saveAuthToken(mockToken)
-      this.authToken = mockToken
-
-      console.log(chalk.green('✅ Authentication successful!'))
-
-      return true
+        // Timeout after 5 minutes
+        setTimeout(() => {
+          rl.close()
+          reject(new Error('Authentication timeout'))
+        }, 300000)
+      })
     } catch (error) {
       throw new VDKHubError(`Authentication failed: ${error.message}`, 0, 'AUTH_FAILED', false)
     }
@@ -1023,9 +1061,8 @@ export class VDKHubClient {
       }
 
       if (error.message.includes('fetch')) {
-        // Network error - provide fallback
-        console.warn(chalk.yellow('⚠️  VDK Hub unreachable - creating mock upload'))
-        return this.createMockUploadResult(blueprint, metadata)
+        // Network error - provide proper error handling
+        throw new VDKHubError('VDK Hub is currently unreachable. Please check your internet connection and try again.', 0, 'NETWORK_ERROR', true)
       }
       throw new VDKHubError(`Upload error: ${error.message}`, 0, 'UPLOAD_ERROR', true)
     }
@@ -1129,6 +1166,58 @@ export class VDKHubClient {
   }
 
   /**
+   * Share team configuration with VDK Hub
+   */
+  async shareTeamConfig(teamId, config) {
+    try {
+      const response = await this.makeRequest(`/teams/${teamId}/config`, {
+        method: 'POST',
+        body: JSON.stringify({
+          main: config.main,
+          rules: config.rules,
+          settings: config.settings,
+          teamName: config.teamName
+        }),
+        authenticated: true
+      })
+
+      return {
+        shareUrl: response.shareUrl,
+        expiresAt: response.expiresAt,
+        lastUpdated: response.lastUpdated
+      }
+    } catch (error) {
+      throw new VDKHubError(`Failed to share team config: ${error.message}`, 0, 'TEAM_SHARE_ERROR', true)
+    }
+  }
+
+  /**
+   * Get team configuration from VDK Hub
+   */
+  async getTeamConfig(teamId) {
+    try {
+      const response = await this.makeRequest(`/teams/${teamId}/config`, {
+        method: 'GET',
+        authenticated: true
+      })
+
+      return {
+        teamId: response.teamId,
+        name: response.name,
+        lastUpdated: response.lastUpdated,
+        main: response.main,
+        rules: response.rules,
+        settings: response.settings
+      }
+    } catch (error) {
+      if (error.statusCode === 404) {
+        return null
+      }
+      throw new VDKHubError(`Failed to get team config: ${error.message}`, 0, 'TEAM_GET_ERROR', true)
+    }
+  }
+
+  /**
    * Get current configuration
    */
   getConfig() {
@@ -1142,19 +1231,6 @@ export class VDKHubClient {
     }
   }
 
-  /**
-   * Create mock upload result for demo/fallback
-   */
-  createMockUploadResult(blueprint, metadata) {
-    const blueprintId = `mock-${Math.random().toString(36).substring(2, 10)}`
-
-    return {
-      blueprintId: blueprintId,
-      tempUrl: `https://vdk.tools/temp/${blueprintId}`,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      confirmationRequired: true,
-    }
-  }
 }
 
 /**

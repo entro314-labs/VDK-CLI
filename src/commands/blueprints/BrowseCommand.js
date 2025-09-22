@@ -4,10 +4,10 @@
  * Handles 'vdk browse' command - Browse and discover community blueprints
  */
 
-import { BaseCommand } from '../base/BaseCommand.js'
-import { commandContext } from '../shared/CommandContext.js'
 import { fetchBlueprintsWithMetadata, searchBlueprints } from '../../blueprints-client.js'
 import { colors } from '../../utils/cli-styles.js'
+import { BaseCommand } from '../base/BaseCommand.js'
+import { commandContext } from '../shared/CommandContext.js'
 
 export class BrowseCommand extends BaseCommand {
   constructor() {
@@ -61,7 +61,7 @@ export class BrowseCommand extends BaseCommand {
       let results
       if (options.trending) {
         results = await this.hubOps.getTrendingBlueprints({
-          limit: parseInt(options.limit),
+          limit: parseInt(options.limit, 10),
           timeframe: '7d',
         })
       } else {
@@ -71,7 +71,7 @@ export class BrowseCommand extends BaseCommand {
           category: options.category,
           framework: options.framework,
           platform: options.platform,
-          limit: parseInt(options.limit),
+          limit: parseInt(options.limit, 10),
         })
       }
 
@@ -117,7 +117,7 @@ export class BrowseCommand extends BaseCommand {
 
       spinner.succeed(`Found ${blueprints.length} blueprints`)
 
-      const limit = parseInt(options.limit)
+      const limit = parseInt(options.limit, 10)
       const displayBlueprints = blueprints.slice(0, limit)
 
       console.log('')

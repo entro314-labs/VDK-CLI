@@ -21,11 +21,11 @@ async function analyzeTestCoverage() {
 
   // Find all test files
   const testFiles = await glob('**/*.test.js', { cwd: testsDir })
-  
+
   // Find all source files
-  const srcFiles = await glob('**/*.js', { 
+  const srcFiles = await glob('**/*.js', {
     cwd: srcDir,
-    ignore: ['**/node_modules/**', '**/test/**', '**/*.test.js']
+    ignore: ['**/node_modules/**', '**/test/**', '**/*.test.js'],
   })
 
   console.log(`📊 Test Coverage Overview:`)
@@ -35,31 +35,34 @@ async function analyzeTestCoverage() {
 
   // Analyze test file coverage by domain
   const domains = {
-    'Commands': ['commands-comprehensive.test.js', 'cli-*.test.js'],
-    'Integration': ['integrations-comprehensive.test.js', 'integrations.test.js'],
-    'Migration': ['cli-import-integration.test.js', 'cli-migrate-integration.test.js', 'migration.test.js', 'auto-migrator.test.js'],
+    Commands: ['commands-comprehensive.test.js', 'cli-*.test.js'],
+    Integration: ['integrations-comprehensive.test.js', 'integrations.test.js'],
+    Migration: [
+      'cli-import-integration.test.js',
+      'cli-migrate-integration.test.js',
+      'migration.test.js',
+      'auto-migrator.test.js',
+    ],
     'Hub/Community': ['vdk-hub-client.test.js', 'community-*.test.js', 'hub-*.test.js'],
-    'Publishing': ['publishing-comprehensive.test.js', 'publish-*.test.js'],
-    'Scanner': ['advanced-scanner.test.js', 'scanner-core.test.js'],
-    'Validation': ['validation.test.js', 'schema-validation.test.js'],
-    'Security': ['security.test.js'],
-    'Utilities': ['utilities.test.js', 'templating.test.js'],
-    'End-to-End': ['end-to-end.test.js', 'real-world-*.test.js', 'realistic-*.test.js']
+    Publishing: ['publishing-comprehensive.test.js', 'publish-*.test.js'],
+    Scanner: ['advanced-scanner.test.js', 'scanner-core.test.js'],
+    Validation: ['validation.test.js', 'schema-validation.test.js'],
+    Security: ['security.test.js'],
+    Utilities: ['utilities.test.js', 'templating.test.js'],
+    'End-to-End': ['end-to-end.test.js', 'real-world-*.test.js', 'realistic-*.test.js'],
   }
 
   console.log(`🏗️  Domain Coverage Analysis:`)
   for (const [domain, patterns] of Object.entries(domains)) {
-    const matchingTests = testFiles.filter(file => 
-      patterns.some(pattern => 
-        pattern.includes('*') 
-          ? new RegExp(pattern.replace('*', '.*')).test(file)
-          : file === pattern
+    const matchingTests = testFiles.filter((file) =>
+      patterns.some((pattern) =>
+        pattern.includes('*') ? new RegExp(pattern.replace('*', '.*')).test(file) : file === pattern
       )
     )
-    
+
     console.log(`   ${domain}: ${matchingTests.length} test files`)
     if (matchingTests.length > 0) {
-      matchingTests.forEach(test => console.log(`     - ${test}`))
+      matchingTests.forEach((test) => console.log(`     - ${test}`))
     }
   }
   console.log()
@@ -72,7 +75,7 @@ async function analyzeTestCoverage() {
     if (!srcStructure[dir]) srcStructure[dir] = 0
     srcStructure[dir]++
   }
-  
+
   Object.entries(srcStructure)
     .sort(([a], [b]) => a.localeCompare(b))
     .forEach(([dir, count]) => {
@@ -100,14 +103,14 @@ async function analyzeTestCoverage() {
   console.log(`      - Improved file permission handling`)
   console.log(`      - Updated expectations for exit codes`)
   console.log()
-  
+
   console.log(`   🔌 Integration Tests:`)
   console.log(`      - Aligned with context platform priority system`)
   console.log(`      - Added proper BaseIntegration inheritance checks`)
   console.log(`      - Fixed discovery and scanning workflows`)
   console.log(`      - Added comprehensive error handling`)
   console.log()
-  
+
   console.log(`   🌐 Network/Hub Tests:`)
   console.log(`      - Created comprehensive mocking utilities`)
   console.log(`      - Fixed timeout issues in community tests`)
@@ -122,12 +125,12 @@ async function analyzeTestCoverage() {
   console.log(`      npm test -- tests/integrations-comprehensive.test.js`)
   console.log(`      npm test -- tests/publishing-comprehensive.test.js`)
   console.log()
-  
+
   console.log(`   2. Run fixed integration tests:`)
   console.log(`      npm test -- tests/cli-import-integration.test.js`)
   console.log(`      npm test -- tests/cli-migrate-integration.test.js`)
   console.log()
-  
+
   console.log(`   3. Generate coverage report:`)
   console.log(`      npm test -- --coverage`)
   console.log()
@@ -159,7 +162,7 @@ async function analyzeTestCoverage() {
   // Test statistics
   const helperFiles = await glob('helpers/*.js', { cwd: testsDir })
   const testHelpers = helperFiles.length
-  
+
   console.log(`📈 Test Infrastructure Statistics:`)
   console.log(`   Total Test Files: ${testFiles.length}`)
   console.log(`   Helper Utilities: ${testHelpers}`)

@@ -5,8 +5,8 @@
  * consistent error handling, and common utilities.
  */
 
+import { isHubAvailable, quickHubOperations } from '../../hub/index.js'
 import { boxes, colors, format, headers, spinners, status } from '../../utils/cli-styles.js'
-import { quickHubOperations, isHubAvailable } from '../../hub/index.js'
 
 export class BaseCommand {
   constructor(name, description) {

@@ -186,10 +186,282 @@ describe('Publishing System - Comprehensive Tests', () => {
       
       const converter = new UniversalFormatConverter()
       
-      const markdownContent = '# Title\\nContent here'
+      const markdownContent = '# Title\nContent here'
       const jsonContent = '{"title": "Test", "content": "Content"}'
       
       const mdFormat = converter.detectFormat(markdownContent, 'test.md')
       const jsonFormat = converter.detectFormat(jsonContent, 'test.json')
       
-      expect(mdFormat).toBe('markdown')\n      expect(jsonFormat).toBe('json')\n    })\n\n    it('should convert between formats', async () => {\n      const { UniversalFormatConverter } = await import('../src/publishing/UniversalFormatConverter.js')\n      \n      const converter = new UniversalFormatConverter()\n      \n      const sourceContent = {\n        title: 'Test Blueprint',\n        description: 'A test blueprint',\n        content: '# Test\\nContent here',\n        metadata: { category: 'test' },\n      }\n      \n      try {\n        const converted = await converter.convert(sourceContent, 'json', 'markdown')\n        \n        expect(converted).toBeDefined()\n        expect(typeof converted).toBe('string')\n      } catch (error) {\n        // Conversion might fail with limited implementation\n        expect(error).toBeInstanceOf(Error)\n      }\n    })\n\n    it('should handle format validation', async () => {\n      const { UniversalFormatConverter } = await import('../src/publishing/UniversalFormatConverter.js')\n      \n      const converter = new UniversalFormatConverter()\n      \n      const validContent = '# Valid Markdown\\nContent'\n      const invalidContent = 'Invalid content with \\x00 null bytes'\n      \n      const validResult = converter.validateFormat(validContent, 'markdown')\n      const invalidResult = converter.validateFormat(invalidContent, 'markdown')\n      \n      expect(validResult.valid).toBe(true)\n      expect(invalidResult.valid).toBe(false)\n    })\n  })\n\n  describe('GitHubPRClient', () => {\n    it('should create GitHubPRClient instance', async () => {\n      const { GitHubPRClient } = await import('../src/publishing/clients/GitHubPRClient.js')\n      \n      const client = new GitHubPRClient({\n        token: 'test-token',\n        owner: 'testowner',\n        repo: 'testrepo',\n      })\n      \n      expect(client).toBeDefined()\n      expect(typeof client.createPR).toBe('function')\n      expect(typeof client.forkRepository).toBe('function')\n      expect(typeof client.createBranch).toBe('function')\n    })\n\n    it('should fork repository', async () => {\n      const { GitHubPRClient } = await import('../src/publishing/clients/GitHubPRClient.js')\n      \n      const client = new GitHubPRClient({\n        token: 'test-token',\n        owner: 'testowner',\n        repo: 'testrepo',\n      })\n      \n      const forkResult = await client.forkRepository()\n      \n      expect(forkResult).toBeDefined()\n      expect(forkResult.full_name).toBe('user/repo')\n      expect(forkResult.clone_url).toBeDefined()\n    })\n\n    it('should create branch', async () => {\n      const { GitHubPRClient } = await import('../src/publishing/clients/GitHubPRClient.js')\n      \n      const client = new GitHubPRClient({\n        token: 'test-token',\n        owner: 'testowner',\n        repo: 'testrepo',\n      })\n      \n      const branchResult = await client.createBranch('feature-branch', 'main')\n      \n      expect(branchResult).toBeDefined()\n      expect(branchResult.ref).toBe('refs/heads/feature-branch')\n    })\n\n    it('should create pull request', async () => {\n      const { GitHubPRClient } = await import('../src/publishing/clients/GitHubPRClient.js')\n      \n      const client = new GitHubPRClient({\n        token: 'test-token',\n        owner: 'testowner',\n        repo: 'testrepo',\n      })\n      \n      const prOptions = {\n        title: 'Test PR',\n        description: 'Test pull request',\n        head: 'feature-branch',\n        base: 'main',\n        changes: [\n          {\n            path: 'blueprints/test.md',\n            content: '# Test Blueprint\\nContent',\n          },\n        ],\n      }\n      \n      const prResult = await client.createPR(prOptions)\n      \n      expect(prResult).toBeDefined()\n      expect(prResult.number).toBe(123)\n      expect(prResult.html_url).toBeDefined()\n    })\n\n    it('should handle GitHub API errors gracefully', async () => {\n      // Mock a failed API call\n      vi.doMock('@octokit/rest', () => ({\n        Octokit: vi.fn().mockImplementation(() => ({\n          rest: {\n            repos: {\n              get: vi.fn().mockRejectedValue(new Error('Repository not found')),\n            },\n          },\n        })),\n      }))\n      \n      const { GitHubPRClient } = await import('../src/publishing/clients/GitHubPRClient.js')\n      \n      const client = new GitHubPRClient({\n        token: 'test-token',\n        owner: 'nonexistent',\n        repo: 'nonexistent',\n      })\n      \n      await expect(client.validateRepository()).rejects.toThrow('Repository not found')\n    })\n  })\n\n  describe('Publishing Integration', () => {\n    it('should handle end-to-end publishing workflow', async () => {\n      const { PublishManager } = await import('../src/publishing/PublishManager.js')\n      \n      const manager = new PublishManager()\n      \n      const blueprint = {\n        title: 'Integration Test Blueprint',\n        description: 'End-to-end test blueprint',\n        content: '# Integration Test\\nThis tests the full publishing workflow.',\n        category: 'test',\n        tags: ['test', 'integration'],\n        author: 'testuser',\n      }\n      \n      const publishOptions = {\n        targetPlatform: 'github',\n        repository: 'test/blueprints',\n        format: 'markdown',\n        createPR: true,\n        validateOnly: true, // Only validate, don't actually publish\n      }\n      \n      try {\n        const result = await manager.publish(blueprint, publishOptions)\n        \n        expect(result).toBeDefined()\n        expect(result.validated).toBe(true)\n      } catch (error) {\n        // Should handle gracefully even if full publishing fails\n        expect(error.message).toBeDefined()\n      }\n    })\n\n    it('should handle format conversion in publishing', async () => {\n      const { PublishManager } = await import('../src/publishing/PublishManager.js')\n      const { UniversalFormatConverter } = await import('../src/publishing/UniversalFormatConverter.js')\n      \n      const manager = new PublishManager()\n      const converter = new UniversalFormatConverter()\n      \n      const blueprint = {\n        title: 'Format Test Blueprint',\n        content: '# Format Test\\nTesting format conversion.',\n      }\n      \n      // Test JSON to Markdown conversion\n      try {\n        const converted = await converter.convert(blueprint, 'json', 'markdown')\n        const prepared = await manager.prepareForPublication({ content: converted }, {\n          format: 'markdown',\n        })\n        \n        expect(prepared).toBeDefined()\n        expect(prepared.content).toContain('Format Test')\n      } catch (error) {\n        // Format conversion might not be fully implemented\n        expect(error).toBeInstanceOf(Error)\n      }\n    })\n\n    it('should validate blueprint completeness before publishing', async () => {\n      const { PublishManager } = await import('../src/publishing/PublishManager.js')\n      \n      const manager = new PublishManager()\n      \n      const incompleteBlueprint = {\n        title: 'Incomplete Blueprint',\n        // Missing required fields\n      }\n      \n      const validation = await manager.validateBlueprint(incompleteBlueprint)\n      \n      expect(validation.valid).toBe(false)\n      expect(validation.errors.length).toBeGreaterThan(0)\n      expect(validation.errors.some(error => error.includes('description'))).toBe(true)\n    })\n  })\n\n  describe('Publishing Error Handling', () => {\n    it('should handle network errors during publishing', async () => {\n      // Mock network failure\n      vi.doMock('@octokit/rest', () => ({\n        Octokit: vi.fn().mockImplementation(() => ({\n          rest: {\n            repos: {\n              get: vi.fn().mockRejectedValue(new Error('Network error')),\n            },\n          },\n        })),\n      }))\n      \n      const { GitHubPRClient } = await import('../src/publishing/clients/GitHubPRClient.js')\n      \n      const client = new GitHubPRClient({\n        token: 'test-token',\n        owner: 'testowner',\n        repo: 'testrepo',\n      })\n      \n      await expect(client.validateRepository()).rejects.toThrow('Network error')\n    })\n\n    it('should handle invalid authentication', async () => {\n      const { GitHubPRClient } = await import('../src/publishing/clients/GitHubPRClient.js')\n      \n      const client = new GitHubPRClient({\n        token: 'invalid-token',\n        owner: 'testowner',\n        repo: 'testrepo',\n      })\n      \n      // Should handle invalid authentication gracefully\n      expect(client.token).toBe('invalid-token')\n    })\n\n    it('should handle malformed content', async () => {\n      const { UniversalFormatConverter } = await import('../src/publishing/UniversalFormatConverter.js')\n      \n      const converter = new UniversalFormatConverter()\n      \n      const malformedContent = '\\x00\\x01\\x02 invalid content'\n      \n      const validation = converter.validateFormat(malformedContent, 'markdown')\n      \n      expect(validation.valid).toBe(false)\n      expect(validation.errors.length).toBeGreaterThan(0)\n    })\n  })\n})"
+      expect(mdFormat).toBe('markdown')
+      expect(jsonFormat).toBe('json')
+    })
+
+    it('should convert between formats', async () => {
+      const { UniversalFormatConverter } = await import('../src/publishing/UniversalFormatConverter.js')
+
+      const converter = new UniversalFormatConverter()
+
+      const sourceContent = {
+        title: 'Test Blueprint',
+        description: 'A test blueprint',
+        content: '# Test\nContent here',
+        metadata: { category: 'test' },
+      }
+
+      try {
+        const converted = await converter.convert(sourceContent, 'json', 'markdown')
+
+        expect(converted).toBeDefined()
+        expect(typeof converted).toBe('string')
+      } catch (error) {
+        // Conversion might fail with limited implementation
+        expect(error).toBeInstanceOf(Error)
+      }
+    })
+
+    it('should handle format validation', async () => {
+      const { UniversalFormatConverter } = await import('../src/publishing/UniversalFormatConverter.js')
+
+      const converter = new UniversalFormatConverter()
+
+      const validContent = '# Valid Markdown\nContent'
+      const invalidContent = 'Invalid content with \\\\x00 null bytes'
+
+      const validResult = converter.validateFormat(validContent, 'markdown')
+      const invalidResult = converter.validateFormat(invalidContent, 'markdown')
+
+      expect(validResult.valid).toBe(true)
+      expect(invalidResult.valid).toBe(false)
+    })
+  })
+
+  describe('GitHubPRClient', () => {
+    it('should create GitHubPRClient instance', async () => {
+      const { GitHubPRClient } = await import('../src/publishing/clients/GitHubPRClient.js')
+
+      const client = new GitHubPRClient({
+        token: 'test-token',
+        owner: 'testowner',
+        repo: 'testrepo',
+      })
+
+      expect(client).toBeDefined()
+      expect(typeof client.createPR).toBe('function')
+      expect(typeof client.forkRepository).toBe('function')
+      expect(typeof client.createBranch).toBe('function')
+    })
+
+    it('should fork repository', async () => {
+      const { GitHubPRClient } = await import('../src/publishing/clients/GitHubPRClient.js')
+
+      const client = new GitHubPRClient({
+        token: 'test-token',
+        owner: 'testowner',
+        repo: 'testrepo',
+      })
+
+      const forkResult = await client.forkRepository()
+
+      expect(forkResult).toBeDefined()
+      expect(forkResult.full_name).toBe('user/repo')
+      expect(forkResult.clone_url).toBeDefined()
+    })
+
+    it('should create branch', async () => {
+      const { GitHubPRClient } = await import('../src/publishing/clients/GitHubPRClient.js')
+
+      const client = new GitHubPRClient({
+        token: 'test-token',
+        owner: 'testowner',
+        repo: 'testrepo',
+      })
+
+      const branchResult = await client.createBranch('feature-branch', 'main')
+
+      expect(branchResult).toBeDefined()
+      expect(branchResult.ref).toBe('refs/heads/feature-branch')
+    })
+
+    it('should create pull request', async () => {
+      const { GitHubPRClient } = await import('../src/publishing/clients/GitHubPRClient.js')
+
+      const client = new GitHubPRClient({
+        token: 'test-token',
+        owner: 'testowner',
+        repo: 'testrepo',
+      })
+
+      const prOptions = {
+        title: 'Test PR',
+        description: 'Test pull request',
+        head: 'feature-branch',
+        base: 'main',
+        changes: [
+          {
+            path: 'blueprints/test.md',
+            content: '# Test Blueprint\nContent',
+          },
+        ],
+      }
+
+      const prResult = await client.createPR(prOptions)
+
+      expect(prResult).toBeDefined()
+      expect(prResult.number).toBe(123)
+      expect(prResult.html_url).toBeDefined()
+    })
+
+    it('should handle GitHub API errors gracefully', async () => {
+      // Mock a failed API call
+      vi.doMock('@octokit/rest', () => ({
+        Octokit: vi.fn().mockImplementation(() => ({
+          rest: {
+            repos: {
+              get: vi.fn().mockRejectedValue(new Error('Repository not found')),
+            },
+          },
+        })),
+      }))
+
+      const { GitHubPRClient } = await import('../src/publishing/clients/GitHubPRClient.js')
+
+      const client = new GitHubPRClient({
+        token: 'test-token',
+        owner: 'nonexistent',
+        repo: 'nonexistent',
+      })
+
+      await expect(client.validateRepository()).rejects.toThrow('Repository not found')
+    })
+  })
+
+  describe('Publishing Integration', () => {
+    it('should handle end-to-end publishing workflow', async () => {
+      const { PublishManager } = await import('../src/publishing/PublishManager.js')
+
+      const manager = new PublishManager()
+
+      const blueprint = {
+        title: 'Integration Test Blueprint',
+        description: 'End-to-end test blueprint',
+        content: '# Integration Test\nThis tests the full publishing workflow.',
+        category: 'test',
+        tags: ['test', 'integration'],
+        author: 'testuser',
+      }
+
+      const publishOptions = {
+        targetPlatform: 'github',
+        repository: 'test/blueprints',
+        format: 'markdown',
+        createPR: true,
+        validateOnly: true, // Only validate, don't actually publish
+      }
+
+      try {
+        const result = await manager.publish(blueprint, publishOptions)
+
+        expect(result).toBeDefined()
+        expect(result.validated).toBe(true)
+      } catch (error) {
+        // Should handle gracefully even if full publishing fails
+        expect(error.message).toBeDefined()
+      }
+    })
+
+    it('should handle format conversion in publishing', async () => {
+      const { PublishManager } = await import('../src/publishing/PublishManager.js')
+      const { UniversalFormatConverter } = await import('../src/publishing/UniversalFormatConverter.js')
+
+      const manager = new PublishManager()
+      const converter = new UniversalFormatConverter()
+
+      const blueprint = {
+        title: 'Format Test Blueprint',
+        content: '# Format Test\nTesting format conversion.',
+      }
+
+      // Test JSON to Markdown conversion
+      try {
+        const converted = await converter.convert(blueprint, 'json', 'markdown')
+        const prepared = await manager.prepareForPublication({ content: converted }, {
+          format: 'markdown',
+        })
+
+        expect(prepared).toBeDefined()
+        expect(prepared.content).toContain('Format Test')
+      } catch (error) {
+        // Format conversion might not be fully implemented
+        expect(error).toBeInstanceOf(Error)
+      }
+    })
+
+    it('should validate blueprint completeness before publishing', async () => {
+      const { PublishManager } = await import('../src/publishing/PublishManager.js')
+
+      const manager = new PublishManager()
+
+      const incompleteBlueprint = {
+        title: 'Incomplete Blueprint',
+        // Missing required fields
+      }
+
+      const validation = await manager.validateBlueprint(incompleteBlueprint)
+
+      expect(validation.valid).toBe(false)
+      expect(validation.errors.length).toBeGreaterThan(0)
+      expect(validation.errors.some(error => error.includes('description'))).toBe(true)
+    })
+  })
+
+  describe('Publishing Error Handling', () => {
+    it('should handle network errors during publishing', async () => {
+      // Mock network failure
+      vi.doMock('@octokit/rest', () => ({
+        Octokit: vi.fn().mockImplementation(() => ({
+          rest: {
+            repos: {
+              get: vi.fn().mockRejectedValue(new Error('Network error')),
+            },
+          },
+        })),
+      }))
+
+      const { GitHubPRClient } = await import('../src/publishing/clients/GitHubPRClient.js')
+
+      const client = new GitHubPRClient({
+        token: 'test-token',
+        owner: 'testowner',
+        repo: 'testrepo',
+      })
+
+      await expect(client.validateRepository()).rejects.toThrow('Network error')
+    })
+
+    it('should handle invalid authentication', async () => {
+      const { GitHubPRClient } = await import('../src/publishing/clients/GitHubPRClient.js')
+
+      const client = new GitHubPRClient({
+        token: 'invalid-token',
+        owner: 'testowner',
+        repo: 'testrepo',
+      })
+
+      // Should handle invalid authentication gracefully
+      expect(client.token).toBe('invalid-token')
+    })
+
+    it('should handle malformed content', async () => {
+      const { UniversalFormatConverter } = await import('../src/publishing/UniversalFormatConverter.js')
+
+      const converter = new UniversalFormatConverter()
+
+      const malformedContent = '\\\\x00\\\\x01\\\\x02 invalid content'
+
+      const validation = converter.validateFormat(malformedContent, 'markdown')
+
+      expect(validation.valid).toBe(false)
+      expect(validation.errors.length).toBeGreaterThan(0)
+    })
+  })
+})

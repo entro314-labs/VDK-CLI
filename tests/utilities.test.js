@@ -104,7 +104,7 @@ describe('Utility Functions', () => {
     })
 
     it('should provide IDE configuration for scanner', async () => {
-      const ideConfig = await import('../src/scanner/utils/ide-configuration.js')
+      const ideConfig = await import('../src/shared/ide-configuration.js')
 
       expect(ideConfig).toBeDefined()
       expect(typeof ideConfig).toBe('object')

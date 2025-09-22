@@ -142,9 +142,9 @@ describe('Security', () => {
     it('should validate command arguments', async () => {
       const cliSource = await fs.readFile(path.join(global.TEST_ROOT, 'cli-new.js'), 'utf8')
 
-      expect(cliSource).toContain('commander')
-      expect(cliSource).toMatch(/(version|Version)/)
-      expect(cliSource).toMatch(/(help|Help)/)
+      expect(cliSource).toContain('createCLIProgram')
+      expect(cliSource).toContain('pkg') // version is passed from pkg
+      expect(cliSource).toMatch(/(parse|Parse)/)
     })
   })
 })

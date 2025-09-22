@@ -146,6 +146,7 @@ That's it! Your AI assistant now understands your project's patterns and convent
 VDK CLI includes intelligent migration capabilities to convert your existing AI contexts from various platforms to VDK's universal format:
 
 ### Supported Migration Sources
+
 - **Claude Code** - CLAUDE.md files and .claude/ directories  
 - **Cursor** - .cursorrules and .cursor/ configurations
 - **GitHub Copilot** - .github/copilot-instructions.md and related files
@@ -153,6 +154,7 @@ VDK CLI includes intelligent migration capabilities to convert your existing AI 
 - **Generic AI** - Various AI assistant rule formats
 
 ### Migration Process
+
 1. **Detection**: Automatically identifies existing AI contexts in your project
 2. **Analysis**: Evaluates confidence levels and categorizes found contexts  
 3. **Conversion**: Transforms contexts to VDK blueprint format with project-specific adaptations
@@ -160,6 +162,7 @@ VDK CLI includes intelligent migration capabilities to convert your existing AI 
 5. **Integration**: Optionally deploys converted rules to your configured AI assistants
 
 ### Migration Commands
+
 ```bash
 # Migrate existing AI contexts
 vdk migrate
@@ -282,7 +285,8 @@ VDK CLI supports **33+ IDEs and AI assistants** with full auto-detection and con
 - **AI Services**: Claude Code, Claude Desktop, GitHub Copilot, OpenAI API Tools, Generic AI Platform
 - **Generic**: Works with any AI coding assistant through universal .ai/ configuration
 
-✨ **Enhanced Features**: 
+✨ **Enhanced Features**:
+
 - Individual JetBrains IDE detection with project-specific configurations
 - MCP (Model Context Protocol) integration across compatible platforms
 - Confidence-based IDE detection with intelligent project analysis

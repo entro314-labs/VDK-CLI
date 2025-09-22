@@ -63,7 +63,7 @@ describe('CLI Functionality', () => {
 
       // Should contain enhanced status elements
       const output = result.stdout
-      expect(output).toContain('VDK Status Check')
+      expect(output).toContain('Check the status of your VDK setup')
 
       // Should contain status symbols (check both raw and stripped output)
       const cleanOutput = stripAnsi(output)
@@ -122,7 +122,7 @@ describe('CLI Functionality', () => {
       const cleanOutput = stripAnsi(styledOutput)
 
       expect(styledOutput.length).toBeGreaterThan(cleanOutput.length) // Should have ANSI codes
-      expect(cleanOutput).toContain('VDK Status Check') // Should be readable without styling
+      expect(cleanOutput).toContain('Check the status of your VDK setup') // Should be readable without styling
     })
   })
 
@@ -131,7 +131,7 @@ describe('CLI Functionality', () => {
       tempDir = await createTempDir('test-init-project')
 
       const result = await runCLI(['init', '--projectPath', tempDir], {
-        timeout: 45000,
+        timeout: 15000,
       })
 
       expect(result.code).toBeDefined()
@@ -143,22 +143,19 @@ describe('CLI Functionality', () => {
       }
     })
 
-    it('should have deploy command with enhanced warning', async () => {
+    it('should have deploy command with deployment options', async () => {
       const result = await runCLI(['deploy'])
 
       expect(result.success).toBe(true)
-      expect(result.stdout).toContain('Coming Soon')
-      expect(result.stdout).toContain('under development')
-
-      // Should display as a boxed message
-      const hasBox = /[╔╗╚╝║═┌┐└┘│─╭╮╰╯]/.test(result.stdout)
-      expect(hasBox).toBe(true)
+      expect(result.stdout).toContain('Deploy Options')
+      expect(result.stdout).toContain('Deploy Community Blueprint')
+      expect(result.stdout).toContain('vdk deploy')
     })
 
-    it('should have update command available', async () => {
-      const result = await runCLI(['update', '--help'])
+    it('should have sync command available', async () => {
+      const result = await runCLI(['sync', '--help'])
 
-      expect(result.success || result.stdout.includes('update')).toBe(true)
+      expect(result.success || result.stdout.includes('sync')).toBe(true)
     })
 
     it('should have claude-code command available', async () => {

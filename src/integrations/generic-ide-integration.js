@@ -55,18 +55,28 @@ export class GenericIDEIntegration extends BaseIntegration {
           }
         }
       }
+
+      // Fallback: Check for AI-related configurations when no IDEs detected
+      if (detection.detectedIDEs.length === 0) {
+        const aiDetection = await this.detectAIConfigurations()
+        if (aiDetection.isUsed) {
+          detection.isUsed = true
+          detection.confidence = aiDetection.confidence
+          detection.indicators.push(...aiDetection.indicators)
+        }
+      }
     } catch (error) {
       console.warn(`IDE detection error: ${error.message}`)
     }
 
     // Generate recommendations
-    if (detection.detectedIDEs.length === 0) {
+    if (detection.detectedIDEs.length === 0 && detection.confidence === 'none') {
       detection.recommendations.push(
-        'No IDE configurations detected. VDK works with VS Code, Cursor, Windsurf, and other editors'
+        'No IDE configurations or AI tools detected. VDK works with VS Code, Cursor, Windsurf, and other editors'
       )
       detection.recommendations.push('Run: vdk init to set up rules for your preferred IDE')
     } else if (detection.confidence === 'low') {
-      detection.recommendations.push('IDE configurations detected but not fully configured')
+      detection.recommendations.push('IDE/AI configurations detected but not fully configured')
       detection.recommendations.push('Run: vdk init --ide-integration to set up IDE rules')
     } else if (detection.confidence === 'medium') {
       detection.recommendations.push('IDE configurations found - consider optimizing rule setup')
@@ -74,6 +84,67 @@ export class GenericIDEIntegration extends BaseIntegration {
     } else {
       detection.recommendations.push('IDE integrations are well configured')
       detection.recommendations.push('Consider updating rules periodically as your project evolves')
+    }
+
+    return detection
+  }
+
+  /**
+   * Detect AI-related configurations (fallback when no specific IDEs found)
+   * @returns {Promise<Object>} AI detection result
+   */
+  async detectAIConfigurations() {
+    const detection = {
+      isUsed: false,
+      confidence: 'none',
+      indicators: [],
+    }
+
+    // Check for user-created AI config files
+    const userCreatedAIFiles = ['.aiconfig.json', 'ai-config.json', '.ai-assistant.json', 'llm-config.json']
+
+    for (const configFile of userCreatedAIFiles) {
+      const configPath = path.join(this.projectPath, configFile)
+      if (await this.fileExistsAsync(configPath)) {
+        detection.indicators.push(`Found user AI configuration: ${configFile}`)
+        detection.isUsed = true
+        detection.confidence = 'low'
+      }
+    }
+
+    // Check for AI-related configuration patterns
+    const aiConfigPatterns = ['.ai-config/', '.llm/', '.gpt/', '.assistant/', 'ai.config.json', 'llm.config.json']
+
+    for (const pattern of aiConfigPatterns) {
+      const patternPath = path.join(this.projectPath, pattern)
+      if (await this.directoryExistsAsync(patternPath) || await this.fileExistsAsync(patternPath)) {
+        detection.indicators.push(`Found AI configuration: ${pattern}`)
+        detection.isUsed = true
+        if (detection.confidence === 'none') detection.confidence = 'low'
+      }
+    }
+
+    // Check for AI-related environment variables
+    const envFiles = ['.env', '.env.local', '.env.ai']
+    for (const envFile of envFiles) {
+      const envPath = path.join(this.projectPath, envFile)
+      if (await this.fileExistsAsync(envPath)) {
+        try {
+          const content = await fs.promises.readFile(envPath, 'utf8')
+          const aiRelatedVars = ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'AI_API_KEY', 'LLM_API_KEY', 'CLAUDE_API_KEY']
+
+          for (const varName of aiRelatedVars) {
+            if (content.includes(varName)) {
+              detection.indicators.push(`AI API configuration found in ${envFile}`)
+              detection.isUsed = true
+              if (detection.confidence === 'none') detection.confidence = 'low'
+              break
+            }
+          }
+        } catch (error) {
+          // Ignore file read errors
+        }
+      }
     }
 
     return detection

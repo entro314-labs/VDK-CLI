@@ -53,7 +53,7 @@ export class CursorContextIntegration extends BaseIntegration {
     const detection = this.createDetectionResult()
     const paths = this.getConfigPaths()
 
-    // 1. Check for .cursor directory and key files
+    // 1. Check for .cursor directory and key files (project-specific)
     this.checkPaths(
       detection,
       {
@@ -65,7 +65,8 @@ export class CursorContextIntegration extends BaseIntegration {
         'Found .cursorignore file': paths.cursorIgnore,
         'Found .cursor/rules directory': paths.rulesDirectory,
       },
-      'high'
+      'high',
+      true // isProjectSpecific = true
     )
 
     // 2. Check for global Cursor installation

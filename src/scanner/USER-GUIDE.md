@@ -208,6 +208,7 @@ npm run scan -- --validate
 Generated rules work automatically with **33+ supported IDEs and AI tools**:
 
 ### Code Editors
+
 - **VS Code**: Rules placed in `.vscode/ai-rules/`
 - **VS Code Insiders**: Rules placed in `.vscode-insiders/ai-rules/`
 - **VSCodium**: Rules placed in `.vscode-oss/ai-rules/`
@@ -217,17 +218,20 @@ Generated rules work automatically with **33+ supported IDEs and AI tools**:
 - **Zed Editor**: Rules placed in `.zed/ai-rules/`
 
 ### JetBrains IDEs (Individual Detection)
+
 - **All JetBrains IDEs**: Rules placed in `.idea/ai-rules/`
   - IntelliJ IDEA, WebStorm, PyCharm, PHPStorm, RubyMine
   - CLion, DataGrip, GoLand, Rider, Android Studio
 
 ### AI Services
+
 - **Claude Code CLI**: Rules placed in `.claude/commands/`
 - **Claude Desktop**: Rules placed in `.claude-desktop/rules/`
 - **GitHub Copilot**: Rules placed in `.github/copilot/rules/`
 - **Generic AI Platform**: Rules placed in `.ai/rules/`
 
 ### Enhanced Detection Features
+
 - **Intelligent Platform Detection**: Analyzes project characteristics to recommend optimal IDE configurations
 - **Confidence Scoring**: Ranks detected IDEs by project compatibility
 - **MCP Integration**: Automatic Model Context Protocol setup for supported platforms

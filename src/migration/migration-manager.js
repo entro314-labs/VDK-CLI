@@ -15,17 +15,16 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import chalk from 'chalk'
-import ora from 'ora'
 import matter from 'gray-matter'
-
+import ora from 'ora'
+import { createIntegrationManager } from '../integrations/index.js'
 // Use existing VDK components
 import { ProjectScanner } from '../scanner/core/ProjectScanner.js'
-import { TechnologyAnalyzer } from '../scanner/core/TechnologyAnalyzer.js'
 import { RuleGenerator } from '../scanner/core/RuleGenerator.js'
-import { createIntegrationManager } from '../integrations/index.js'
-import { format, status, spinners } from '../utils/cli-styles.js'
-import { MigrationDetector } from './core/migration-detector.js'
+import { TechnologyAnalyzer } from '../scanner/core/TechnologyAnalyzer.js'
+import { format, spinners, status } from '../utils/cli-styles.js'
 import { MigrationAdapter } from './core/migration-adapter.js'
+import { MigrationDetector } from './core/migration-detector.js'
 
 export class MigrationManager {
   constructor(options = {}) {

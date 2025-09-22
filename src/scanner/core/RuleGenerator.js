@@ -23,8 +23,8 @@
  * - Multi-platform AI assistant support
  */
 
-import fs from 'node:fs/promises'
 import fsSync from 'node:fs'
+import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -32,11 +32,11 @@ import chalk from 'chalk'
 import yaml from 'js-yaml'
 
 import { createIntegrationManager } from '../../integrations/index.js'
+import { generateBlueprintId, generateCommandName, generateSafeFilename } from '../../utils/filename-generator.js'
 import { validateBlueprint } from '../../utils/schema-validator.js'
 import { applyLightTemplating, prepareTemplateVariables } from '../utils/light-templating.js'
-import { generateCommandName, generateBlueprintId, generateSafeFilename } from '../../utils/filename-generator.js'
-import { RuleAdapter } from './RuleAdapter.js'
 import { ClaudeCodeAdapter } from './ClaudeCodeAdapter.js'
+import { RuleAdapter } from './RuleAdapter.js'
 
 // Ensure fetch is available (Node.js 18+ has it built-in)
 if (typeof globalThis.fetch === 'undefined') {
@@ -109,19 +109,19 @@ export class RuleGenerator {
 
     // Claude Code CLI gets specialized adapter for memory hierarchy and commands
     const claudeAdapterOptions = { ...adapterOptions, ruleGenerator: this }
-    this.ruleAdapters['claude'] = new ClaudeCodeAdapter(claudeAdapterOptions)
+    this.ruleAdapters.claude = new ClaudeCodeAdapter(claudeAdapterOptions)
     this.ruleAdapters['claude-code-cli'] = new ClaudeCodeAdapter(claudeAdapterOptions)
 
     // All other IDEs use the comprehensive RuleAdapter with robust IDE-specific implementations
     // RuleAdapter already provides specialized adaptForCursor, adaptForWindsurf, adaptForGitHubCopilot, etc.
-    this.ruleAdapters['cursor'] = this.ruleAdapter
+    this.ruleAdapters.cursor = this.ruleAdapter
     this.ruleAdapters['cursor-ai'] = this.ruleAdapter
-    this.ruleAdapters['windsurf'] = this.ruleAdapter
+    this.ruleAdapters.windsurf = this.ruleAdapter
     this.ruleAdapters['github-copilot'] = this.ruleAdapter
-    this.ruleAdapters['zed'] = this.ruleAdapter
-    this.ruleAdapters['vscode'] = this.ruleAdapter
+    this.ruleAdapters.zed = this.ruleAdapter
+    this.ruleAdapters.vscode = this.ruleAdapter
     this.ruleAdapters['vscode-insiders'] = this.ruleAdapter
-    this.ruleAdapters['vscodium'] = this.ruleAdapter
+    this.ruleAdapters.vscodium = this.ruleAdapter
     this.ruleAdapters['generic-ai'] = this.ruleAdapter
   }
 
@@ -286,6 +286,18 @@ export class RuleGenerator {
     const primaryIDE = this.detectPrimaryIDE(integrations)
     if (primaryIDE) {
       console.log(chalk.cyan(`🎯 Detected primary IDE: ${primaryIDE.name} (${primaryIDE.confidence} confidence)`))
+
+      // Also mention other detected AI assistants
+      const aiAssistants = integrations.filter(i =>
+        i.name !== primaryIDE.name &&
+        (i.name.includes('Copilot') || i.name.includes('AI') || i.name.includes('Claude'))
+      )
+
+      if (aiAssistants.length > 0) {
+        const assistantNames = aiAssistants.map(a => a.name).join(', ')
+        console.log(chalk.gray(`🤖 Additional AI assistants detected: ${assistantNames}`))
+      }
+
       return [primaryIDE]
     }
 
@@ -1598,7 +1610,7 @@ export class RuleGenerator {
           fwLower.includes('chalk')
         )
       }) ||
-      (projectSignature.projectType && projectSignature.projectType.toLowerCase().includes('cli'))
+      (projectSignature.projectType?.toLowerCase().includes('cli'))
 
     if (isCliProject) {
       // Boost CLI and Node.js related blueprints

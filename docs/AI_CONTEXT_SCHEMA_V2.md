@@ -75,13 +75,17 @@ supersedes: ["legacy-typescript-config"]
 ### 4. Advanced Platform Features
 
 #### Character Limits and Truncation
+
 Automatic content optimization per platform:
+
 - **Windsurf**: 6,000 characters per file
 - **GitHub Copilot**: 600 characters per guideline
 - **Claude**: Unlimited with memory management
 
 #### File Pattern Matching
+
 Auto-activation based on file patterns:
+
 ```yaml
 platforms:
   cursor:
@@ -90,7 +94,9 @@ platforms:
 ```
 
 #### Priority System
+
 Control context priority across platforms:
+
 ```yaml
 platforms:
   claude:
@@ -104,6 +110,7 @@ platforms:
 ### 1. Create Blueprints with New Schema
 
 #### Interactive Mode
+
 ```bash
 vdk create --interactive
 ```
@@ -111,6 +118,7 @@ vdk create --interactive
 Follow the prompts to create a blueprint with full schema v2.1.0 support.
 
 #### Command Line Mode
+
 ```bash
 vdk create \
   --name "react-testing-setup" \
@@ -128,16 +136,19 @@ vdk create \
 ### 2. Validate Blueprint Schema
 
 #### Validate Single File
+
 ```bash
 vdk validate --file ./blueprints/my-blueprint.mdc --verbose
 ```
 
 #### Validate Directory
+
 ```bash
 vdk validate --path ./.ai/rules --check-dependencies --check-platforms
 ```
 
 #### Schema Compatibility Check
+
 ```bash
 vdk validate --verbose
 ```
@@ -160,6 +171,7 @@ vdk init --deep --ide-integration
 ## Platform-Specific Features
 
 ### Claude Code Integration
+
 ```yaml
 platforms:
   claude:
@@ -173,6 +185,7 @@ platforms:
 ```
 
 ### Cursor Integration
+
 ```yaml
 platforms:
   cursor:
@@ -184,6 +197,7 @@ platforms:
 ```
 
 ### Windsurf Integration
+
 ```yaml
 platforms:
   windsurf:
@@ -195,6 +209,7 @@ platforms:
 ```
 
 ### GitHub Copilot Integration
+
 ```yaml
 platforms:
   githubCopilot:
@@ -207,6 +222,7 @@ platforms:
 ## Migration from Legacy Format
 
 ### Automatic Detection
+
 VDK CLI automatically detects and offers to migrate legacy formats:
 
 ```bash
@@ -215,6 +231,7 @@ vdk migrate              # Perform migration
 ```
 
 ### Manual Schema Updates
+
 For existing blueprints, add the new required fields:
 
 ```yaml
@@ -232,6 +249,7 @@ platforms:
 ## Validation and Quality Assurance
 
 ### Schema Validation
+
 All blueprints are validated against the official AI Context Schema v2.1.0:
 
 - **Metadata validation**: Required fields, format checking
@@ -242,6 +260,7 @@ All blueprints are validated against the official AI Context Schema v2.1.0:
 ### Best Practices
 
 1. **Use Descriptive Metadata**
+
    ```yaml
    tags: ["specific", "searchable", "keywords"]
    complexity: "medium"  # Be realistic about complexity
@@ -249,6 +268,7 @@ All blueprints are validated against the official AI Context Schema v2.1.0:
    ```
 
 2. **Configure Platform-Specific Settings**
+
    ```yaml
    platforms:
      cursor:
@@ -257,12 +277,14 @@ All blueprints are validated against the official AI Context Schema v2.1.0:
    ```
 
 3. **Manage Dependencies**
+
    ```yaml
    requires: ["typescript-config"]  # Essential dependencies only
    suggests: ["eslint-prettier"]    # Nice-to-have enhancements
    ```
 
 4. **Version Management**
+
    ```yaml
    version: "1.0.0"         # Semantic versioning
    lastUpdated: "2025-01-15" # Keep dates current
@@ -273,6 +295,7 @@ All blueprints are validated against the official AI Context Schema v2.1.0:
 ### Common Validation Errors
 
 1. **Date Format Issues**
+
    ```yaml
    # ❌ Wrong
    created: "2025-01-15T10:30:00Z"
@@ -282,6 +305,7 @@ All blueprints are validated against the official AI Context Schema v2.1.0:
    ```
 
 2. **Tag Format Issues**
+
    ```yaml
    # ❌ Wrong
    tags: ["React", "Testing_Setup"]
@@ -291,6 +315,7 @@ All blueprints are validated against the official AI Context Schema v2.1.0:
    ```
 
 3. **Platform Configuration Issues**
+
    ```yaml
    # ❌ Wrong
    platforms:

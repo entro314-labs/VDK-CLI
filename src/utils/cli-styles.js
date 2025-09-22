@@ -199,9 +199,9 @@ export const headers = {
 export const progress = {
   bar: (current, total, width = 30) => {
     // Handle edge cases
-    if (isNaN(current) || current === null || current === undefined) current = 0
-    if (isNaN(total) || total === null || total === undefined || total === 0) total = 1
-    if (isNaN(width) || width === null || width === undefined) width = 30
+    if (Number.isNaN(current) || current === null || current === undefined) current = 0
+    if (Number.isNaN(total) || total === null || total === undefined || total === 0) total = 1
+    if (Number.isNaN(width) || width === null || width === undefined) width = 30
 
     if (current < 0) {
       current = 0

@@ -13,11 +13,11 @@
  * - Project context extraction
  */
 
-import fs from 'fs/promises'
-import path from 'path'
 import chalk from 'chalk'
-import ora from 'ora'
+import fs from 'fs/promises'
 import matter from 'gray-matter'
+import ora from 'ora'
+import path from 'path'
 
 import { ProjectScanner } from '../scanner/core/ProjectScanner.js'
 import { validateBlueprint } from '../utils/schema-validator.js'
@@ -523,7 +523,7 @@ export class PublishManager {
    */
   async extractProjectContext() {
     try {
-      const projectData = await this.projectScanner.scanProject()
+      const projectData = await this.projectScanner.scanProject(this.projectPath || process.cwd())
 
       // Basic project context - simplified for reliability
       return {
@@ -633,7 +633,7 @@ export class PublishManager {
   // Helper methods to get initialized clients (lazy loading)
   async getHubClient() {
     if (!this.hubClient) {
-      const { VDKHubClient } = await import('./clients/VDKHubClient.js')
+      const { VDKHubClient } = await import('../hub/VDKHubClient.js')
       this.hubClient = new VDKHubClient()
     }
     return this.hubClient

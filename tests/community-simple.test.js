@@ -14,7 +14,15 @@ import { CommunityDeployer } from '../src/community/CommunityDeployer.js'
 // Mock only what we need to test
 vi.mock('../src/scanner/core/ProjectScanner.js', () => ({
   ProjectScanner: class MockProjectScanner {
-    constructor() {}
+    async scanProject(projectPath) {
+      return {
+        framework: 'nextjs',
+        language: 'typescript',
+        dependencies: ['react', 'next'],
+        hasTests: true,
+        projectPath,
+      }
+    }
     async analyzeProject() {
       return {
         framework: 'nextjs',
@@ -28,7 +36,6 @@ vi.mock('../src/scanner/core/ProjectScanner.js', () => ({
 
 vi.mock('../src/scanner/core/RuleAdapter.js', () => ({
   RuleAdapter: class MockRuleAdapter {
-    constructor() {}
     async adaptForProject(content, context) {
       return {
         adaptedContent: `# Adapted for ${context.framework}\n${content}`,

@@ -13,7 +13,6 @@
 // Context Platform Integrations (Priority 1 - HIGH)
 import { ClaudeCodeCLIIntegration } from './claude-code-integration.js'
 import { CursorContextIntegration } from './cursor-integration.js'
-import { WindsurfContextIntegration } from './windsurf-integration.js'
 
 // Traditional IDE Integrations (Priority 2 - MEDIUM)
 import { GenericIDEIntegration } from './generic-ide-integration.js'
@@ -22,16 +21,15 @@ import { IntegrationManager } from './integration-manager.js'
 
 // New integrations
 import { JetBrainsIntegration } from './jetbrains-integration.js'
-import { ZedIntegration } from './zed-integration.js'
 import { VSCodeInsidersIntegration, VSCodiumIntegration } from './vscode-variants-integration.js'
-import { GenericAIIntegration } from './generic-ai-integration.js'
+import { WindsurfContextIntegration } from './windsurf-integration.js'
+import { ZedIntegration } from './zed-integration.js'
 
 export { BaseIntegration } from './base-integration.js'
 
 // Context Platform Integrations (Priority 1 - HIGH)
 export { ClaudeCodeCLIIntegration } from './claude-code-integration.js'
 export { CursorContextIntegration } from './cursor-integration.js'
-export { WindsurfContextIntegration } from './windsurf-integration.js'
 
 // Traditional IDE Integrations (Priority 2 - MEDIUM)
 export { GenericIDEIntegration } from './generic-ide-integration.js'
@@ -40,9 +38,9 @@ export { IntegrationManager } from './integration-manager.js'
 
 // New integrations
 export { JetBrainsIntegration } from './jetbrains-integration.js'
-export { ZedIntegration } from './zed-integration.js'
 export { VSCodeInsidersIntegration, VSCodiumIntegration } from './vscode-variants-integration.js'
-export { GenericAIIntegration } from './generic-ai-integration.js'
+export { WindsurfContextIntegration } from './windsurf-integration.js'
+export { ZedIntegration } from './zed-integration.js'
 
 // Helper function to create a pre-configured integration manager
 // with correct priority-based registration
@@ -63,7 +61,6 @@ export function createIntegrationManager(projectPath = process.cwd()) {
   manager.register(new ZedIntegration(projectPath))
   manager.register(new VSCodeInsidersIntegration(projectPath))
   manager.register(new VSCodiumIntegration(projectPath))
-  manager.register(new GenericAIIntegration(projectPath))
 
   return manager
 }

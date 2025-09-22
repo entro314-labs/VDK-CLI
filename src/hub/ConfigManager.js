@@ -12,10 +12,10 @@
  * - Default value management
  */
 
-import fs from 'fs/promises'
-import path from 'path'
-import os from 'os'
 import chalk from 'chalk'
+import fs from 'fs/promises'
+import os from 'os'
+import path from 'path'
 
 /**
  * Default VDK Hub configuration
@@ -24,8 +24,8 @@ const DEFAULT_CONFIG = {
   hub: {
     url: process.env.VDK_HUB_URL || 'https://vdk.tools',
     apiKey: process.env.VDK_HUB_API_KEY,
-    timeout: parseInt(process.env.VDK_HUB_TIMEOUT || '30000'),
-    retryAttempts: parseInt(process.env.VDK_HUB_RETRY_ATTEMPTS || '3'),
+    timeout: parseInt(process.env.VDK_HUB_TIMEOUT || '30000', 10),
+    retryAttempts: parseInt(process.env.VDK_HUB_RETRY_ATTEMPTS || '3', 10),
     telemetryEnabled: process.env.VDK_TELEMETRY_ENABLED !== 'false',
   },
   sync: {
@@ -42,8 +42,8 @@ const DEFAULT_CONFIG = {
   },
   telemetry: {
     enabled: process.env.VDK_TELEMETRY_ENABLED !== 'false',
-    batchSize: parseInt(process.env.VDK_TELEMETRY_BATCH_SIZE || '25'),
-    flushInterval: parseInt(process.env.VDK_TELEMETRY_FLUSH_INTERVAL || '60000'),
+    batchSize: parseInt(process.env.VDK_TELEMETRY_BATCH_SIZE || '25', 10),
+    flushInterval: parseInt(process.env.VDK_TELEMETRY_FLUSH_INTERVAL || '60000', 10),
     maxQueueSize: 1000,
     verbose: false,
   },
@@ -272,10 +272,10 @@ export class ConfigManager {
       this.config.hub.apiKey = process.env.VDK_HUB_API_KEY
     }
     if (process.env.VDK_HUB_TIMEOUT) {
-      this.config.hub.timeout = parseInt(process.env.VDK_HUB_TIMEOUT)
+      this.config.hub.timeout = parseInt(process.env.VDK_HUB_TIMEOUT, 10)
     }
     if (process.env.VDK_HUB_RETRY_ATTEMPTS) {
-      this.config.hub.retryAttempts = parseInt(process.env.VDK_HUB_RETRY_ATTEMPTS)
+      this.config.hub.retryAttempts = parseInt(process.env.VDK_HUB_RETRY_ATTEMPTS, 10)
     }
 
     // Telemetry configuration
@@ -285,10 +285,10 @@ export class ConfigManager {
       this.config.telemetry.enabled = enabled
     }
     if (process.env.VDK_TELEMETRY_BATCH_SIZE) {
-      this.config.telemetry.batchSize = parseInt(process.env.VDK_TELEMETRY_BATCH_SIZE)
+      this.config.telemetry.batchSize = parseInt(process.env.VDK_TELEMETRY_BATCH_SIZE, 10)
     }
     if (process.env.VDK_TELEMETRY_FLUSH_INTERVAL) {
-      this.config.telemetry.flushInterval = parseInt(process.env.VDK_TELEMETRY_FLUSH_INTERVAL)
+      this.config.telemetry.flushInterval = parseInt(process.env.VDK_TELEMETRY_FLUSH_INTERVAL, 10)
     }
 
     // CLI configuration

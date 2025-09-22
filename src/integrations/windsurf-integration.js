@@ -62,7 +62,7 @@ export class WindsurfContextIntegration extends BaseIntegration {
     const detection = this.createDetectionResult()
     const paths = this.getConfigPaths()
 
-    // 1. Check for .windsurf directory and key files
+    // 1. Check for project-specific .windsurf directory and key files
     this.checkPaths(
       detection,
       {
@@ -73,9 +73,18 @@ export class WindsurfContextIntegration extends BaseIntegration {
         'Found .windsurf/ai_settings.json': paths.aiConfig,
         'Found .windsurf/rules directory': paths.rulesDirectory,
         'Found .windsurf/mcp_config.json': paths.projectMcp,
+      },
+      'high',
+      true // isProjectSpecific = true
+    )
+
+    // 1b. Check for global Windsurf configuration
+    this.checkPaths(
+      detection,
+      {
         'Global Windsurf memories': paths.globalMemories,
       },
-      'high'
+      'medium'
     )
 
     // 2. Check for global Windsurf/Codeium installation
@@ -294,7 +303,7 @@ export class WindsurfContextIntegration extends BaseIntegration {
           command: 'codeium-server',
           args: ['--project-path', this.projectPath],
           env: {
-            CODEIUM_API_KEY: '${CODEIUM_API_KEY}',
+            CODEIUM_API_KEY: `\${CODEIUM_API_KEY}`,
           },
         },
       },

@@ -235,6 +235,7 @@ export class BaseIntegration {
       confidence: options.confidence || 'none', // none, low, medium, high
       indicators: options.indicators || [],
       recommendations: options.recommendations || [],
+      hasProjectSpecificConfig: options.hasProjectSpecificConfig, // true if based on project files
     }
   }
 
@@ -245,7 +246,7 @@ export class BaseIntegration {
    * @param {string} confidenceLevel - Confidence to set when paths are found
    * @returns {Object} Updated detection result
    */
-  checkPaths(detection, pathsToCheck, confidenceLevel = 'medium') {
+  checkPaths(detection, pathsToCheck, confidenceLevel = 'medium', isProjectSpecific = false) {
     let foundAny = false
 
     for (const [description, checkPath] of Object.entries(pathsToCheck)) {
@@ -257,7 +258,20 @@ export class BaseIntegration {
 
     if (foundAny) {
       detection.isUsed = true
-      detection.confidence = confidenceLevel
+
+      // Track if project-specific config was found
+      if (isProjectSpecific) {
+        detection.hasProjectSpecificConfig = true
+      }
+
+      // Only update confidence if it's higher than current confidence
+      const confidenceOrder = { none: 0, low: 1, medium: 2, high: 3 }
+      const currentConfidence = confidenceOrder[detection.confidence] || 0
+      const newConfidence = confidenceOrder[confidenceLevel] || 0
+
+      if (newConfidence > currentConfidence) {
+        detection.confidence = confidenceLevel
+      }
     }
 
     return detection

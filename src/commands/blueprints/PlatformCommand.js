@@ -5,9 +5,9 @@
  * Shows platform-specific configuration and compatibility details.
  */
 
+import { colors, tables } from '../../utils/cli-styles.js'
 import { BaseCommand } from '../base/BaseCommand.js'
 import { commandContext } from '../shared/CommandContext.js'
-import { colors, tables } from '../../utils/cli-styles.js'
 
 export class PlatformCommand extends BaseCommand {
   constructor() {
@@ -44,7 +44,7 @@ export class PlatformCommand extends BaseCommand {
       spinner.start()
 
       const blueprints = await getBlueprintsForPlatform(platform)
-      const limitedBlueprints = blueprints.slice(0, parseInt(options.limit))
+      const limitedBlueprints = blueprints.slice(0, parseInt(options.limit, 10))
 
       spinner.succeed(`Found ${blueprints.length} compatible blueprints`)
 
@@ -125,7 +125,7 @@ export class PlatformCommand extends BaseCommand {
    * Display verbose configuration details
    */
   displayVerboseConfigDetails(blueprints, platform) {
-    console.log('\n' + this.colorCyan('🔍 Platform Configuration Details:'))
+    console.log(`\n${this.colorCyan('🔍 Platform Configuration Details:')}`)
 
     blueprints.slice(0, 5).forEach((blueprint, index) => {
       const config = blueprint.platformConfig || {}
@@ -166,7 +166,7 @@ export class PlatformCommand extends BaseCommand {
    * Display results summary
    */
   displayResultsSummary(totalFound, limit) {
-    const limitInt = parseInt(limit)
+    const limitInt = parseInt(limit, 10)
     const summary = totalFound > limitInt ? ` (showing ${limit})` : ''
 
     console.log(`\nFound ${totalFound} compatible blueprints${summary}`)
@@ -180,7 +180,7 @@ export class PlatformCommand extends BaseCommand {
    * Display suggested platforms when none found
    */
   displaySuggestedPlatforms() {
-    console.log('\n' + this.colorCyan('💡 Available Platforms:'))
+    console.log(`\n${this.colorCyan('💡 Available Platforms:')}`)
     console.log('• claude-code   - Claude Code IDE integration')
     console.log('• cursor        - Cursor AI editor')
     console.log('• windsurf      - Windsurf AI assistant')

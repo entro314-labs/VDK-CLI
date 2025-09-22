@@ -238,7 +238,7 @@ export class ContextConverter {
       maturity: 'stable',
       platforms: options.platforms || this.getDefaultPlatforms(),
       tags: this.extractTags(bodyContent, metadata.tags),
-      author: metadata.author || 'Migrated from ' + context.source,
+      author: metadata.author || `Migrated from ${context.source}`,
 
       // Content organization
       content: this.organizeContent(bodyContent, sections),
@@ -305,7 +305,7 @@ export class ContextConverter {
 
       examples: this.extractCommandExamples(bodyContent),
       tags: this.extractTags(bodyContent, metadata.tags),
-      author: metadata.author || 'Migrated from ' + context.source,
+      author: metadata.author || `Migrated from ${context.source}`,
       lastUpdated: new Date().toISOString().split('T')[0],
 
       // Content
@@ -390,7 +390,7 @@ export class ContextConverter {
     for (let i = 0; i < Math.min(lines.length, 5); i++) {
       const line = lines[i].trim()
       if (line && !line.startsWith('#') && !line.includes(':') && line.length > 20) {
-        return line.length > 200 ? line.substring(0, 197) + '...' : line
+        return line.length > 200 ? `${line.substring(0, 197)}...` : line
       }
     }
 

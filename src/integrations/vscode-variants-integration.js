@@ -86,69 +86,62 @@ class VSCodeVariantIntegration extends BaseIntegration {
    * Detect VS Code variant usage
    */
   detectUsage() {
-    const indicators = []
-    const recommendations = []
-    let confidence = 'none'
+    const detection = this.createDetectionResult()
 
-    // Check for project configuration folder
+    // Check for project configuration folder (project-specific)
     const configPath = path.join(this.projectPath, this.configFolder)
-    if (fs.existsSync(configPath)) {
-      indicators.push(`Found ${this.configFolder} configuration folder`)
-      confidence = 'high'
-
-      // Check for common VS Code files
-      const configFiles = ['settings.json', 'launch.json', 'tasks.json', 'extensions.json']
-
-      for (const file of configFiles) {
-        const filePath = path.join(configPath, file)
-        if (fs.existsSync(filePath)) {
-          indicators.push(`Found ${this.configFolder}/${file}`)
-        }
-      }
-
-      // Check for MCP configuration
-      const mcpPath = path.join(configPath, 'mcp.json')
-      if (fs.existsSync(mcpPath)) {
-        indicators.push('MCP configuration found')
-      } else {
-        recommendations.push('Consider setting up MCP configuration for enhanced AI integration')
-      }
+    const projectPaths = {
+      [`Found ${this.configFolder} configuration folder`]: configPath,
     }
+
+    // Add common VS Code files to project-specific check
+    const configFiles = ['settings.json', 'launch.json', 'tasks.json', 'extensions.json']
+    for (const file of configFiles) {
+      const filePath = path.join(configPath, file)
+      projectPaths[`Found ${this.configFolder}/${file}`] = filePath
+    }
+
+    // Add MCP configuration
+    const mcpPath = path.join(configPath, 'mcp.json')
+    projectPaths['MCP configuration found'] = mcpPath
+
+    this.checkPaths(detection, projectPaths, 'high', true) // isProjectSpecific = true
 
     // Check for global configuration
     const globalConfig = this.getGlobalConfigPath()
-    if (fs.existsSync(globalConfig)) {
-      indicators.push('Global configuration detected')
-      if (confidence === 'none') confidence = 'medium'
-    }
+    this.checkPaths(detection, {
+      'Global configuration detected': globalConfig
+    }, 'medium') // Global = not project-specific
 
     // Check for running process
     try {
       const isRunning = this.isProcessRunning()
       if (isRunning) {
-        indicators.push(`${this.name} process is running`)
-        if (confidence === 'none') confidence = 'medium'
+        detection.indicators.push(`${this.name} process is running`)
+        if (detection.confidence === 'none') {
+          detection.confidence = 'medium'
+        }
       }
     } catch (error) {
       // Process detection failed - not critical
     }
 
     // Add recommendations
-    if (confidence !== 'none') {
-      recommendations.push(`Use ${this.configFolder}/ai-rules/ folder for VDK Blueprint rules`)
-      recommendations.push('Install AI-related extensions for enhanced coding assistance')
+    if (detection.confidence !== 'none') {
+      detection.recommendations.push(`Use ${this.configFolder}/ai-rules/ folder for VDK Blueprint rules`)
+      detection.recommendations.push('Install AI-related extensions for enhanced coding assistance')
 
       if (!fs.existsSync(path.join(this.projectPath, this.configFolder, 'ai-rules'))) {
-        recommendations.push(`Create ${this.configFolder}/ai-rules/ directory for AI integration`)
+        detection.recommendations.push(`Create ${this.configFolder}/ai-rules/ directory for AI integration`)
       }
     }
 
-    return {
-      isUsed: confidence !== 'none',
-      confidence,
-      indicators,
-      recommendations,
+    // Add MCP recommendation if not configured
+    if (detection.isUsed && !detection.indicators.some(i => i.includes('MCP configuration'))) {
+      detection.recommendations.push('Consider setting up MCP configuration for enhanced AI integration')
     }
+
+    return detection
   }
 
   /**

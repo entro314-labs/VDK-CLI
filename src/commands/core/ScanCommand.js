@@ -6,9 +6,9 @@
  */
 
 import path from 'node:path'
+import { runScanner } from '../../scanner/index.js'
 import { BaseCommand } from '../base/BaseCommand.js'
 import { commandContext } from '../shared/CommandContext.js'
-import { runScanner } from '../../scanner/index.js'
 
 export class ScanCommand extends BaseCommand {
   constructor() {
@@ -31,7 +31,6 @@ export class ScanCommand extends BaseCommand {
       ])
       .option(
         '--use-gitignore',
-        // biome-ignore lint/nursery/noSecrets: This is a legitimate help text for CLI option
         'Automatically parse .gitignore files for additional ignore patterns',
         true
       )
@@ -195,7 +194,7 @@ export class ScanCommand extends BaseCommand {
    * Show scan summary
    */
   showScanSummary(results, scanMode) {
-    console.log('\n' + this.colorPrimary('🔍 Scan Summary:'))
+    console.log(`\n${this.colorPrimary('🔍 Scan Summary:')}`)
     console.log(this.formatKeyValue('Scan Mode', scanMode))
     console.log(this.formatKeyValue('Files Analyzed', this.formatCount(results.filesAnalyzed || 0)))
     console.log(this.formatKeyValue('Rules Updated', this.formatCount(results.updatedFiles?.length || 0)))
@@ -209,7 +208,7 @@ export class ScanCommand extends BaseCommand {
     }
 
     if (results.warnings?.length > 0) {
-      console.log('\n' + this.colorPrimary('⚠️  Warnings:'))
+      console.log(`\n${this.colorPrimary('⚠️  Warnings:')}`)
       results.warnings.forEach((warning) => {
         this.logWarning(`  ${warning}`)
       })

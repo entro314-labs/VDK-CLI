@@ -240,7 +240,7 @@ async function runCliCommand(args) {
       resolve({
         exitCode: -1,
         stdout,
-        stderr: stderr + '\nTest timeout (30s)',
+        stderr: `${stderr}\nTest timeout (30s)`,
       })
     }, 30000)
   })

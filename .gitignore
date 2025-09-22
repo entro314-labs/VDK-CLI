@@ -483,3 +483,6 @@ vdk-integration-tests/vscode-claude-test/.vscode/settings.json
 vdk-integration-tests/vscode-claude-test/package.json
 REFACTORING_GUIDE.md
 RELEASE_READINESS_ASSESSMENT.md
+.github/copilot-instructions.md
+.github/copilot/README.md
+CLAUDE.md

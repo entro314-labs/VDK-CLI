@@ -14,9 +14,9 @@
 
 import chalk from 'chalk'
 import ora from 'ora'
-import { VDKHubClient, VDKHubError } from './VDKHubClient.js'
-import { TelemetryManager, initializeTelemetry } from './TelemetryManager.js'
 import { ConfigManager, initializeConfig } from './ConfigManager.js'
+import { initializeTelemetry, TelemetryManager } from './TelemetryManager.js'
+import { VDKHubClient, VDKHubError } from './VDKHubClient.js'
 
 export class HubIntegration {
   constructor(config = {}) {

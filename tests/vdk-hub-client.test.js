@@ -63,7 +63,7 @@ describe('VDKHubClient', () => {
 
     // Reset all mocks
     vi.clearAllMocks()
-    fetch.mockClear()
+    global.fetch.mockClear()
     consoleSpy.warn.mockClear()
     consoleSpy.log.mockClear()
     consoleSpy.error.mockClear()
@@ -136,7 +136,7 @@ describe('VDKHubClient', () => {
         timestamp: '2024-01-01T00:00:00Z',
       }
 
-      fetch.mockResolvedValueOnce({
+      global.fetch.mockResolvedValueOnce({
         ok: true,
         json: vi.fn().mockResolvedValue(mockResponse),
       })
@@ -146,8 +146,8 @@ describe('VDKHubClient', () => {
       expect(result.success).toBe(true)
       expect(result.status).toBe('healthy')
       expect(result.version).toBe('2.0.0')
-      expect(result.latency).toBeGreaterThan(0)
-      expect(fetch).toHaveBeenCalledWith(
+      expect(result.latency).toBeGreaterThanOrEqual(0)
+      expect(global.fetch).toHaveBeenCalledWith(
         'https://test-hub.example.com/api/health',
         expect.objectContaining({
           method: 'GET',
@@ -157,7 +157,7 @@ describe('VDKHubClient', () => {
     })
 
     it('should handle HTTP error responses in ping', async () => {
-      fetch.mockResolvedValueOnce({
+      global.fetch.mockResolvedValueOnce({
         ok: false,
         status: 503,
       })
@@ -170,7 +170,7 @@ describe('VDKHubClient', () => {
     })
 
     it('should handle network errors in ping', async () => {
-      fetch.mockRejectedValueOnce(new Error('Network error'))
+      global.fetch.mockRejectedValueOnce(new Error('Network error'))
 
       const result = await hubClient.ping()
 

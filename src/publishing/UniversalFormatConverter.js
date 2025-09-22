@@ -15,8 +15,8 @@
  * Output: Universal VDK Blueprint Schema v2.1.0 format
  */
 
-import path from 'path'
 import matter from 'gray-matter'
+import path from 'path'
 import { generateBlueprintId } from '../utils/filename-generator.js'
 import { validateBlueprint } from '../utils/schema-validator.js'
 
@@ -567,12 +567,12 @@ export class UniversalFormatConverter {
         baseConfig['claude-code-cli'].command = true
         break
       case 'cursor-optimized':
-        baseConfig['cursor'].priority = 'high'
-        baseConfig['cursor'].globs = ['**/*.js', '**/*.ts', '**/*.jsx', '**/*.tsx']
+        baseConfig.cursor.priority = 'high'
+        baseConfig.cursor.globs = ['**/*.js', '**/*.ts', '**/*.jsx', '**/*.tsx']
         break
       case 'windsurf-optimized':
-        baseConfig['windsurf'].priority = 9
-        baseConfig['windsurf'].characterLimit = 6000
+        baseConfig.windsurf.priority = 9
+        baseConfig.windsurf.characterLimit = 6000
         break
       case 'copilot-optimized':
         baseConfig['github-copilot'].priority = 9

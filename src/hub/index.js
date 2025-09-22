@@ -12,36 +12,34 @@
  * - Utility functions and factories
  */
 
+export {
+  ConfigManager,
+  getConfig,
+  getConfigValue,
+  getGlobalConfigManager,
+  initializeConfig,
+  updateConfig,
+} from './ConfigManager.js'
 // Main integration components
 export {
-  HubIntegration,
-  getGlobalHubIntegration,
-  initializeHubIntegration,
   createHubIntegration,
+  getGlobalHubIntegration,
+  HubIntegration,
+  initializeHubIntegration,
 } from './HubIntegration.js'
 
 export {
-  VDKHubClient,
-  VDKHubError,
-  createVDKHubClient,
-} from './VDKHubClient.js'
-
-export {
-  TelemetryManager,
   createTelemetryManager,
   getGlobalTelemetryManager,
-  setGlobalTelemetryManager,
   initializeTelemetry,
+  setGlobalTelemetryManager,
+  TelemetryManager,
 } from './TelemetryManager.js'
-
 export {
-  ConfigManager,
-  getGlobalConfigManager,
-  initializeConfig,
-  getConfig,
-  updateConfig,
-  getConfigValue,
-} from './ConfigManager.js'
+  createVDKHubClient,
+  VDKHubClient,
+  VDKHubError,
+} from './VDKHubClient.js'
 
 /**
  * Initialize complete Hub integration system

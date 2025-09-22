@@ -40,7 +40,7 @@ describe('Complete Integration Coverage', () => {
       expect(manager.projectPath).toBe(global.TEST_ROOT || '/test/project')
       expect(manager.integrations).toBeInstanceOf(Map)
       expect(manager.detectionResults).toBeInstanceOf(Map)
-      
+
       // Test priority system methods exist
       expect(typeof manager.isContextPlatform).toBe('function')
       expect(typeof manager.prioritizeContextPlatforms).toBe('function')
@@ -91,7 +91,7 @@ describe('Complete Integration Coverage', () => {
         expect(result.loaded).toBeInstanceOf(Array)
         expect(result.failed).toBeInstanceOf(Array)
         expect(result.registered).toBeGreaterThanOrEqual(0)
-        
+
         // Verify priority information is maintained
         for (const loaded of result.loaded) {
           expect(loaded.name).toBeDefined()
@@ -128,7 +128,7 @@ describe('Complete Integration Coverage', () => {
       expect(detection.confidence).toBeDefined()
       expect(detection.indicators).toBeDefined()
       expect(detection.recommendations).toBeDefined()
-      
+
       // Claude Code CLI is a context platform - verify priority
       expect(integration.priority).toBe('high')
     })
@@ -138,12 +138,12 @@ describe('Complete Integration Coverage', () => {
 
       expect(cursorModule).toBeDefined()
       expect(typeof cursorModule).toBe('object')
-      
+
       // Check if Cursor integration class exists
       const integrationClass = Object.values(cursorModule).find(
-        exp => typeof exp === 'function' && exp.name.includes('Integration')
+        (exp) => typeof exp === 'function' && exp.name.includes('Integration')
       )
-      
+
       if (integrationClass) {
         const integration = new integrationClass('/test/project')
         expect(integration.name).toContain('Cursor')
@@ -156,12 +156,12 @@ describe('Complete Integration Coverage', () => {
 
       expect(windsurfModule).toBeDefined()
       expect(typeof windsurfModule).toBe('object')
-      
+
       // Check if Windsurf integration class exists
       const integrationClass = Object.values(windsurfModule).find(
-        exp => typeof exp === 'function' && exp.name.includes('Integration')
+        (exp) => typeof exp === 'function' && exp.name.includes('Integration')
       )
-      
+
       if (integrationClass) {
         const integration = new integrationClass('/test/project')
         expect(integration.name).toContain('Windsurf')
@@ -230,9 +230,9 @@ describe('Complete Integration Coverage', () => {
   describe('Priority-Based Detection System', () => {
     it('should prioritize context platforms over traditional IDEs', async () => {
       const { IntegrationManager } = await import('../src/integrations/integration-manager.js')
-      
+
       const manager = new IntegrationManager('/test/project')
-      
+
       // Test priority classification
       expect(manager.isContextPlatform('Cursor')).toBe(true)
       expect(manager.isContextPlatform('Windsurf')).toBe(true)
@@ -240,12 +240,12 @@ describe('Complete Integration Coverage', () => {
       expect(manager.isContextPlatform('VS Code')).toBe(false)
       expect(manager.isContextPlatform('JetBrains')).toBe(false)
     })
-    
+
     it('should correctly prioritize integrations in prioritizeContextPlatforms', async () => {
       const { IntegrationManager } = await import('../src/integrations/integration-manager.js')
-      
+
       const manager = new IntegrationManager('/test/project')
-      
+
       // Test prioritizeContextPlatforms method
       const mockIntegrations = [
         { name: 'VS Code', confidence: 'high' },
@@ -253,21 +253,21 @@ describe('Complete Integration Coverage', () => {
         { name: 'JetBrains', confidence: 'high' },
         { name: 'Claude Code CLI', confidence: 'low' },
       ]
-      
+
       const prioritized = manager.prioritizeContextPlatforms(mockIntegrations)
-      
+
       // Context platforms should come first
       expect(prioritized[0].name).toBe('Cursor')
       expect(prioritized[1].name).toBe('Claude Code CLI')
       expect(prioritized[2].name).toBe('VS Code')
       expect(prioritized[3].name).toBe('JetBrains')
     })
-    
+
     it('should handle getPrimaryIDE with context platform priority', async () => {
       const { IntegrationManager } = await import('../src/integrations/integration-manager.js')
-      
+
       const manager = new IntegrationManager('/test/project')
-      
+
       // Mock lastScan results
       manager.lastScan = {
         active: [
@@ -275,9 +275,9 @@ describe('Complete Integration Coverage', () => {
           { name: 'Cursor', confidence: 'medium' },
         ],
       }
-      
+
       const primary = manager.getPrimaryIDE()
-      
+
       // Even with lower confidence, context platform should be preferred when both are present
       if (primary) {
         expect(['Cursor', 'VS Code']).toContain(primary.name)

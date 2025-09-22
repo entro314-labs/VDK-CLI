@@ -5,8 +5,8 @@
  * Leverages the existing file discovery and pattern matching infrastructure.
  */
 
-import path from 'node:path'
 import fs from 'node:fs'
+import path from 'node:path'
 import matter from 'gray-matter'
 
 export class MigrationDetector {
@@ -87,7 +87,7 @@ export class MigrationDetector {
   async analyzeFileForAIContext(file) {
     const fileName = file.name
     const relativePath = file.relativePath
-    const fullPath = file.path
+    const fullPath = file.path || path.join(this.projectPath, relativePath)
 
     // Check if file matches known AI context patterns
     const contextType = this.identifyContextType(fileName, relativePath)
@@ -150,7 +150,7 @@ export class MigrationDetector {
     }
 
     // Get files within this directory
-    const dirFiles = allFiles.filter((file) => file.relativePath.startsWith(relativePath + '/'))
+    const dirFiles = allFiles.filter((file) => file.relativePath.startsWith(`${relativePath}/`))
 
     if (dirFiles.length === 0) {
       return null
@@ -160,7 +160,7 @@ export class MigrationDetector {
       type: contextType,
       source: this.getSourceName(contextType),
       isDirectory: true,
-      directoryPath: dir.path,
+      directoryPath: dir.path || path.join(this.projectPath, relativePath),
       relativePath,
       directoryName: dirName,
       fileCount: dirFiles.length,

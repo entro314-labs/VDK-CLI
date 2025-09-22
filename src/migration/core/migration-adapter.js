@@ -387,7 +387,7 @@ export class MigrationAdapter {
     for (let i = 0; i < Math.min(lines.length, 5); i++) {
       const line = lines[i].trim()
       if (line && !line.startsWith('#') && !line.includes(':') && line.length > 20) {
-        return line.length > 200 ? line.substring(0, 197) + '...' : line
+        return line.length > 200 ? `${line.substring(0, 197)}...` : line
       }
     }
 

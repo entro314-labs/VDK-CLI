@@ -4,9 +4,9 @@
  * Publish your VDK rules to the community via Hub or GitHub PR.
  */
 
+import { colors } from '../../utils/cli-styles.js'
 import { BaseCommand } from '../base/BaseCommand.js'
 import { commandContext } from '../shared/CommandContext.js'
-import { colors } from '../../utils/cli-styles.js'
 
 export class PublishCommand extends BaseCommand {
   constructor() {

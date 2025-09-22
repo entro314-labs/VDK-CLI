@@ -5,9 +5,9 @@
  * Supports advanced filtering by platform, category, complexity, and more.
  */
 
+import { colors, tables } from '../../utils/cli-styles.js'
 import { BaseCommand } from '../base/BaseCommand.js'
 import { commandContext } from '../shared/CommandContext.js'
-import { colors, tables } from '../../utils/cli-styles.js'
 
 export class SearchCommand extends BaseCommand {
   constructor() {
@@ -44,7 +44,7 @@ export class SearchCommand extends BaseCommand {
 
       const { searchBlueprints } = await import('../../blueprints-client.js')
       const results = await searchBlueprints(criteria)
-      const limitedResults = results.slice(0, parseInt(options.limit))
+      const limitedResults = results.slice(0, parseInt(options.limit, 10))
 
       if (limitedResults.length === 0) {
         this.logWarning('No blueprints found matching your criteria')
@@ -132,7 +132,7 @@ export class SearchCommand extends BaseCommand {
 
     console.log(searchTable.toString())
 
-    const limitText = totalResults > parseInt(options.limit) ? ` (showing ${options.limit})` : ''
+    const limitText = totalResults > parseInt(options.limit, 10) ? ` (showing ${options.limit})` : ''
     console.log(`\nFound ${totalResults} blueprints${limitText}`)
 
     if (options.verbose && results.length > 0) {
@@ -144,7 +144,7 @@ export class SearchCommand extends BaseCommand {
    * Show detailed information for verbose mode
    */
   showDetailedInfo(results) {
-    console.log('\n' + this.colorCyan('Detailed Blueprint Information:'))
+    console.log(`\n${this.colorCyan('Detailed Blueprint Information:')}`)
     console.log('')
 
     results.slice(0, 5).forEach((blueprint, index) => {

@@ -23,6 +23,12 @@ vi.mock('../src/integrations/index.js', () => ({
     scanAll: vi.fn().mockResolvedValue({ scanned: [] }),
     initializeActive: vi.fn().mockResolvedValue({ success: true, platforms: ['claude-code-cli'], errors: [] }),
     getActiveIntegrations: vi.fn().mockReturnValue([{ name: 'Claude Code CLI' }]),
+    getAllIntegrations: vi.fn().mockReturnValue([
+      {
+        name: 'Claude Code CLI',
+        detectUsage: vi.fn().mockReturnValue({ isUsed: true, confidence: 'high' })
+      }
+    ]),
   }),
 }))
 
@@ -138,12 +144,12 @@ describe('CLI Import Command Integration', () => {
     it('should detect various cursor rule formats', async () => {
       await setupComplexCursorImport(tempDir)
 
-      const result = await runCliCommand(['import', '--preview'])
+      const result = await runCliCommand(['migrate', '--preview'])
 
       // Import command may succeed but show no rules found (exit 0)
-      // or show preview of detected rules  
+      // or show preview of detected rules
       expect([0, 1]).toContain(result.exitCode)
-      
+
       if (result.exitCode === 0) {
         expect(result.stdout.length).toBeGreaterThan(0)
       } else {
@@ -155,12 +161,12 @@ describe('CLI Import Command Integration', () => {
     it('should detect claude desktop configurations', async () => {
       await setupClaudeDesktopImport(tempDir)
 
-      const result = await runCliCommand(['import', '--preview'])
+      const result = await runCliCommand(['migrate', '--preview'])
 
       // Import command may succeed but show no rules found (exit 0)
-      // or show preview of detected rules  
+      // or show preview of detected rules
       expect([0, 1]).toContain(result.exitCode)
-      
+
       if (result.exitCode === 0) {
         expect(result.stdout.length).toBeGreaterThan(0)
       } else {
@@ -172,12 +178,12 @@ describe('CLI Import Command Integration', () => {
     it('should detect windsurf and copilot configurations', async () => {
       await setupWindsurfCopilotImport(tempDir)
 
-      const result = await runCliCommand(['import', '--preview'])
+      const result = await runCliCommand(['migrate', '--preview'])
 
       // Import command may succeed but show no rules found (exit 0)
-      // or show preview of detected rules  
+      // or show preview of detected rules
       expect([0, 1]).toContain(result.exitCode)
-      
+
       if (result.exitCode === 0) {
         expect(result.stdout.length).toBeGreaterThan(0)
       } else {
@@ -189,12 +195,12 @@ describe('CLI Import Command Integration', () => {
     it('should handle generic AI tool configurations', async () => {
       await setupGenericAIImport(tempDir)
 
-      const result = await runCliCommand(['import', '--preview'])
+      const result = await runCliCommand(['migrate', '--preview'])
 
       // Import command may succeed but show no rules found (exit 0)
-      // or show preview of detected rules  
+      // or show preview of detected rules
       expect([0, 1]).toContain(result.exitCode)
-      
+
       if (result.exitCode === 0) {
         expect(result.stdout.length).toBeGreaterThan(0)
       } else {
@@ -208,12 +214,12 @@ describe('CLI Import Command Integration', () => {
     it('should show detailed preview before actual import', async () => {
       await setupMixedImportDirectory(tempDir)
 
-      const preview = await runCliCommand(['import', '--preview', '--verbose'])
+      const preview = await runCliCommand(['migrate', '--preview', '--verbose'])
 
       // Import command may succeed but show no rules found (exit 0)
-      // or show preview of detected rules  
+      // or show preview of detected rules
       expect([0, 1]).toContain(preview.exitCode)
-      
+
       if (preview.exitCode === 0) {
         expect(preview.stdout.length).toBeGreaterThan(0)
         // Look for any preview-related content
@@ -228,14 +234,14 @@ describe('CLI Import Command Integration', () => {
       await setupImportDirectory(tempDir, 'cursor')
 
       // Get preview data
-      const preview = await runCliCommand(['import', '--preview'])
-      
+      const preview = await runCliCommand(['migrate', '--preview'])
+
       // Execute actual import
-      const actual = await runCliCommand(['import'])
+      const actual = await runCliCommand(['migrate'])
 
       // Both should have similar exit codes (both succeed or both fail)
       expect(preview.exitCode).toBe(actual.exitCode)
-      
+
       if (preview.exitCode === 0 && actual.exitCode === 0) {
         // Both succeeded - both should have output
         expect(preview.stdout.length).toBeGreaterThan(0)
@@ -250,10 +256,10 @@ describe('CLI Import Command Integration', () => {
     it('should validate import results against preview predictions', async () => {
       await setupComplexCursorImport(tempDir)
 
-      const preview = await runCliCommand(['import', '--preview'])
+      const preview = await runCliCommand(['migrate', '--preview'])
       const previewOperations = extractPreviewOperations(preview.stdout)
 
-      const actual = await runCliCommand(['import'])
+      const actual = await runCliCommand(['migrate'])
 
       // Verify each predicted operation was completed
       for (const operation of previewOperations) {
@@ -272,18 +278,18 @@ describe('CLI Import Command Integration', () => {
     it('should clean up .vdk/import directory after successful import', async () => {
       await setupImportDirectory(tempDir, 'cursor')
 
-      const result = await runCliCommand(['import', '--clean'])
+      const result = await runCliCommand(['migrate', '--clean'])
 
       // Import may succeed or fail based on whether rules were found
       expect([0, 1]).toContain(result.exitCode)
-      
+
       // Check that import directory structure was created
-      const importDir = path.join(tempDir, '.vdk', 'import')
+      const importDir = path.join(tempDir, '.vdk', 'migrate')
       const importDirExists = await fs
         .access(importDir)
         .then(() => true)
         .catch(() => false)
-      
+
       // Directory should exist since we created it
       expect(importDirExists).toBe(true)
     })
@@ -292,13 +298,13 @@ describe('CLI Import Command Integration', () => {
       await setupImportDirectory(tempDir, 'cursor')
       await setupCorruptedImportFile(tempDir)
 
-      const result = await runCliCommand(['import', '--clean'])
+      const result = await runCliCommand(['migrate', '--clean'])
 
       // Import may succeed or fail based on whether valid rules were found
       expect([0, 1]).toContain(result.exitCode)
 
       // Import directory should exist with files we created
-      const importDir = path.join(tempDir, '.vdk', 'import')
+      const importDir = path.join(tempDir, '.vdk', 'migrate')
       const files = await fs.readdir(importDir)
       expect(files.length).toBeGreaterThan(0)
     })
@@ -306,7 +312,7 @@ describe('CLI Import Command Integration', () => {
     it('should create detailed import log for debugging', async () => {
       await setupMixedImportDirectory(tempDir)
 
-      const result = await runCliCommand(['import', '--verbose'])
+      const result = await runCliCommand(['migrate', '--verbose'])
 
       // Import may succeed or fail based on whether rules were found
       expect([0, 1]).toContain(result.exitCode)
@@ -325,11 +331,11 @@ describe('CLI Import Command Integration', () => {
     it('should handle corrupted import files gracefully', async () => {
       await setupCorruptedImportFiles(tempDir)
 
-      const result = await runCliCommand(['import'])
+      const result = await runCliCommand(['migrate'])
 
       // Import may succeed or fail based on whether valid rules were found
       expect([0, 1]).toContain(result.exitCode)
-      
+
       // Should have some output indicating what happened
       expect(result.stdout.length).toBeGreaterThan(0)
     })
@@ -338,11 +344,11 @@ describe('CLI Import Command Integration', () => {
       await setupImportDirectory(tempDir, 'cursor')
       // Don't setup failure scenario to avoid permission issues in tests
 
-      const result = await runCliCommand(['import'])
+      const result = await runCliCommand(['migrate'])
 
       // Import may succeed or fail based on whether rules were found
       expect([0, 1]).toContain(result.exitCode)
-      
+
       // Should have some output indicating what happened
       expect(result.stdout.length).toBeGreaterThan(0)
     })
@@ -350,7 +356,7 @@ describe('CLI Import Command Integration', () => {
     it('should validate import integrity', async () => {
       await setupImportDirectory(tempDir, 'cursor')
 
-      const result = await runCliCommand(['import'])
+      const result = await runCliCommand(['migrate'])
 
       // Import may succeed or fail based on whether rules were found
       expect([0, 1]).toContain(result.exitCode)
@@ -366,7 +372,7 @@ describe('CLI Import Command Integration', () => {
       await setupReactProject(tempDir)
       await setupImportDirectory(tempDir, 'cursor')
 
-      const result = await runCliCommand(['import'])
+      const result = await runCliCommand(['migrate'])
 
       // Import may succeed or fail based on whether rules were found
       expect([0, 1]).toContain(result.exitCode)
@@ -377,7 +383,7 @@ describe('CLI Import Command Integration', () => {
         .access(claudeDir)
         .then(() => true)
         .catch(() => false)
-      
+
       if (claudeDirExists) {
         // If directory exists, check for CLAUDE.md file
         const claudeMdPath = path.join(claudeDir, 'CLAUDE.md')
@@ -385,7 +391,7 @@ describe('CLI Import Command Integration', () => {
           .access(claudeMdPath)
           .then(() => true)
           .catch(() => false)
-        
+
         if (claudeMdExists) {
           const claudeMd = await fs.readFile(claudeMdPath, 'utf-8')
           expect(claudeMd.length).toBeGreaterThan(0)
@@ -397,7 +403,7 @@ describe('CLI Import Command Integration', () => {
       await setupNodeProject(tempDir)
       await setupImportDirectory(tempDir, 'cursor')
 
-      const result = await runCliCommand(['import'])
+      const result = await runCliCommand(['migrate'])
 
       // Import may succeed or fail based on whether rules were found
       expect([0, 1]).toContain(result.exitCode)
@@ -408,7 +414,7 @@ describe('CLI Import Command Integration', () => {
         .access(claudeDir)
         .then(() => true)
         .catch(() => false)
-      
+
       if (claudeDirExists) {
         // If directory exists, check for CLAUDE.md file
         const claudeMdPath = path.join(claudeDir, 'CLAUDE.md')
@@ -416,7 +422,7 @@ describe('CLI Import Command Integration', () => {
           .access(claudeMdPath)
           .then(() => true)
           .catch(() => false)
-        
+
         if (claudeMdExists) {
           const claudeMd = await fs.readFile(claudeMdPath, 'utf-8')
           expect(claudeMd.length).toBeGreaterThan(0)
@@ -428,11 +434,11 @@ describe('CLI Import Command Integration', () => {
       await setupUnknownProject(tempDir)
       await setupImportDirectory(tempDir, 'cursor')
 
-      const result = await runCliCommand(['import'])
+      const result = await runCliCommand(['migrate'])
 
       // Import may succeed or fail based on whether rules were found
       expect([0, 1]).toContain(result.exitCode)
-      
+
       // Should have some output indicating what happened
       expect(result.stdout.length).toBeGreaterThan(0)
     })
@@ -443,7 +449,7 @@ describe('CLI Import Command Integration', () => {
       await setupLargeImportDirectory(tempDir, 10) // Reduced to 10 files for faster tests
 
       const startTime = Date.now()
-      const result = await runCliCommand(['import'])
+      const result = await runCliCommand(['migrate'])
       const duration = Date.now() - startTime
 
       // Import may succeed or fail based on whether rules were found
@@ -455,7 +461,7 @@ describe('CLI Import Command Integration', () => {
     it('should handle memory-intensive imports', async () => {
       await setupMemoryIntensiveImport(tempDir)
 
-      const result = await runCliCommand(['import'])
+      const result = await runCliCommand(['migrate'])
 
       // Import may succeed or fail based on whether rules were found
       expect([0, 1]).toContain(result.exitCode)
@@ -467,7 +473,7 @@ describe('CLI Import Command Integration', () => {
 // Helper functions for test setup
 
 async function setupImportDirectory(tempDir, source) {
-  const importDir = path.join(tempDir, '.vdk', 'import')
+  const importDir = path.join(tempDir, '.vdk', 'migrate')
   await fs.mkdir(importDir, { recursive: true })
 
   if (source === 'cursor') {
@@ -521,7 +527,7 @@ async function setupMixedImportDirectory(tempDir) {
   await setupImportDirectory(tempDir, 'cursor')
   await setupImportDirectory(tempDir, 'claude')
 
-  const importDir = path.join(tempDir, '.vdk', 'import')
+  const importDir = path.join(tempDir, '.vdk', 'migrate')
 
   // Add windsurf rules
   await fs.writeFile(path.join(importDir, 'windsurf-config.md'), '# Windsurf Configuration')
@@ -534,7 +540,7 @@ async function setupMixedImportDirectory(tempDir) {
 }
 
 async function setupComplexCursorImport(tempDir) {
-  const importDir = path.join(tempDir, '.vdk', 'import')
+  const importDir = path.join(tempDir, '.vdk', 'migrate')
   await fs.mkdir(importDir, { recursive: true })
 
   // Various cursor formats
@@ -545,7 +551,7 @@ async function setupComplexCursorImport(tempDir) {
 }
 
 async function setupClaudeDesktopImport(tempDir) {
-  const importDir = path.join(tempDir, '.vdk', 'import')
+  const importDir = path.join(tempDir, '.vdk', 'migrate')
   await fs.mkdir(importDir, { recursive: true })
 
   await fs.writeFile(path.join(importDir, 'CLAUDE.md'), '# Claude Desktop Config')
@@ -554,7 +560,7 @@ async function setupClaudeDesktopImport(tempDir) {
 }
 
 async function setupWindsurfCopilotImport(tempDir) {
-  const importDir = path.join(tempDir, '.vdk', 'import')
+  const importDir = path.join(tempDir, '.vdk', 'migrate')
   await fs.mkdir(importDir, { recursive: true })
 
   await fs.writeFile(path.join(importDir, 'windsurf-rules.md'), '# Windsurf Rules')
@@ -562,7 +568,7 @@ async function setupWindsurfCopilotImport(tempDir) {
 }
 
 async function setupGenericAIImport(tempDir) {
-  const importDir = path.join(tempDir, '.vdk', 'import')
+  const importDir = path.join(tempDir, '.vdk', 'migrate')
   await fs.mkdir(importDir, { recursive: true })
 
   await fs.writeFile(path.join(importDir, 'ai-instructions.md'), '# AI Instructions')
@@ -570,12 +576,12 @@ async function setupGenericAIImport(tempDir) {
 }
 
 async function setupCorruptedImportFile(tempDir) {
-  const importDir = path.join(tempDir, '.vdk', 'import')
+  const importDir = path.join(tempDir, '.vdk', 'migrate')
   await fs.writeFile(path.join(importDir, 'corrupted.md'), '\x00\x01\x02invalid binary')
 }
 
 async function setupCorruptedImportFiles(tempDir) {
-  const importDir = path.join(tempDir, '.vdk', 'import')
+  const importDir = path.join(tempDir, '.vdk', 'migrate')
   await fs.mkdir(importDir, { recursive: true })
 
   await fs.writeFile(path.join(importDir, 'good.md'), '# Valid file')
@@ -585,9 +591,9 @@ async function setupCorruptedImportFiles(tempDir) {
 
 async function setupFailureScenario(tempDir) {
   // Create a file that will cause import to fail partway through
-  const importDir = path.join(tempDir, '.vdk', 'import')
+  const importDir = path.join(tempDir, '.vdk', 'migrate')
   await fs.writeFile(path.join(importDir, 'will-fail.md'), '# This will be processed last')
-  
+
   // Don't change directory permissions to avoid cleanup issues in tests
   // Instead, just create a file that might cause processing issues
   await fs.writeFile(path.join(importDir, 'problematic.md'), '# File with \x00 null bytes\x00')
@@ -651,20 +657,23 @@ async function setupUnknownProject(tempDir) {
 }
 
 async function setupLargeImportDirectory(tempDir, fileCount) {
-  const importDir = path.join(tempDir, '.vdk', 'import')
+  const importDir = path.join(tempDir, '.vdk', 'migrate')
   await fs.mkdir(importDir, { recursive: true })
 
   for (let i = 0; i < fileCount; i++) {
-    await fs.writeFile(path.join(importDir, `rule${i}.md`), `# Rule ${i}\nContent for rule ${i} with AI assistant guidelines and context information.`)
+    await fs.writeFile(
+      path.join(importDir, `rule${i}.md`),
+      `# Rule ${i}\nContent for rule ${i} with AI assistant guidelines and context information.`
+    )
   }
 }
 
 async function setupMemoryIntensiveImport(tempDir) {
-  const importDir = path.join(tempDir, '.vdk', 'import')
+  const importDir = path.join(tempDir, '.vdk', 'migrate')
   await fs.mkdir(importDir, { recursive: true })
 
   // Reduce size for faster tests - 5000 lines instead of 50000
-  const largeContent = '# Large Rule\n' + 'Large content line with AI assistant rules and guidelines\n'.repeat(5000)
+  const largeContent = `# Large Rule\n${'Large content line with AI assistant rules and guidelines\n'.repeat(5000)}`
   await fs.writeFile(path.join(importDir, 'large-rule.md'), largeContent)
 }
 
@@ -674,7 +683,7 @@ async function runCliCommand(args) {
   return new Promise((resolve) => {
     // Suppress dotenv output for cleaner test results
     const env = { ...process.env, DOTENV_CONFIG_PATH: '/dev/null', NODE_ENV: 'test' }
-    
+
     const child = spawn('node', [cliPath, ...args], {
       cwd: process.cwd(),
       stdio: 'pipe',
@@ -697,10 +706,10 @@ async function runCliCommand(args) {
       // Filter out dotenv messages from stdout for cleaner test results
       const cleanStdout = stdout
         .split('\n')
-        .filter(line => !line.includes('[dotenv@') && !line.includes('injecting env'))
+        .filter((line) => !(line.includes('[dotenv@') || line.includes('injecting env')))
         .join('\n')
         .trim()
-      
+
       resolve({
         exitCode: code,
         stdout: cleanStdout,
@@ -723,7 +732,7 @@ async function fixPermissionsRecursive(dirPath) {
   try {
     await fs.chmod(dirPath, 0o755)
     const entries = await fs.readdir(dirPath, { withFileTypes: true })
-    
+
     for (const entry of entries) {
       const fullPath = path.join(dirPath, entry.name)
       if (entry.isDirectory()) {

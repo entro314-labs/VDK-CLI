@@ -4,13 +4,14 @@
  * Handles 'vdk status' command - Check the status of VDK setup and Hub integration
  */
 
-import path from 'node:path'
 import fs from 'node:fs/promises'
-import { BaseCommand } from '../base/BaseCommand.js'
-import { commandContext } from '../shared/CommandContext.js'
+import path from 'node:path'
 import { fetchRuleList } from '../../blueprints-client.js'
 import { MigrationManager } from '../../migration/migration-manager.js'
 import { boxes, colors, format, status, tables } from '../../utils/cli-styles.js'
+import { getHubStatus, formatHubStatusForTable, displayDetailedHubStatus, displayTroubleshootingTips } from '../../shared/hub-status.js'
+import { BaseCommand } from '../base/BaseCommand.js'
+import { commandContext } from '../shared/CommandContext.js'
 
 export class StatusCommand extends BaseCommand {
   constructor() {
@@ -24,6 +25,8 @@ export class StatusCommand extends BaseCommand {
     return command
       .option('-c, --configPath <path>', 'Path to the VDK configuration file', './vdk.config.json')
       .option('-o, --outputPath <path>', 'Path to the rules directory', './.vdk/rules')
+      .option('--scope <scope>', 'Status check scope (all, local, hub)', 'all')
+      .option('-v, --verbose', 'Show detailed status information', false)
   }
 
   /**
@@ -36,30 +39,90 @@ export class StatusCommand extends BaseCommand {
     // Ensure default values are applied if options are undefined
     const configPath = path.resolve(options.configPath || './vdk.config.json')
     const rulesDir = path.resolve(options.outputPath || './.vdk/rules')
+    const scope = options.scope || 'all'
+
+    // Handle hub-only scope (provides detailed hub status like hub-status command)
+    if (scope === 'hub') {
+      return await this.executeHubOnlyStatus(options)
+    }
+
     const spinner = this.createSpinner('Checking VDK status...')
     spinner.start()
 
     const statusTable = tables.status()
     let isConfigured = false
+    let hubStatus = null
 
-    // Check VDK configuration
-    isConfigured = await this.checkVdkConfiguration(statusTable, configPath)
+    // Check VDK configuration (unless hub-only scope)
+    if (scope === 'all' || scope === 'local') {
+      isConfigured = await this.checkVdkConfiguration(statusTable, configPath)
+    }
 
-    // Check Hub integration and blueprints
-    await this.checkHubAndBlueprints(statusTable, rulesDir)
+    // Check Hub integration and blueprints (unless local-only scope)
+    if (scope === 'all' || scope === 'hub') {
+      hubStatus = await this.checkHubAndBlueprints(statusTable, rulesDir)
+    }
 
-    // Check IDE integrations
-    await this.checkIdeIntegrations(statusTable)
+    // Check IDE integrations (unless hub-only scope)
+    if (scope === 'all' || scope === 'local') {
+      await this.checkIdeIntegrations(statusTable)
+    }
 
     spinner.stop()
     console.log(statusTable.toString())
 
+    // Show detailed hub information if verbose and hub is checked
+    if (options.verbose && hubStatus && (scope === 'all' || scope === 'hub')) {
+      console.log('\n')
+      displayDetailedHubStatus(hubStatus, true)
+
+      if (!hubStatus.connected) {
+        displayTroubleshootingTips()
+      }
+    }
+
     // Show getting started message if not configured
-    if (!isConfigured) {
+    if (!isConfigured && scope !== 'hub') {
       this.showGettingStarted()
     }
 
-    return { configured: isConfigured }
+    return { configured: isConfigured, hubConnected: hubStatus?.connected }
+  }
+
+  /**
+   * Execute hub-only status check (replaces hub-status command functionality)
+   */
+  async executeHubOnlyStatus(options) {
+    try {
+      const { quickHubOperations } = await import('../../hub/index.js')
+      const hubOps = await quickHubOperations()
+
+      const spinner = this.createSpinner('Testing Hub connection...')
+      spinner.start()
+
+      const hubStatus = await getHubStatus(hubOps)
+
+      if (hubStatus.connected) {
+        spinner.succeed('Connection test completed')
+      } else {
+        spinner.fail('Connection test failed')
+      }
+
+      displayDetailedHubStatus(hubStatus, options.verbose)
+
+      if (!hubStatus.connected) {
+        displayTroubleshootingTips()
+      }
+
+      this.trackSuccess({
+        hubConnected: hubStatus.connected,
+        verbose: options.verbose,
+      })
+
+      return { success: true, hubAvailable: hubStatus.available, hubConnected: hubStatus.connected }
+    } catch (error) {
+      this.exitWithError(`Hub status check failed: ${error.message}`, error)
+    }
   }
 
   /**
@@ -122,10 +185,12 @@ export class StatusCommand extends BaseCommand {
    */
   async checkHubAndBlueprints(statusTable, rulesDir) {
     // Check Hub integration
-    await this.checkHubIntegration(statusTable)
+    const hubStatus = await this.checkHubIntegration(statusTable)
 
     // Check local and remote blueprints
     await this.checkBlueprintStatus(statusTable, rulesDir)
+
+    return hubStatus
   }
 
   /**
@@ -133,22 +198,13 @@ export class StatusCommand extends BaseCommand {
    */
   async checkHubIntegration(statusTable) {
     try {
-      if (this.hubOps) {
-        const hubStatus = this.hubOps.getStatus()
-        const connectivity = await this.hubOps.testConnection()
-
-        statusTable.push([
-          'VDK Hub Integration',
-          connectivity.success ? status.success('Connected') : status.warning('Available'),
-          connectivity.success
-            ? `Connected (${connectivity.latency}ms)\nVersion: ${connectivity.version}`
-            : 'Hub available but connection failed',
-        ])
-      } else {
-        statusTable.push(['VDK Hub Integration', status.error('Unavailable'), 'Cannot connect to VDK Hub'])
-      }
+      const hubStatus = await getHubStatus(this.hubOps)
+      const [name, statusType, details] = formatHubStatusForTable(hubStatus)
+      statusTable.push([name, status[statusType](statusType), details])
+      return hubStatus
     } catch (error) {
       statusTable.push(['VDK Hub Integration', status.error('Error'), error.message])
+      return { connected: false, available: false, error: error.message }
     }
   }
 

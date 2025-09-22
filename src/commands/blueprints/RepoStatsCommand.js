@@ -120,7 +120,7 @@ export class RepoStatsCommand extends BaseCommand {
    * Display verbose statistics
    */
   displayVerboseStats(stats) {
-    console.log('\n' + this.colorCyan('🔍 Detailed Analysis:'))
+    console.log(`\n${this.colorCyan('🔍 Detailed Analysis:')}`)
 
     if (stats.averageSize) {
       console.log(`\nBlueprint Sizes:`)
@@ -154,7 +154,7 @@ export class RepoStatsCommand extends BaseCommand {
    * Display quality insights and recommendations
    */
   displayQualityInsights(stats) {
-    console.log('\n' + this.colorCyan('💡 Quality Insights:'))
+    console.log(`\n${this.colorCyan('💡 Quality Insights:')}`)
 
     const complianceRate = Math.round((stats.valid / stats.total) * 100)
 

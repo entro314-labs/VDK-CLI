@@ -172,6 +172,22 @@ export function setupCommunityMocks() {
 }
 
 /**
+ * Setup blueprint client mocks
+ */
+export function setupBlueprintMocks() {
+  vi.mock('../src/blueprints-client.js', () => ({
+    fetchRuleList: vi.fn().mockResolvedValue([
+      { name: 'test-rule-1', category: 'core' },
+      { name: 'test-rule-2', category: 'frontend' },
+    ]),
+    fetchBlueprint: vi.fn().mockResolvedValue({
+      content: '# Test Blueprint\nTest content',
+      metadata: { title: 'Test', author: 'test' },
+    }),
+  }))
+}
+
+/**
  * Setup integration mocks to avoid real file system operations
  */
 export function setupIntegrationMocks() {
@@ -266,9 +282,12 @@ export function setupTestEnvironment() {
   process.env.HOME = '/Users/testuser'
   process.env.USERPROFILE = process.env.HOME
   process.env.NODE_ENV = 'test'
-  
+
   // Suppress dotenv output in tests
   process.env.DOTENV_CONFIG_PATH = '/dev/null'
+
+  // Set up global fetch mock
+  setupFetchMock()
 }
 
 /**
@@ -276,12 +295,12 @@ export function setupTestEnvironment() {
  */
 export function mockConsole() {
   const originalConsole = { ...console }
-  
+
   console.log = vi.fn()
   console.info = vi.fn()
   console.warn = vi.fn()
   console.error = vi.fn()
-  
+
   return () => {
     Object.assign(console, originalConsole)
   }
@@ -293,9 +312,7 @@ export function mockConsole() {
 export function createTimeoutSafePromise(operation, timeout = 1000) {
   return Promise.race([
     operation,
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Test timeout')), timeout)
-    ),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Test timeout')), timeout)),
   ])
 }
 
@@ -305,6 +322,7 @@ export default {
   setupFetchMock,
   setupHubMocks,
   setupCommunityMocks,
+  setupBlueprintMocks,
   setupIntegrationMocks,
   setupFileSystemMocks,
   createMockBlueprintClient,

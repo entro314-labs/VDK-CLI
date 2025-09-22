@@ -6,35 +6,29 @@
  */
 
 import { Command } from 'commander'
-
+import { AnalyzeCommand } from './blueprints/AnalyzeCommand.js'
+import { BrowseCommand } from './blueprints/BrowseCommand.js'
+import { CreateCommand } from './blueprints/CreateCommand.js'
+import { DeployCommand } from './blueprints/DeployCommand.js'
+import { PlatformCommand } from './blueprints/PlatformCommand.js'
+import { RepoStatsCommand } from './blueprints/RepoStatsCommand.js'
+import { SearchCommand } from './blueprints/SearchCommand.js'
+// Blueprint commands
+import { SyncCommand } from './blueprints/SyncCommand.js'
+// Community commands
+import { PublishCommand } from './community/PublishCommand.js'
 // Core commands
 import { InitCommand } from './core/InitCommand.js'
 import { ScanCommand } from './core/ScanCommand.js'
 import { StatusCommand } from './core/StatusCommand.js'
 import { ValidateCommand } from './core/ValidateCommand.js'
-
-// Blueprint commands
-import { SyncCommand } from './blueprints/SyncCommand.js'
-import { BrowseCommand } from './blueprints/BrowseCommand.js'
-import { DeployCommand } from './blueprints/DeployCommand.js'
-import { CreateCommand } from './blueprints/CreateCommand.js'
-import { SearchCommand } from './blueprints/SearchCommand.js'
-import { AnalyzeCommand } from './blueprints/AnalyzeCommand.js'
-import { UpdateCommand } from './blueprints/UpdateCommand.js'
-import { RepoStatsCommand } from './blueprints/RepoStatsCommand.js'
-import { PlatformCommand } from './blueprints/PlatformCommand.js'
-
-// Migration commands
-import { MigrateCommand } from './migration/MigrateCommand.js'
-import { ImportCommand } from './migration/ImportCommand.js'
-import { SchemaMigrateCommand } from './migration/SchemaMigrateCommand.js'
-
-// Community commands
-import { PublishCommand } from './community/PublishCommand.js'
-
-// Hub commands
-import { HubStatusCommand } from './hub/HubStatusCommand.js'
 import { HubGenerateCommand } from './hub/HubGenerateCommand.js'
+// Migration commands
+import { UnifiedMigrateCommand } from './migration/UnifiedMigrateCommand.js'
+import { SchemaMigrateCommand } from './migration/SchemaMigrateCommand.js'
+// Team commands
+import { TeamShareCommand } from './team/ShareCommand.js'
+import { TeamSyncCommand } from './team/SyncCommand.js'
 
 /**
  * Command registry class
@@ -62,21 +56,22 @@ export class CommandRegistry {
     this.register(new CreateCommand())
     this.register(new SearchCommand())
     this.register(new AnalyzeCommand())
-    this.register(new UpdateCommand())
     this.register(new RepoStatsCommand())
     this.register(new PlatformCommand())
 
     // Migration commands
-    this.register(new MigrateCommand())
-    this.register(new ImportCommand())
+    this.register(new UnifiedMigrateCommand())
     this.register(new SchemaMigrateCommand())
 
     // Community commands
     this.register(new PublishCommand())
 
     // Hub commands
-    this.register(new HubStatusCommand())
     this.register(new HubGenerateCommand())
+
+    // Team commands
+    this.register(new TeamShareCommand())
+    this.register(new TeamSyncCommand())
   }
 
   /**

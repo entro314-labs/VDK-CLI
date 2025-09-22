@@ -12,8 +12,8 @@
  */
 
 import chalk from 'chalk'
-import ora from 'ora'
 import matter from 'gray-matter'
+import ora from 'ora'
 
 import { validateBlueprint } from './utils/schema-validator.js'
 

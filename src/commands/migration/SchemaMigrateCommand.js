@@ -5,9 +5,9 @@
  * Supports dry-run mode and comprehensive migration reporting.
  */
 
+import path from 'node:path'
 import { BaseCommand } from '../base/BaseCommand.js'
 import { commandContext } from '../shared/CommandContext.js'
-import path from 'node:path'
 
 export class SchemaMigrateCommand extends BaseCommand {
   constructor() {
@@ -37,7 +37,7 @@ export class SchemaMigrateCommand extends BaseCommand {
       const { SchemaMigrator } = await import('../../migration/converters/schema-migrator.js')
 
       const inputPath = path.resolve(options.input)
-      const outputPath = options.output ? path.resolve(options.output) : inputPath + '_v2'
+      const outputPath = options.output ? path.resolve(options.output) : `${inputPath}_v2`
 
       if (options.dryRun) {
         this.logInfo('DRY RUN: No files will be modified')
@@ -169,7 +169,7 @@ export class SchemaMigrateCommand extends BaseCommand {
 
     if (results.migrated > 0) {
       this.logSuccess(`${results.migrated} blueprints migrated to v2.1.0`)
-      this.logInfo(`Run ${this.colorPrimary('vdk validate --path ' + outputPath)} to verify migrations`)
+      this.logInfo(`Run ${this.colorPrimary(`vdk validate --path ${outputPath}`)} to verify migrations`)
     }
 
     if (results.errors > 0) {

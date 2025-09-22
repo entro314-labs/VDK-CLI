@@ -48,7 +48,7 @@ describe('Complete CLI Command Coverage', () => {
           'development',
           '--interactive',
         ],
-        { timeout: 60000 }
+        { timeout: 15000 }
       )
 
       expect(result.code).toBeDefined()
@@ -59,7 +59,7 @@ describe('Complete CLI Command Coverage', () => {
     it('should handle init with minimal options', async () => {
       tempDir = await createTempDir('minimal-init-test')
 
-      const result = await runCLI(['init', '--projectPath', tempDir], { timeout: 45000 })
+      const result = await runCLI(['init', '--projectPath', tempDir], { timeout: 15000 })
 
       expect(result.code).toBeDefined()
       expect(result.stdout.length + result.stderr.length).toBeGreaterThan(0)
@@ -92,19 +92,19 @@ describe('Complete CLI Command Coverage', () => {
     })
   })
 
-  describe('Update Command - Complete Coverage', () => {
-    it('should execute update command with default path', async () => {
-      const result = await runCLI(['update'], { timeout: 45000 })
+  // DISABLED: describe('sync command - Complete Coverage' // Command removed () => {
+    it('should execute sync command with default path', async () => {
+      const result = await runCLI(['sync'], { timeout: 15000 })
 
       expect(result.code).toBeDefined()
       expect(result.stdout.length + result.stderr.length).toBeGreaterThan(0)
     }, 50000)
 
-    it('should execute update command with custom output path', async () => {
+    it('should execute sync command with custom output path', async () => {
       tempDir = await createTempDir('update-test')
 
-      const result = await runCLI(['update', '--outputPath', path.join(tempDir, 'custom-rules')], {
-        timeout: 45000,
+      const result = await runCLI(['sync', '--outputPath', path.join(tempDir, 'custom-rules')], {
+        timeout: 15000,
       })
 
       expect(result.code).toBeDefined()
@@ -113,7 +113,7 @@ describe('Complete CLI Command Coverage', () => {
 
     it('should handle update network failures gracefully', async () => {
       // This will likely fail due to network/auth, but should handle gracefully
-      const result = await runCLI(['update'], { timeout: 30000 })
+      const result = await runCLI(['sync'], { timeout: 30000 })
 
       expect(result.code).toBeDefined()
       // Should either succeed or fail with meaningful message
@@ -186,7 +186,7 @@ describe('Complete CLI Command Coverage', () => {
       expect(result.stdout).toContain('VDK CLI')
       expect(result.stdout).toContain('init')
       expect(result.stdout).toContain('deploy')
-      expect(result.stdout).toContain('update')
+      expect(result.stdout).toContain('sync')
       expect(result.stdout).toContain('status')
     })
 
@@ -222,7 +222,7 @@ describe('Complete CLI Command Coverage', () => {
       const commands = [
         ['init', '--help', '--verbose'],
         ['status', '--help'],
-        ['update', '--help'],
+        ['sync', '--help'],
         ['deploy', '--help'],
       ]
 
@@ -244,7 +244,7 @@ describe('Complete CLI Command Coverage', () => {
     }, 15000)
 
     it('should handle update with invalid output path', async () => {
-      const result = await runCLI(['update', '--outputPath', '/root/invalid/permission/path'], {
+      const result = await runCLI(['sync', '--outputPath', '/root/invalid/permission/path'], {
         timeout: 30000,
       })
 

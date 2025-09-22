@@ -34,36 +34,35 @@ export class JetBrainsIntegration extends BaseIntegration {
    * Detect JetBrains IDE usage in the project
    */
   detectUsage() {
-    const indicators = []
-    const recommendations = []
-    let confidence = 'none'
+    const detection = this.createDetectionResult()
 
-    // Check for .idea folder
+    // Check for .idea folder (project-specific)
     const ideaPath = path.join(this.projectPath, '.idea')
-    if (fs.existsSync(ideaPath)) {
-      indicators.push('Found .idea configuration folder')
-      confidence = 'high'
+    this.checkPaths(detection, {
+      'Found .idea configuration folder': ideaPath
+    }, 'high', true) // isProjectSpecific = true
 
-      // Check for specific IDE indicators
+    if (detection.isUsed) {
+      // Check for specific IDE indicators (only if .idea exists)
       const detectedIDEs = this.detectSpecificIDEs()
       if (detectedIDEs.length > 0) {
-        indicators.push(`Detected IDEs: ${detectedIDEs.join(', ')}`)
+        detection.indicators.push(`Detected IDEs: ${detectedIDEs.join(', ')}`)
       }
 
       // Check for AI assistant configuration
       const hasAIConfig = this.checkAIAssistantConfig()
       if (hasAIConfig) {
-        indicators.push('AI Assistant configuration detected')
+        detection.indicators.push('AI Assistant configuration detected')
       } else {
-        recommendations.push('Configure AI Assistant in Settings | Tools | AI Assistant')
+        detection.recommendations.push('Configure AI Assistant in Settings | Tools | AI Assistant')
       }
 
       // Check for MCP support
       const mcpPath = this.getMCPConfigPath()
       if (mcpPath && fs.existsSync(mcpPath)) {
-        indicators.push('MCP configuration found')
+        detection.indicators.push('MCP configuration found')
       } else {
-        recommendations.push('Consider setting up Model Context Protocol (MCP) for enhanced AI integration')
+        detection.recommendations.push('Consider setting up Model Context Protocol (MCP) for enhanced AI integration')
       }
     }
 
@@ -71,25 +70,22 @@ export class JetBrainsIntegration extends BaseIntegration {
     try {
       const runningProcesses = this.getRunningJetBrainsProcesses()
       if (runningProcesses.length > 0) {
-        indicators.push(`Running JetBrains processes: ${runningProcesses.join(', ')}`)
-        if (confidence === 'none') confidence = 'medium'
+        detection.indicators.push(`Running JetBrains processes: ${runningProcesses.join(', ')}`)
+        if (detection.confidence === 'none') {
+          detection.confidence = 'medium'
+        }
       }
     } catch (error) {
       // Process detection failed - not critical
     }
 
     // Additional recommendations
-    if (confidence !== 'none') {
-      recommendations.push('Use .idea/ai-rules/ folder for VDK Blueprint rules')
-      recommendations.push('Enable relevant code inspections for your project language')
+    if (detection.confidence !== 'none') {
+      detection.recommendations.push('Use .idea/ai-rules/ folder for VDK Blueprint rules')
+      detection.recommendations.push('Enable relevant code inspections for your project language')
     }
 
-    return {
-      isUsed: confidence !== 'none',
-      confidence,
-      indicators,
-      recommendations,
-    }
+    return detection
   }
 
   /**

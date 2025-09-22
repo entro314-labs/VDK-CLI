@@ -5,9 +5,9 @@
  * Handles both community rules and repository blueprints with preview functionality.
  */
 
+import chalk from 'chalk'
 import { BaseCommand } from '../base/BaseCommand.js'
 import { commandContext } from '../shared/CommandContext.js'
-import chalk from 'chalk'
 
 export class DeployCommand extends BaseCommand {
   constructor() {

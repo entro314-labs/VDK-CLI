@@ -474,23 +474,30 @@ export class IntegrationManager {
       return null
     }
 
-    // Sort by confidence level, with project-specific config taking priority over environment detection
+    // Sort by project-specific config first, then confidence level
     const confidenceOrder = { high: 3, medium: 2, low: 1, none: 0 }
     const sorted = [...activeIntegrations].sort((a, b) => {
-      // First sort by confidence level
+      // First priority: Project-specific config beats global config, regardless of confidence
+      const aHasProjectConfig = a.detection?.hasProjectSpecificConfig
+      const bHasProjectConfig = b.detection?.hasProjectSpecificConfig
+
+      if (aHasProjectConfig && !bHasProjectConfig) return -1
+      if (bHasProjectConfig && !aHasProjectConfig) return 1
+
+      // Second priority: Confidence level
       const confidenceDiff = confidenceOrder[b.confidence] - confidenceOrder[a.confidence]
       if (confidenceDiff !== 0) {
         return confidenceDiff
       }
 
-      // Context platforms get priority regardless of confidence when equal
+      // Third priority: Context platforms get priority over traditional IDEs
       const aIsContextPlatform = this.isContextPlatform(a.name)
       const bIsContextPlatform = this.isContextPlatform(b.name)
 
       if (aIsContextPlatform && !bIsContextPlatform) return -1
       if (bIsContextPlatform && !aIsContextPlatform) return 1
 
-      // If both are context platforms or both are traditional IDEs, keep original order
+      // If all else is equal, keep original order
       return 0
     })
 

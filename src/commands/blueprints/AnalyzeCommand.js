@@ -135,7 +135,7 @@ export class AnalyzeCommand extends BaseCommand {
    * Display verbose analysis information
    */
   displayVerboseAnalysis(analysis) {
-    console.log('\n' + this.colorCyan('🔍 Detailed Analysis:'))
+    console.log(`\n${this.colorCyan('🔍 Detailed Analysis:')}`)
 
     if (analysis.blueprint.platforms) {
       const compatiblePlatforms = Object.keys(analysis.blueprint.platforms).filter(
@@ -161,7 +161,7 @@ export class AnalyzeCommand extends BaseCommand {
    * Display recommendations based on analysis
    */
   displayRecommendations(analysis) {
-    console.log('\n' + this.colorCyan('💡 Recommendations:'))
+    console.log(`\n${this.colorCyan('💡 Recommendations:')}`)
 
     if (analysis.dependencies.missing.length > 0) {
       console.log('- Resolve missing dependencies before deployment')

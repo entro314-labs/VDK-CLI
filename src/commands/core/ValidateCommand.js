@@ -5,11 +5,11 @@
  * Demonstrates how easy it is to add commands to the new architecture.
  */
 
-import path from 'node:path'
 import fs from 'node:fs/promises'
+import path from 'node:path'
+import { colors, tables } from '../../utils/cli-styles.js'
 import { BaseCommand } from '../base/BaseCommand.js'
 import { commandContext } from '../shared/CommandContext.js'
-import { tables, colors } from '../../utils/cli-styles.js'
 
 export class ValidateCommand extends BaseCommand {
   constructor() {

@@ -23,7 +23,7 @@ describe('Error Handling & Edge Cases', () => {
       const invalidCommands = [
         ['init', '--invalidFlag'],
         ['status', '--nonexistent-option', 'value'],
-        ['update', '--outputPath'], // Missing value
+        ['sync', '--outputPath'], // Missing value
         ['deploy', '--unknown', 'parameter'],
       ]
 
@@ -42,7 +42,7 @@ describe('Error Handling & Edge Cases', () => {
       const result1 = await runCLI(['init', '--projectPath'])
       expect(result1.success).toBe(false)
 
-      const result2 = await runCLI(['update', '--outputPath'])
+      const result2 = await runCLI(['sync', '--outputPath'])
       expect(result2.success).toBe(false)
     })
 

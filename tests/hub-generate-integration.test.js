@@ -329,7 +329,7 @@ describe('Hub Generate Command Integration', () => {
         'generate',
         '--requirements',
         requirements.trim(),
-        '--auto-detect-stack',
+        '--verbose-stack',
         '--output',
         'bash',
       ])
@@ -626,7 +626,7 @@ describe('Hub Generate Command Integration', () => {
         'hub',
         'generate',
         '--requirements',
-        '', // Empty requirements
+        // Empty requirements
         '--tech-stack',
         'nodejs',
         '--output',
@@ -696,7 +696,7 @@ async function runCliCommand(args) {
       resolve({
         exitCode: -1,
         stdout,
-        stderr: stderr + '\nTest timeout',
+        stderr: `${stderr}\nTest timeout`,
       })
     }, 60000) // 60 second timeout
   })

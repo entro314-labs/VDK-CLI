@@ -4,9 +4,13 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { cleanupTempDir, createTempDir, runCLI } from './helpers/cli-helper.js'
+import { setupBlueprintMocks } from './helpers/network-mocks.js'
+
+// Setup blueprint mocks to prevent network calls
+setupBlueprintMocks()
 
 describe('End-to-End Integration', () => {
   let tempDir
@@ -37,7 +41,7 @@ describe('End-to-End Integration', () => {
 
       // Run VDK init
       const result = await runCLI(['init', '--projectPath', tempDir, '--verbose'], {
-        timeout: 60000,
+        timeout: 15000,
       })
 
       // Check that init completed (success or meaningful failure)
@@ -91,9 +95,9 @@ describe('End-to-End Integration', () => {
       tempDir = await createTempDir('e2e-update-project')
       const rulesDir = path.join(tempDir, '.ai', 'rules')
 
-      // Run update command
-      const result = await runCLI(['update', '--outputPath', rulesDir], {
-        timeout: 45000,
+      // Run sync command
+      const result = await runCLI(['sync', '--outputPath', rulesDir], {
+        timeout: 15000,
       })
 
       expect(result.code).toBeDefined()
