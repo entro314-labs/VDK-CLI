@@ -15,7 +15,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const CLI_PATH = path.join(__dirname, '..', 'cli-new.js')
+const CLI_PATH = path.join(__dirname, '..', 'cli.js')
 
 // Helper function to run CLI commands
 function runCLI(args, options = {}) {

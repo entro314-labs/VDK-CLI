@@ -109,9 +109,13 @@ class VSCodeVariantIntegration extends BaseIntegration {
 
     // Check for global configuration
     const globalConfig = this.getGlobalConfigPath()
-    this.checkPaths(detection, {
-      'Global configuration detected': globalConfig
-    }, 'medium') // Global = not project-specific
+    this.checkPaths(
+      detection,
+      {
+        'Global configuration detected': globalConfig,
+      },
+      'medium'
+    ) // Global = not project-specific
 
     // Check for running process
     try {
@@ -137,7 +141,7 @@ class VSCodeVariantIntegration extends BaseIntegration {
     }
 
     // Add MCP recommendation if not configured
-    if (detection.isUsed && !detection.indicators.some(i => i.includes('MCP configuration'))) {
+    if (detection.isUsed && !detection.indicators.some((i) => i.includes('MCP configuration'))) {
       detection.recommendations.push('Consider setting up MCP configuration for enhanced AI integration')
     }
 

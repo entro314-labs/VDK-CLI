@@ -29,7 +29,7 @@ const commands = [
   'publish',
   'hub-generate',
   'team:share',
-  'team:sync'
+  'team:sync',
 ]
 
 async function testCommand(command) {
@@ -37,7 +37,7 @@ async function testCommand(command) {
     const child = spawn('node', ['cli-new.js', command, '--help'], {
       cwd: __dirname,
       stdio: 'pipe',
-      timeout: 10000
+      timeout: 10000,
     })
 
     let stdout = ''
@@ -57,7 +57,7 @@ async function testCommand(command) {
         command,
         success,
         code,
-        output: stdout + stderr
+        output: stdout + stderr,
       })
     })
 
@@ -66,7 +66,7 @@ async function testCommand(command) {
         command,
         success: false,
         code: -1,
-        error: error.message
+        error: error.message,
       })
     })
   })

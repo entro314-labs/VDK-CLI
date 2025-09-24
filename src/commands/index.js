@@ -23,9 +23,9 @@ import { ScanCommand } from './core/ScanCommand.js'
 import { StatusCommand } from './core/StatusCommand.js'
 import { ValidateCommand } from './core/ValidateCommand.js'
 import { HubGenerateCommand } from './hub/HubGenerateCommand.js'
+import { SchemaMigrateCommand } from './migration/SchemaMigrateCommand.js'
 // Migration commands
 import { UnifiedMigrateCommand } from './migration/UnifiedMigrateCommand.js'
-import { SchemaMigrateCommand } from './migration/SchemaMigrateCommand.js'
 // Team commands
 import { TeamShareCommand } from './team/ShareCommand.js'
 import { TeamSyncCommand } from './team/SyncCommand.js'

@@ -5,9 +5,9 @@
  * or VDK Hub team features.
  */
 
-import chalk from 'chalk'
 import fs from 'node:fs'
 import path from 'node:path'
+import chalk from 'chalk'
 
 import { BaseCommand } from '../base/BaseCommand.js'
 
@@ -75,10 +75,7 @@ export class TeamShareCommand extends BaseCommand {
       }
 
       // Prepare files to share
-      const filesToShare = [
-        '.vdk/rules/',
-        '.vdk/config.json'
-      ]
+      const filesToShare = ['.vdk/rules/', '.vdk/config.json']
 
       if (includeLocal) {
         logger.warn('⚠️  Including local settings - ensure no sensitive data is shared')
@@ -101,14 +98,14 @@ export class TeamShareCommand extends BaseCommand {
 
       if (dryRun) {
         logger.info('📋 Dry run - would share these files:')
-        existingFiles.forEach(file => {
+        existingFiles.forEach((file) => {
           logger.info(`  • ${file}`)
         })
         return { success: true, dryRun: true, files: existingFiles }
       }
 
       // Add files to Git
-      const gitAddCommands = existingFiles.map(file => `git add "${file}"`).join(' && ')
+      const gitAddCommands = existingFiles.map((file) => `git add "${file}"`).join(' && ')
       execSync(gitAddCommands, { cwd: projectPath, stdio: 'inherit' })
 
       // Commit the changes
@@ -124,7 +121,7 @@ export class TeamShareCommand extends BaseCommand {
         success: true,
         method: 'git',
         filesShared: existingFiles,
-        commitMessage: message
+        commitMessage: message,
       }
     } catch (error) {
       if (error.message.includes('nothing to commit')) {
@@ -182,7 +179,7 @@ export class TeamShareCommand extends BaseCommand {
         method: 'hub',
         teamId,
         shareUrl: shareResult.shareUrl,
-        expiresAt: shareResult.expiresAt
+        expiresAt: shareResult.expiresAt,
       }
     } catch (error) {
       if (error.message.includes('Team not found')) {
@@ -206,7 +203,7 @@ export class TeamShareCommand extends BaseCommand {
     const rulesPath = path.join(vdkPath, 'rules')
     if (fs.existsSync(rulesPath)) {
       config.rules = {}
-      const ruleFiles = fs.readdirSync(rulesPath).filter(f => f.endsWith('.md'))
+      const ruleFiles = fs.readdirSync(rulesPath).filter((f) => f.endsWith('.md'))
       for (const file of ruleFiles) {
         const content = fs.readFileSync(path.join(rulesPath, file), 'utf8')
         config.rules[file] = content

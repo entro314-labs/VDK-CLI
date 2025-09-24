@@ -72,9 +72,9 @@ describe('Publishing System - Comprehensive Tests', () => {
   describe('PublishManager', () => {
     it('should create PublishManager instance', async () => {
       const { PublishManager } = await import('../src/publishing/PublishManager.js')
-      
+
       const manager = new PublishManager()
-      
+
       expect(manager).toBeDefined()
       expect(typeof manager.publish).toBe('function')
       expect(typeof manager.validateBlueprint).toBe('function')
@@ -83,9 +83,9 @@ describe('Publishing System - Comprehensive Tests', () => {
 
     it('should validate blueprint before publishing', async () => {
       const { PublishManager } = await import('../src/publishing/PublishManager.js')
-      
+
       const manager = new PublishManager()
-      
+
       const mockBlueprint = {
         title: 'Test Blueprint',
         description: 'A test blueprint',
@@ -94,9 +94,9 @@ describe('Publishing System - Comprehensive Tests', () => {
         tags: ['test', 'example'],
         author: 'testuser',
       }
-      
+
       const validation = await manager.validateBlueprint(mockBlueprint)
-      
+
       expect(validation).toBeDefined()
       expect(validation.valid).toBeDefined()
       expect(validation.errors).toBeInstanceOf(Array)
@@ -104,20 +104,20 @@ describe('Publishing System - Comprehensive Tests', () => {
 
     it('should prepare blueprint for publication', async () => {
       const { PublishManager } = await import('../src/publishing/PublishManager.js')
-      
+
       const manager = new PublishManager()
-      
+
       const mockBlueprint = {
         title: 'Test Blueprint',
         description: 'A test blueprint',
         content: '# Test Blueprint\nThis is test content',
       }
-      
+
       const prepared = await manager.prepareForPublication(mockBlueprint, {
         targetPlatform: 'github',
         format: 'markdown',
       })
-      
+
       expect(prepared).toBeDefined()
       expect(prepared.content).toBeDefined()
       expect(prepared.metadata).toBeDefined()
@@ -125,9 +125,9 @@ describe('Publishing System - Comprehensive Tests', () => {
 
     it('should handle publishing workflow', async () => {
       const { PublishManager } = await import('../src/publishing/PublishManager.js')
-      
+
       const manager = new PublishManager()
-      
+
       const mockBlueprint = {
         title: 'Test Blueprint',
         description: 'A test blueprint',
@@ -135,17 +135,17 @@ describe('Publishing System - Comprehensive Tests', () => {
         category: 'test',
         tags: ['test'],
       }
-      
+
       const publishOptions = {
         targetPlatform: 'github',
         repository: 'test/blueprints',
         format: 'markdown',
         createPR: true,
       }
-      
+
       try {
         const result = await manager.publish(mockBlueprint, publishOptions)
-        
+
         // Should have attempted to publish
         expect(result).toBeDefined()
       } catch (error) {
@@ -158,9 +158,9 @@ describe('Publishing System - Comprehensive Tests', () => {
   describe('UniversalFormatConverter', () => {
     it('should create UniversalFormatConverter instance', async () => {
       const { UniversalFormatConverter } = await import('../src/publishing/UniversalFormatConverter.js')
-      
+
       const converter = new UniversalFormatConverter()
-      
+
       expect(converter).toBeDefined()
       expect(typeof converter.convert).toBe('function')
       expect(typeof converter.getSupportedFormats).toBe('function')
@@ -169,13 +169,13 @@ describe('Publishing System - Comprehensive Tests', () => {
 
     it('should list supported formats', async () => {
       const { UniversalFormatConverter } = await import('../src/publishing/UniversalFormatConverter.js')
-      
+
       const converter = new UniversalFormatConverter()
       const formats = converter.getSupportedFormats()
-      
+
       expect(formats).toBeInstanceOf(Array)
       expect(formats.length).toBeGreaterThan(0)
-      
+
       // Should support common formats
       expect(formats).toContain('markdown')
       expect(formats).toContain('json')
@@ -183,15 +183,15 @@ describe('Publishing System - Comprehensive Tests', () => {
 
     it('should detect content format', async () => {
       const { UniversalFormatConverter } = await import('../src/publishing/UniversalFormatConverter.js')
-      
+
       const converter = new UniversalFormatConverter()
-      
+
       const markdownContent = '# Title\nContent here'
       const jsonContent = '{"title": "Test", "content": "Content"}'
-      
+
       const mdFormat = converter.detectFormat(markdownContent, 'test.md')
       const jsonFormat = converter.detectFormat(jsonContent, 'test.json')
-      
+
       expect(mdFormat).toBe('markdown')
       expect(jsonFormat).toBe('json')
     })
@@ -384,9 +384,12 @@ describe('Publishing System - Comprehensive Tests', () => {
       // Test JSON to Markdown conversion
       try {
         const converted = await converter.convert(blueprint, 'json', 'markdown')
-        const prepared = await manager.prepareForPublication({ content: converted }, {
-          format: 'markdown',
-        })
+        const prepared = await manager.prepareForPublication(
+          { content: converted },
+          {
+            format: 'markdown',
+          }
+        )
 
         expect(prepared).toBeDefined()
         expect(prepared.content).toContain('Format Test')
@@ -410,7 +413,7 @@ describe('Publishing System - Comprehensive Tests', () => {
 
       expect(validation.valid).toBe(false)
       expect(validation.errors.length).toBeGreaterThan(0)
-      expect(validation.errors.some(error => error.includes('description'))).toBe(true)
+      expect(validation.errors.some((error) => error.includes('description'))).toBe(true)
     })
   })
 

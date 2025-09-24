@@ -116,16 +116,10 @@ export class VDKHubClient {
       }
 
       const endpoint = `/cli/sync/blueprints?${params}`
-      const response = await this.makeRequest(endpoint, {
+      const data = await this.makeRequest(endpoint, {
         method: 'GET',
         authenticated: false, // Optional auth
       })
-
-      if (!response.ok) {
-        throw new VDKHubError('Blueprint sync failed', response.status, 'SYNC_FAILED', response.status >= 500)
-      }
-
-      const data = await response.json()
 
       return {
         blueprints: data.blueprints || [],
@@ -161,17 +155,11 @@ export class VDKHubClient {
    */
   async generatePackage(packageRequest) {
     try {
-      const response = await this.makeRequest('/cli/generate', {
+      const data = await this.makeRequest('/cli/generate', {
         method: 'POST',
         body: JSON.stringify(packageRequest),
         authenticated: false, // Optional auth
       })
-
-      if (!response.ok) {
-        throw new VDKHubError('Package generation failed', response.status, 'GENERATION_FAILED', response.status >= 500)
-      }
-
-      const data = await response.json()
 
       return {
         packageId: data.packageId,
@@ -317,20 +305,14 @@ export class VDKHubClient {
         throw new Error('Error telemetry batch size cannot exceed 20 events')
       }
 
-      const response = await this.makeRequest('/cli/telemetry/errors', {
+      const data = await this.makeRequest('/cli/telemetry/errors', {
         method: 'POST',
         body: JSON.stringify(eventArray),
         authenticated: false,
         skipRetry: true,
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        return { success: true, message: data.message }
-      } else {
-        console.warn(chalk.yellow(`Error telemetry failed: HTTP ${response.status}`))
-        return { success: false, error: `HTTP ${response.status}` }
-      }
+      return { success: true, message: data.message }
     } catch (error) {
       console.warn(chalk.yellow(`Error telemetry error: ${error.message}`))
       return { success: false, error: error.message }
@@ -353,20 +335,14 @@ export class VDKHubClient {
         throw new Error('Integration telemetry batch size cannot exceed 30 events')
       }
 
-      const response = await this.makeRequest('/cli/telemetry/integrations', {
+      const data = await this.makeRequest('/cli/telemetry/integrations', {
         method: 'POST',
         body: JSON.stringify(eventArray),
         authenticated: false,
         skipRetry: true,
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        return { success: true, message: data.message }
-      } else {
-        console.warn(chalk.yellow(`Integration telemetry failed: HTTP ${response.status}`))
-        return { success: false, error: `HTTP ${response.status}` }
-      }
+      return { success: true, message: data.message }
     } catch (error) {
       console.warn(chalk.yellow(`Integration telemetry error: ${error.message}`))
       return { success: false, error: error.message }
@@ -383,17 +359,11 @@ export class VDKHubClient {
    */
   async checkVersionCompatibility(versionInfo) {
     try {
-      const response = await this.makeRequest('/v1/version/check', {
+      const data = await this.makeRequest('/v1/version/check', {
         method: 'POST',
         body: JSON.stringify(versionInfo),
         authenticated: false,
       })
-
-      if (!response.ok) {
-        throw new VDKHubError('Version check failed', response.status, 'VERSION_CHECK_FAILED', response.status >= 500)
-      }
-
-      const data = await response.json()
       return {
         success: data.success,
         compatibility: data.compatibility,
@@ -725,25 +695,18 @@ export class VDKHubClient {
     }
 
     try {
-      const response = await this.makeRequest(`/community/blueprints/${blueprintId}/usage`, {
+      const data = await this.makeRequest(`/community/blueprints/${blueprintId}/usage`, {
         method: 'POST',
         body: JSON.stringify(usageData),
         authenticated: false, // Anonymous usage tracking
         skipRetry: true, // Don't retry telemetry to avoid spamming
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        return {
-          success: true,
-          usageId: data.usageId,
-          message: data.message,
-          stats: data.stats,
-        }
-      } else {
-        // Don't throw for tracking errors - log and continue
-        console.warn(chalk.yellow(`Usage tracking failed: HTTP ${response.status}`))
-        return { success: false, error: `HTTP ${response.status}` }
+      return {
+        success: true,
+        usageId: data.usageId,
+        message: data.message,
+        stats: data.stats,
       }
     } catch (error) {
       // Tracking errors should not fail the main operation
@@ -919,12 +882,11 @@ export class VDKHubClient {
       }
 
       // Verify token with Hub API
-      const response = await this.makeRequest('/auth/verify', {
+      const data = await this.makeRequest('/auth/verify', {
         method: 'GET',
         authenticated: true,
       })
 
-      const data = await response.json()
       return {
         authenticated: true,
         user: data.user,
@@ -951,7 +913,7 @@ export class VDKHubClient {
     const readline = await import('readline')
     const rl = readline.createInterface({
       input: process.stdin,
-      output: process.stdout
+      output: process.stdout,
     })
 
     return new Promise((resolve) => {
@@ -979,7 +941,7 @@ export class VDKHubClient {
       const readline = await import('readline')
       const rl = readline.createInterface({
         input: process.stdin,
-        output: process.stdout
+        output: process.stdout,
       })
 
       return new Promise((resolve, reject) => {
@@ -996,9 +958,9 @@ export class VDKHubClient {
             const testResponse = await this.makeRequest('/api/v1/user/profile', {
               method: 'GET',
               headers: {
-                'Authorization': `Bearer ${token.trim()}`
+                Authorization: `Bearer ${token.trim()}`,
               },
-              authenticated: false
+              authenticated: false,
             })
 
             if (testResponse) {
@@ -1041,13 +1003,11 @@ export class VDKHubClient {
         metadata: metadata,
       }
 
-      const response = await this.makeRequest('/blueprints/upload', {
+      const result = await this.makeRequest('/blueprints/upload', {
         method: 'POST',
         body: JSON.stringify(payload),
         authenticated: true,
       })
-
-      const result = await response.json()
 
       return {
         blueprintId: result.blueprint_id,
@@ -1062,7 +1022,12 @@ export class VDKHubClient {
 
       if (error.message.includes('fetch')) {
         // Network error - provide proper error handling
-        throw new VDKHubError('VDK Hub is currently unreachable. Please check your internet connection and try again.', 0, 'NETWORK_ERROR', true)
+        throw new VDKHubError(
+          'VDK Hub is currently unreachable. Please check your internet connection and try again.',
+          0,
+          'NETWORK_ERROR',
+          true
+        )
       }
       throw new VDKHubError(`Upload error: ${error.message}`, 0, 'UPLOAD_ERROR', true)
     }
@@ -1166,6 +1131,25 @@ export class VDKHubClient {
   }
 
   /**
+   * Create mock upload result for testing purposes
+   */
+  createMockUploadResult(blueprint, metadata = {}) {
+    const mockId = `mock-${Math.random().toString(36).substr(2, 9)}`
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours from now
+
+    return {
+      blueprintId: mockId,
+      tempUrl: `https://vdk.tools/temp/${mockId}`,
+      expiresAt: expiresAt.toISOString(),
+      confirmationRequired: true,
+      metadata: {
+        title: blueprint.title || 'Mock Blueprint',
+        ...metadata,
+      },
+    }
+  }
+
+  /**
    * Share team configuration with VDK Hub
    */
   async shareTeamConfig(teamId, config) {
@@ -1176,15 +1160,15 @@ export class VDKHubClient {
           main: config.main,
           rules: config.rules,
           settings: config.settings,
-          teamName: config.teamName
+          teamName: config.teamName,
         }),
-        authenticated: true
+        authenticated: true,
       })
 
       return {
         shareUrl: response.shareUrl,
         expiresAt: response.expiresAt,
-        lastUpdated: response.lastUpdated
+        lastUpdated: response.lastUpdated,
       }
     } catch (error) {
       throw new VDKHubError(`Failed to share team config: ${error.message}`, 0, 'TEAM_SHARE_ERROR', true)
@@ -1198,7 +1182,7 @@ export class VDKHubClient {
     try {
       const response = await this.makeRequest(`/teams/${teamId}/config`, {
         method: 'GET',
-        authenticated: true
+        authenticated: true,
       })
 
       return {
@@ -1207,7 +1191,7 @@ export class VDKHubClient {
         lastUpdated: response.lastUpdated,
         main: response.main,
         rules: response.rules,
-        settings: response.settings
+        settings: response.settings,
       }
     } catch (error) {
       if (error.statusCode === 404) {
@@ -1230,7 +1214,6 @@ export class VDKHubClient {
       hasApiKey: !!this.apiKey,
     }
   }
-
 }
 
 /**

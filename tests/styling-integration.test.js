@@ -57,7 +57,7 @@ describe('Styling Integration', () => {
     it('should integrate styling utilities in main CLI file', async () => {
       // Import and test that CLI file can load styling utilities
       expect(async () => {
-        // This simulates what happens when cli-new.js imports the styles
+        // This simulates what happens when cli.js imports the styles
         const styles = await import('../src/utils/cli-styles.js')
 
         // Test that we can create common UI components used in CLI

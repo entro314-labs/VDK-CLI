@@ -328,9 +328,83 @@ export const formatters = {
   },
 }
 
+/**
+ * Standard validation patterns for CLI commands
+ * Use these patterns in command getValidationRules() methods
+ */
+export const standardPatterns = {
+  /**
+   * Standard project validation pattern
+   */
+  projectValidation: {
+    projectPath: {
+      type: 'string',
+      pathType: 'directory',
+    },
+    outputPath: {
+      type: 'string',
+      pathType: 'writeable',
+    },
+    verbose: {
+      type: 'boolean',
+    },
+  },
+
+  /**
+   * Standard IDE validation pattern
+   */
+  ideValidation: {
+    ide: {
+      type: 'string',
+      enum: ['vscode', 'jetbrains', 'cursor', 'windsurf', 'zed', 'generic'],
+      validate: (value) => {
+        if (value) {
+          return value.toLowerCase() === value ? true : 'IDE name must be lowercase'
+        }
+        return true
+      },
+    },
+  },
+
+  /**
+   * Standard categories validation pattern
+   */
+  categoriesValidation: {
+    categories: {
+      type: 'array',
+      validate: (categories) => {
+        if (categories) {
+          const validCategories = ['development', 'testing', 'workflow', 'deployment', 'analysis']
+          const invalidCategories = categories.filter((cat) => !validCategories.includes(cat))
+          if (invalidCategories.length > 0) {
+            return `Invalid categories: ${invalidCategories.join(', ')}. Valid options: ${validCategories.join(', ')}`
+          }
+        }
+        return true
+      },
+    },
+  },
+
+  /**
+   * Standard VDK initialization check
+   */
+  vdkInitializedValidation: async (options) => {
+    const path = await import('node:path')
+    const { commandContext } = await import('../commands/shared/CommandContext.js')
+
+    const vdkConfigPath = path.join(options.projectPath, 'vdk.config.json')
+    const configExists = await commandContext.pathExists(vdkConfigPath)
+    if (!configExists) {
+      return `VDK not initialized in this project. Run 'vdk init' first.\nExpected config file: ${vdkConfigPath}`
+    }
+    return true
+  },
+}
+
 export default {
   validators,
   schema,
   fileValidation,
   formatters,
+  standardPatterns,
 }

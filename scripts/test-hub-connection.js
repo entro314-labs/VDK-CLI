@@ -11,7 +11,7 @@ async function testHubConnection() {
 
   // Test with local development hub
   const hubClient = new VDKHubClient({
-    hubUrl: 'https://vdk.tools' // Assuming local dev server
+    hubUrl: 'https://vdk.tools', // Assuming local dev server
   })
 
   try {
@@ -37,13 +37,12 @@ async function testHubConnection() {
       toolPreferences: { linting: true },
       aiAssistantChoices: { 'claude-code': true },
       environmentDetails: { targetIde: 'vscode' },
-      outputFormat: 'zip'
+      outputFormat: 'zip',
     })
     console.log('✅ Package generation:', generateResult.package.id)
     console.log('')
 
     console.log('🎉 All tests passed! VDK-Hub integration is working.')
-
   } catch (error) {
     console.error('❌ Test failed:', error.message)
 

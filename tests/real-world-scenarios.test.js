@@ -33,13 +33,7 @@ describe('Real World CLI Scenarios', () => {
     it('should migrate enterprise project with multiple IDE configurations', async () => {
       await setupEnterpriseProject(tempDir)
 
-      const result = await runCliCommand([
-        'migrate',
-        '--verbose',
-        '--verbose',
-        '--preserve-team-configs',
-        '--backup',
-      ])
+      const result = await runCliCommand(['migrate', '--verbose', '--verbose', '--preserve-team-configs', '--backup'])
 
       expect(result.exitCode).toBe(0)
       expect(result.stdout).toMatch(/Enterprise migration completed/)
@@ -995,7 +989,7 @@ async function setupValidBlueprint(tempDir) {
 }
 
 async function runCliCommand(args) {
-  const cliPath = path.join(__dirname, '..', 'cli-new.js')
+  const cliPath = path.join(__dirname, '..', 'cli.js')
 
   return new Promise((resolve) => {
     const child = spawn('node', [cliPath, ...args], {

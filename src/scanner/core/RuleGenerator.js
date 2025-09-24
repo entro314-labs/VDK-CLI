@@ -288,13 +288,14 @@ export class RuleGenerator {
       console.log(chalk.cyan(`🎯 Detected primary IDE: ${primaryIDE.name} (${primaryIDE.confidence} confidence)`))
 
       // Also mention other detected AI assistants
-      const aiAssistants = integrations.filter(i =>
-        i.name !== primaryIDE.name &&
-        (i.name.includes('Copilot') || i.name.includes('AI') || i.name.includes('Claude'))
+      const aiAssistants = integrations.filter(
+        (i) =>
+          i.name !== primaryIDE.name &&
+          (i.name.includes('Copilot') || i.name.includes('AI') || i.name.includes('Claude'))
       )
 
       if (aiAssistants.length > 0) {
-        const assistantNames = aiAssistants.map(a => a.name).join(', ')
+        const assistantNames = aiAssistants.map((a) => a.name).join(', ')
         console.log(chalk.gray(`🤖 Additional AI assistants detected: ${assistantNames}`))
       }
 
@@ -1609,8 +1610,7 @@ export class RuleGenerator {
           fwLower.includes('inquirer') ||
           fwLower.includes('chalk')
         )
-      }) ||
-      (projectSignature.projectType?.toLowerCase().includes('cli'))
+      }) || projectSignature.projectType?.toLowerCase().includes('cli')
 
     if (isCliProject) {
       // Boost CLI and Node.js related blueprints

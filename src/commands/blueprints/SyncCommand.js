@@ -4,9 +4,9 @@
  * Handles 'vdk sync' command - Sync blueprints from VDK Hub and repository
  */
 
+import { SyncOperations } from '../../shared/sync-operations.js'
 import { BaseCommand } from '../base/BaseCommand.js'
 import { commandContext } from '../shared/CommandContext.js'
-import { SyncOperations } from '../../shared/sync-operations.js'
 
 export class SyncCommand extends BaseCommand {
   constructor() {
@@ -44,7 +44,7 @@ export class SyncCommand extends BaseCommand {
       const hubResult = await syncOps.syncFromHub(rulesDir, {
         force: options.force,
         category: options.category,
-        type: 'blueprints'
+        type: 'blueprints',
       })
       hubSynced = hubResult.synced
       totalSynced += hubSynced
@@ -55,7 +55,7 @@ export class SyncCommand extends BaseCommand {
       const repoResult = await syncOps.syncFromRepository(rulesDir, {
         force: options.force,
         category: options.category,
-        type: 'blueprints'
+        type: 'blueprints',
       })
       repoSynced = repoResult.synced
       totalSynced += repoSynced
@@ -81,7 +81,6 @@ export class SyncCommand extends BaseCommand {
       repoSynced,
     }
   }
-
 
   /**
    * Display sync results

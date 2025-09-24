@@ -6,7 +6,9 @@
  */
 
 import fs from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
+import { Worker } from 'node:worker_threads'
 
 import chalk from 'chalk'
 import { glob } from 'glob'
@@ -28,6 +30,7 @@ export class ProjectScanner {
     this.useGitIgnore = options.useGitIgnore !== false // Default to true
     this.deepScan = options.deepScan
     this.verbose = options.verbose
+    this.concurrency = options.concurrency || Math.min(os.cpus().length, 8) // Max 8 workers
 
     // Initialize data structures for project information
     this.fileTypes = {}
@@ -118,47 +121,17 @@ export class ProjectScanner {
         absolute: true,
       })
 
-      // Analyze each file/directory
-      for (const filePath of allFiles) {
-        try {
-          const stats = await fs.stat(filePath)
-          const relPath = path.relative(this.projectPath, filePath)
+      // Analyze files and directories concurrently for better performance
+      const processedItems = await this.processFilesConcurrently(allFiles)
 
-          if (stats.isDirectory()) {
-            this.directories.push({
-              path: filePath,
-              relativePath: relPath,
-              name: path.basename(filePath),
-              depth: relPath.split(path.sep).length,
-              parentPath: path.dirname(filePath),
-            })
-          } else {
-            // File properties
-            const ext = path.extname(filePath).substring(1) // Remove the dot
-            const fileInfo = {
-              path: filePath,
-              relativePath: relPath,
-              name: path.basename(filePath),
-              extension: ext,
-              size: stats.size,
-              type: this.determineFileType(filePath),
-              modifiedTime: stats.mtime,
-              parentPath: path.dirname(filePath),
-            }
-
-            this.files.push(fileInfo)
-
-            // Track extension statistics
-            this.fileExtensions.add(ext)
-
-            // Track file type statistics
-            const fileType = fileInfo.type
-            this.fileTypes[fileType] = (this.fileTypes[fileType] || 0) + 1
-          }
-        } catch (error) {
-          if (this.verbose) {
-            console.warn(chalk.yellow(`Warning: Error analyzing file ${filePath}: ${error.message}`))
-          }
+      // Aggregate results
+      for (const item of processedItems) {
+        if (item.type === 'file') {
+          this.files.push(item.data)
+          this.fileExtensions.add(item.data.extension)
+          this.fileTypes[item.data.type] = (this.fileTypes[item.data.type] || 0) + 1
+        } else if (item.type === 'directory') {
+          this.directories.push(item.data)
         }
       }
 
@@ -396,5 +369,161 @@ export class ProjectScanner {
 
     // Fallback to 'unknown' type
     return 'unknown'
+  }
+
+  /**
+   * Process files concurrently using worker threads for better performance
+   * @param {Array<string>} filePaths - Array of file paths to process
+   * @returns {Promise<Array>} Array of processed file/directory information
+   */
+  async processFilesConcurrently(filePaths) {
+    if (filePaths.length === 0) {
+      return []
+    }
+
+    // For small file counts, use synchronous processing to avoid overhead
+    if (filePaths.length < 20) {
+      return this.processFilesSync(filePaths)
+    }
+
+    if (this.verbose) {
+      console.log(chalk.gray(`Processing ${filePaths.length} files with ${this.concurrency} workers...`))
+    }
+
+    // Split files into chunks for parallel processing
+    const chunkSize = Math.ceil(filePaths.length / this.concurrency)
+    const chunks = []
+
+    for (let i = 0; i < filePaths.length; i += chunkSize) {
+      chunks.push(filePaths.slice(i, i + chunkSize))
+    }
+
+    try {
+      // Process chunks in parallel using Promise.all for concurrent execution
+      const chunkResults = await Promise.all(chunks.map((chunk, index) => this.processFileChunk(chunk, index)))
+
+      // Flatten results
+      return chunkResults.flat()
+    } catch (error) {
+      console.warn(chalk.yellow(`Warning: Concurrent processing failed, falling back to sync: ${error.message}`))
+      return this.processFilesSync(filePaths)
+    }
+  }
+
+  /**
+   * Process a chunk of files synchronously
+   * @param {Array<string>} filePaths - Array of file paths to process
+   * @returns {Promise<Array>} Array of processed file information
+   */
+  async processFilesSync(filePaths) {
+    const results = []
+
+    for (const filePath of filePaths) {
+      try {
+        const stats = await fs.stat(filePath)
+        const relPath = path.relative(this.projectPath, filePath)
+
+        if (stats.isDirectory()) {
+          results.push({
+            type: 'directory',
+            data: {
+              path: filePath,
+              relativePath: relPath,
+              name: path.basename(filePath),
+              depth: relPath.split(path.sep).length,
+              parentPath: path.dirname(filePath),
+            },
+          })
+        } else {
+          // File properties
+          const ext = path.extname(filePath).substring(1) // Remove the dot
+          results.push({
+            type: 'file',
+            data: {
+              path: filePath,
+              relativePath: relPath,
+              name: path.basename(filePath),
+              extension: ext,
+              size: stats.size,
+              type: this.determineFileType(filePath),
+              modifiedTime: stats.mtime,
+              parentPath: path.dirname(filePath),
+            },
+          })
+        }
+      } catch (error) {
+        if (this.verbose) {
+          console.warn(chalk.yellow(`Warning: Error analyzing file ${filePath}: ${error.message}`))
+        }
+      }
+    }
+
+    return results
+  }
+
+  /**
+   * Process a chunk of files using async concurrency
+   * @param {Array<string>} chunk - Chunk of file paths to process
+   * @param {number} chunkIndex - Index of the chunk for debugging
+   * @returns {Promise<Array>} Array of processed file information
+   */
+  async processFileChunk(chunk, chunkIndex) {
+    if (this.verbose && chunk.length > 50) {
+      console.log(chalk.gray(`Processing chunk ${chunkIndex + 1} with ${chunk.length} files...`))
+    }
+
+    // Process files in this chunk with limited concurrency to avoid overwhelming filesystem
+    const BATCH_SIZE = 10
+    const results = []
+
+    for (let i = 0; i < chunk.length; i += BATCH_SIZE) {
+      const batch = chunk.slice(i, i + BATCH_SIZE)
+
+      const batchPromises = batch.map(async (filePath) => {
+        try {
+          const stats = await fs.stat(filePath)
+          const relPath = path.relative(this.projectPath, filePath)
+
+          if (stats.isDirectory()) {
+            return {
+              type: 'directory',
+              data: {
+                path: filePath,
+                relativePath: relPath,
+                name: path.basename(filePath),
+                depth: relPath.split(path.sep).length,
+                parentPath: path.dirname(filePath),
+              },
+            }
+          } else {
+            // File properties
+            const ext = path.extname(filePath).substring(1) // Remove the dot
+            return {
+              type: 'file',
+              data: {
+                path: filePath,
+                relativePath: relPath,
+                name: path.basename(filePath),
+                extension: ext,
+                size: stats.size,
+                type: this.determineFileType(filePath),
+                modifiedTime: stats.mtime,
+                parentPath: path.dirname(filePath),
+              },
+            }
+          }
+        } catch (error) {
+          if (this.verbose) {
+            console.warn(chalk.yellow(`Warning: Error analyzing file ${filePath}: ${error.message}`))
+          }
+          return null
+        }
+      })
+
+      const batchResults = await Promise.all(batchPromises)
+      results.push(...batchResults.filter((result) => result !== null))
+    }
+
+    return results
   }
 }

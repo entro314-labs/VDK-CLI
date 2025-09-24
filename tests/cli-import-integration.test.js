@@ -26,8 +26,8 @@ vi.mock('../src/integrations/index.js', () => ({
     getAllIntegrations: vi.fn().mockReturnValue([
       {
         name: 'Claude Code CLI',
-        detectUsage: vi.fn().mockReturnValue({ isUsed: true, confidence: 'high' })
-      }
+        detectUsage: vi.fn().mockReturnValue({ isUsed: true, confidence: 'high' }),
+      },
     ]),
   }),
 }))
@@ -678,7 +678,7 @@ async function setupMemoryIntensiveImport(tempDir) {
 }
 
 async function runCliCommand(args) {
-  const cliPath = path.join(__dirname, '..', 'cli-new.js')
+  const cliPath = path.join(__dirname, '..', 'cli.js')
 
   return new Promise((resolve) => {
     // Suppress dotenv output for cleaner test results

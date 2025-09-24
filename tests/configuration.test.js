@@ -124,7 +124,7 @@ describe('Configuration & Environment', () => {
   describe('CLI Configuration Loading', () => {
     it('should load dotenv configuration', async () => {
       // Test that CLI loads environment from .env files
-      const cliSource = await fs.readFile(path.join(global.TEST_ROOT, 'cli-new.js'), 'utf8')
+      const cliSource = await fs.readFile(path.join(global.TEST_ROOT, 'cli.js'), 'utf8')
 
       expect(cliSource).toContain('dotenv.config')
       expect(cliSource).toContain('.env.local')
@@ -132,7 +132,7 @@ describe('Configuration & Environment', () => {
     })
 
     it('should read package.json version', async () => {
-      const cliSource = await fs.readFile(path.join(global.TEST_ROOT, 'cli-new.js'), 'utf8')
+      const cliSource = await fs.readFile(path.join(global.TEST_ROOT, 'cli.js'), 'utf8')
 
       expect(cliSource).toContain("require('./package.json')")
       expect(cliSource).toContain('pkg.version')

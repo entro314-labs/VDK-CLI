@@ -195,6 +195,12 @@ describe('VDKHubClient', () => {
 
       fetch.mockResolvedValueOnce({
         ok: true,
+        headers: {
+          get: vi.fn((header) => {
+            if (header === 'content-type') return 'application/json'
+            return null
+          }),
+        },
         json: vi.fn().mockResolvedValue(mockResponse),
       })
 
@@ -260,6 +266,12 @@ describe('VDKHubClient', () => {
 
       fetch.mockResolvedValueOnce({
         ok: true,
+        headers: {
+          get: vi.fn((header) => {
+            if (header === 'content-type') return 'application/json'
+            return null
+          }),
+        },
         json: vi.fn().mockResolvedValue(mockResponse),
       })
 
@@ -418,9 +430,9 @@ describe('VDKHubClient', () => {
         command: 'test',
       })
 
-      await expect(hubClient.sendUsageTelemetry(largeEventArray)).rejects.toThrow(
-        'Usage telemetry batch size cannot exceed 50 events'
-      )
+      const result = await hubClient.sendUsageTelemetry(largeEventArray)
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Usage telemetry batch size cannot exceed 50 events')
     })
 
     it('should handle telemetry failures gracefully', async () => {
@@ -461,6 +473,12 @@ describe('VDKHubClient', () => {
 
       fetch.mockResolvedValueOnce({
         ok: true,
+        headers: {
+          get: vi.fn((header) => {
+            if (header === 'content-type') return 'application/json'
+            return null
+          }),
+        },
         json: vi.fn().mockResolvedValue({ message: 'Error recorded' }),
       })
 
@@ -479,9 +497,9 @@ describe('VDKHubClient', () => {
     it('should enforce error telemetry batch limits', async () => {
       const largeErrorArray = Array(21).fill({ error_type: 'test' })
 
-      await expect(hubClient.sendErrorTelemetry(largeErrorArray)).rejects.toThrow(
-        'Error telemetry batch size cannot exceed 20 events'
-      )
+      const result = await hubClient.sendErrorTelemetry(largeErrorArray)
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Error telemetry batch size cannot exceed 20 events')
     })
 
     it('should send integration telemetry', async () => {
@@ -496,6 +514,12 @@ describe('VDKHubClient', () => {
 
       fetch.mockResolvedValueOnce({
         ok: true,
+        headers: {
+          get: vi.fn((header) => {
+            if (header === 'content-type') return 'application/json'
+            return null
+          }),
+        },
         json: vi.fn().mockResolvedValue({ message: 'Integration tracked' }),
       })
 
@@ -514,9 +538,9 @@ describe('VDKHubClient', () => {
     it('should enforce integration telemetry batch limits', async () => {
       const largeIntegrationArray = Array(31).fill({ integration_type: 'test' })
 
-      await expect(hubClient.sendIntegrationTelemetry(largeIntegrationArray)).rejects.toThrow(
-        'Integration telemetry batch size cannot exceed 30 events'
-      )
+      const result = await hubClient.sendIntegrationTelemetry(largeIntegrationArray)
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Integration telemetry batch size cannot exceed 30 events')
     })
   })
 
@@ -545,6 +569,12 @@ describe('VDKHubClient', () => {
 
       fetch.mockResolvedValueOnce({
         ok: true,
+        headers: {
+          get: vi.fn((header) => {
+            if (header === 'content-type') return 'application/json'
+            return null
+          }),
+        },
         json: vi.fn().mockResolvedValue(mockResponse),
       })
 
@@ -711,6 +741,12 @@ describe('VDKHubClient', () => {
 
       fetch.mockResolvedValueOnce({
         ok: true,
+        headers: {
+          get: vi.fn((header) => {
+            if (header === 'content-type') return 'application/json'
+            return null
+          }),
+        },
         json: vi.fn().mockResolvedValue(mockResponse),
       })
 
@@ -771,6 +807,13 @@ describe('VDKHubClient', () => {
       }
 
       fetch.mockResolvedValueOnce({
+        ok: true,
+        headers: {
+          get: vi.fn((header) => {
+            if (header === 'content-type') return 'application/json'
+            return null
+          }),
+        },
         json: vi.fn().mockResolvedValue(mockResponse),
       })
 
@@ -867,10 +910,16 @@ describe('VDKHubClient', () => {
       fetch.mockResolvedValueOnce({
         ok: false,
         status: 429,
+        headers: {
+          get: vi.fn((header) => {
+            if (header === 'content-type') return 'application/json'
+            return null
+          }),
+        },
         json: vi.fn().mockResolvedValue({ error: 'Rate limited' }),
       })
 
-      await expect(hubClient.makeRequest('/test')).rejects.toThrow('Rate limit exceeded')
+      await expect(hubClient.makeRequest('/test', { skipRetry: true })).rejects.toThrow('Rate limit exceeded')
     })
 
     it('should retry failed requests', async () => {
@@ -1023,9 +1072,23 @@ describe('VDKHubClient', () => {
           json: vi.fn().mockResolvedValue(pingResponse),
         })
         .mockResolvedValueOnce({
+          ok: true,
+          headers: {
+            get: vi.fn((header) => {
+              if (header === 'content-type') return 'application/json'
+              return null
+            }),
+          },
           json: vi.fn().mockResolvedValue(authResponse),
         })
         .mockResolvedValueOnce({
+          ok: true,
+          headers: {
+            get: vi.fn((header) => {
+              if (header === 'content-type') return 'application/json'
+              return null
+            }),
+          },
           json: vi.fn().mockResolvedValue(uploadResponse),
         })
 

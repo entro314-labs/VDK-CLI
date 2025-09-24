@@ -82,7 +82,7 @@ describe('Realistic IDE/AI Scenarios', () => {
       expect(cursorRuleFiles.length).toBeGreaterThan(0)
 
       // Check for React Native specific rules
-      const reactNativeRule = cursorRuleFiles.find(file => file.includes('react-native'))
+      const reactNativeRule = cursorRuleFiles.find((file) => file.includes('react-native'))
       expect(reactNativeRule).toBeTruthy()
 
       const reactNativeContent = await fs.readFile(path.join(cursorRulesDir, reactNativeRule), 'utf-8')
@@ -111,7 +111,7 @@ describe('Realistic IDE/AI Scenarios', () => {
       expect(windsurfRuleFiles.length).toBeGreaterThan(0)
 
       // Check for Astro specific rules
-      const astroRule = windsurfRuleFiles.find(file => file.includes('astro'))
+      const astroRule = windsurfRuleFiles.find((file) => file.includes('astro'))
       expect(astroRule).toBeTruthy()
 
       const astroContent = await fs.readFile(path.join(windsurfRulesDir, astroRule), 'utf-8')
@@ -137,8 +137,8 @@ describe('Realistic IDE/AI Scenarios', () => {
       expect(generatedFiles.length).toBeGreaterThan(0)
 
       // Should have TypeScript rules (since the test setup includes TypeScript)
-      const hasTypescriptRule = generatedFiles.some(file =>
-        file.includes('typescript') || file.includes('modern-typescript')
+      const hasTypescriptRule = generatedFiles.some(
+        (file) => file.includes('typescript') || file.includes('modern-typescript')
       )
       expect(hasTypescriptRule).toBe(true)
 
@@ -168,12 +168,8 @@ describe('Realistic IDE/AI Scenarios', () => {
       // Verify FastAPI/Python was properly detected by checking generated files
       const vdkRulesDir = path.join(tempDir, '.vdk', 'rules')
       const generatedFiles = await fs.readdir(vdkRulesDir)
-      const hasFastAPIRule = generatedFiles.some(file =>
-        file.includes('fastapi') || file.includes('FastAPI')
-      )
-      const hasPythonRule = generatedFiles.some(file =>
-        file.includes('python')
-      )
+      const hasFastAPIRule = generatedFiles.some((file) => file.includes('fastapi') || file.includes('FastAPI'))
+      const hasPythonRule = generatedFiles.some((file) => file.includes('python'))
       expect(hasFastAPIRule).toBe(true)
       expect(hasPythonRule).toBe(true)
 
@@ -184,16 +180,12 @@ describe('Realistic IDE/AI Scenarios', () => {
 
       // Verify FastAPI/Python rules were generated
       // Check the generated VDK rules contain FastAPI and Python content
-      const generatedFastAPIFiles = generatedFiles.filter(file =>
-        file.includes('fastapi') || file.includes('python')
-      )
+      const generatedFastAPIFiles = generatedFiles.filter((file) => file.includes('fastapi') || file.includes('python'))
       expect(generatedFastAPIFiles.length).toBeGreaterThan(0)
 
       // Verify at least one file contains FastAPI content
       if (generatedFastAPIFiles.length > 0) {
-        const fastAPIContent = await fs.readFile(
-          path.join(vdkRulesDir, generatedFastAPIFiles[0]), 'utf-8'
-        )
+        const fastAPIContent = await fs.readFile(path.join(vdkRulesDir, generatedFastAPIFiles[0]), 'utf-8')
         expect(fastAPIContent).toMatch(/FastAPI|Python/i)
       }
     })
@@ -975,7 +967,7 @@ export default App;`
 }
 
 async function runCliCommand(args) {
-  const cliPath = path.join(__dirname, '..', 'cli-new.js')
+  const cliPath = path.join(__dirname, '..', 'cli.js')
 
   return new Promise((resolve) => {
     const child = spawn('node', [cliPath, ...args], {

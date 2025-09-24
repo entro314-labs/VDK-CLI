@@ -7,6 +7,7 @@
 
 import path from 'node:path'
 import { runScanner } from '../../scanner/index.js'
+import { standardPatterns } from '../../utils/validation.js'
 import { BaseCommand } from '../base/BaseCommand.js'
 import { commandContext } from '../shared/CommandContext.js'
 
@@ -29,11 +30,7 @@ export class ScanCommand extends BaseCommand {
         '**/dist/**',
         '**/build/**',
       ])
-      .option(
-        '--use-gitignore',
-        'Automatically parse .gitignore files for additional ignore patterns',
-        true
-      )
+      .option('--use-gitignore', 'Automatically parse .gitignore files for additional ignore patterns', true)
       .option('--incremental', 'Only scan changed files since last scan', false)
       .option('--force', 'Force full rescan even if no changes detected', false)
       .option('-v, --verbose', 'Enable verbose output for debugging', false)
@@ -44,28 +41,42 @@ export class ScanCommand extends BaseCommand {
   }
 
   /**
-   * Validate command options
+   * Get validation rules for ScanCommand
    */
-  validateOptions(options) {
-    // Validate project path exists
-    if (!commandContext.pathExists(options.projectPath)) {
-      this.exitWithError(`Project path does not exist: ${options.projectPath}`)
-    }
+  getValidationRules() {
+    return {
+      defaults: {
+        projectPath: process.cwd(),
+        outputPath: './.vdk/rules',
+        useGitignore: true,
+        incremental: false,
+        force: false,
+        verbose: false,
+      },
+      fields: {
+        ...standardPatterns.projectValidation,
+        ...standardPatterns.ideValidation,
+        ...standardPatterns.categoriesValidation,
+        ignorePattern: {
+          type: 'array',
+        },
+      },
+      crossValidation: async (options) => {
+        const errors = []
 
-    // Check if VDK is initialized in this project
-    const vdkConfigPath = path.join(options.projectPath, 'vdk.config.json')
-    if (!commandContext.pathExists(vdkConfigPath)) {
-      this.exitWithError(
-        `VDK not initialized in this project. Run 'vdk init' first.\nExpected config file: ${vdkConfigPath}`
-      )
-    }
+        // Use standard VDK initialization check
+        const vdkCheck = await standardPatterns.vdkInitializedValidation(options)
+        if (vdkCheck !== true) {
+          errors.push(vdkCheck)
+        }
 
-    // Validate IDE if specified
-    if (options.ide) {
-      const supportedIdes = ['vscode', 'jetbrains', 'cursor', 'windsurf', 'zed', 'generic']
-      if (!supportedIdes.includes(options.ide.toLowerCase())) {
-        this.exitWithError(`Unsupported IDE: ${options.ide}. Supported IDEs: ${supportedIdes.join(', ')}`)
-      }
+        // Check conflicting options
+        if (options.incremental && options.force) {
+          errors.push('Cannot use --incremental with --force (force implies full scan)')
+        }
+
+        return errors.length > 0 ? errors : true
+      },
     }
   }
 
@@ -76,7 +87,7 @@ export class ScanCommand extends BaseCommand {
     await commandContext.initialize()
     this.showHeader()
 
-    this.validateOptions(options)
+    await this.validateOptions(options, this.getValidationRules())
 
     // Load existing VDK config
     const existingConfig = await this.loadVdkConfig(options.projectPath)

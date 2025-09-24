@@ -5,8 +5,8 @@
  * Eliminates duplication between SyncCommand and TeamSyncCommand.
  */
 
-import fs from 'node:fs/promises'
 import { execSync } from 'node:child_process'
+import fs from 'node:fs/promises'
 import path from 'node:path'
 import { downloadRule, fetchRuleList } from '../blueprints-client.js'
 
@@ -104,7 +104,7 @@ export class SyncOperations {
       synced: appliedFiles.length,
       appliedFiles,
       teamId: finalTeamId,
-      lastUpdated: teamConfig.lastUpdated
+      lastUpdated: teamConfig.lastUpdated,
     }
   }
 
@@ -213,7 +213,12 @@ export class SyncOperations {
 
     for (const file of filesToCheck) {
       const fullPath = path.join(projectPath, file)
-      if (await fs.access(fullPath).then(() => true).catch(() => false)) {
+      if (
+        await fs
+          .access(fullPath)
+          .then(() => true)
+          .catch(() => false)
+      ) {
         vdkFiles.push(file)
       }
     }
@@ -243,15 +248,17 @@ export class SyncOperations {
    * Create backup before sync operations (shared logic)
    */
   async createBackup(targetPath, type = 'vdk') {
-    if (!await fs.access(targetPath).then(() => true).catch(() => false)) {
+    if (
+      !(await fs
+        .access(targetPath)
+        .then(() => true)
+        .catch(() => false))
+    ) {
       return null
     }
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-    const backupPath = path.join(
-      path.dirname(targetPath),
-      `.${type}-backup-${timestamp}`
-    )
+    const backupPath = path.join(path.dirname(targetPath), `.${type}-backup-${timestamp}`)
 
     execSync(`cp -r "${targetPath}" "${backupPath}"`)
     this.command.logInfo(`📂 Configuration backed up to: .${type}-backup-${timestamp}`)
@@ -267,11 +274,16 @@ export class SyncOperations {
 
     const conflicts = []
 
-    if (await fs.access(targetPath).then(() => true).catch(() => false)) {
+    if (
+      await fs
+        .access(targetPath)
+        .then(() => true)
+        .catch(() => false)
+    ) {
       const stats = await fs.stat(targetPath)
       if (stats.isDirectory()) {
         const files = await fs.readdir(targetPath)
-        files.forEach(file => {
+        files.forEach((file) => {
           conflicts.push(path.join(targetPath, file))
         })
       } else {

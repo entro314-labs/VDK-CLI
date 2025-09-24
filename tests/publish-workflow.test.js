@@ -302,7 +302,7 @@ async function setupHubAuth(tempDir) {
 
   const authConfig = {
     authenticated: false,
-    test_mode: true
+    test_mode: true,
   }
 
   await fs.writeFile(path.join(vdkDir, 'auth.json'), JSON.stringify(authConfig, null, 2))
@@ -475,23 +475,19 @@ Always consider accessibility and user experience in your implementations.
 async function setupJSONConfigFile(tempDir) {
   const ruleFile = path.join(tempDir, 'copilot-config.json')
   const content = {
-    "version": "1.0",
-    "rules": [
-      "Use TypeScript for type safety",
-      "Implement proper error handling",
-      "Follow React best practices"
-    ],
-    "settings": {
-      "strictMode": true,
-      "linting": "eslint",
-      "formatting": "prettier"
+    version: '1.0',
+    rules: ['Use TypeScript for type safety', 'Implement proper error handling', 'Follow React best practices'],
+    settings: {
+      strictMode: true,
+      linting: 'eslint',
+      formatting: 'prettier',
     },
-    "examples": [
+    examples: [
       {
-        "name": "React Component",
-        "code": "const Component = () => <div>Hello</div>;"
-      }
-    ]
+        name: 'React Component',
+        code: 'const Component = () => <div>Hello</div>;',
+      },
+    ],
   }
   await fs.writeFile(ruleFile, JSON.stringify(content, null, 2))
   return ruleFile
@@ -545,18 +541,18 @@ async function setupXMLRulesFile(tempDir) {
 
 async function setupProjectWithPackageJson(tempDir) {
   const packageJson = {
-    "name": "test-project",
-    "version": "1.0.0",
-    "description": "Test project for publishing workflow",
-    "main": "index.js",
-    "dependencies": {
-      "react": "^18.0.0",
-      "typescript": "^5.0.0"
+    name: 'test-project',
+    version: '1.0.0',
+    description: 'Test project for publishing workflow',
+    main: 'index.js',
+    dependencies: {
+      react: '^18.0.0',
+      typescript: '^5.0.0',
     },
-    "devDependencies": {
-      "@types/react": "^18.0.0",
-      "eslint": "^8.0.0"
-    }
+    devDependencies: {
+      '@types/react': '^18.0.0',
+      eslint: '^8.0.0',
+    },
   }
   await fs.writeFile(path.join(tempDir, 'package.json'), JSON.stringify(packageJson, null, 2))
 }
@@ -613,7 +609,7 @@ async function setupBinaryFile(tempDir) {
 // Remove unused functions - all replaced above
 
 async function runCliCommand(args) {
-  const cliPath = path.join(__dirname, '..', 'cli-new.js')
+  const cliPath = path.join(__dirname, '..', 'cli.js')
 
   return new Promise((resolve) => {
     const child = spawn('node', [cliPath, ...args], {

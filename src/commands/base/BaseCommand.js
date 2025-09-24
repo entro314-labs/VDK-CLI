@@ -7,6 +7,8 @@
 
 import { isHubAvailable, quickHubOperations } from '../../hub/index.js'
 import { boxes, colors, format, headers, spinners, status } from '../../utils/cli-styles.js'
+import { validators } from '../../utils/validation.js'
+import { commandContext } from '../shared/CommandContext.js'
 
 export class BaseCommand {
   constructor(name, description) {
@@ -125,9 +127,220 @@ export class BaseCommand {
   }
 
   /**
-   * Validate required options
+   * Unified validation framework for command options
+   * @param {Object} options - Command options to validate
+   * @param {Object} validationRules - Validation rules object
+   * @returns {Object} Validation result with errors
    */
-  validateOptions(options, requiredFields) {
+  async validateOptions(options, validationRules = {}) {
+    const errors = []
+    const warnings = []
+
+    // Apply defaults if specified
+    if (validationRules.defaults) {
+      for (const [key, defaultValue] of Object.entries(validationRules.defaults)) {
+        if (options[key] === undefined || options[key] === null) {
+          options[key] = defaultValue
+        }
+      }
+    }
+
+    // Check required fields
+    if (validationRules.required) {
+      for (const field of validationRules.required) {
+        if (!options[field] && options[field] !== 0 && options[field] !== false) {
+          errors.push(`Missing required option: --${field}`)
+        }
+      }
+    }
+
+    // Validate field types and formats
+    if (validationRules.fields) {
+      for (const [field, rules] of Object.entries(validationRules.fields)) {
+        const value = options[field]
+
+        // Skip validation if field is not provided and not required
+        if (value === undefined || value === null) continue
+
+        // Type validation
+        if (rules.type) {
+          if (!this.validateFieldType(value, rules.type)) {
+            errors.push(`Invalid type for --${field}: expected ${rules.type}`)
+            continue
+          }
+        }
+
+        // Format validation using validators
+        if (rules.format) {
+          const isValid = await this.validateFieldFormat(value, rules.format)
+          if (!isValid) {
+            errors.push(`Invalid format for --${field}: expected ${rules.format}`)
+            continue
+          }
+        }
+
+        // Enum validation
+        if (rules.enum) {
+          if (!rules.enum.includes(value)) {
+            errors.push(`Invalid value for --${field}: must be one of [${rules.enum.join(', ')}]`)
+            continue
+          }
+        }
+
+        // Path validation
+        if (rules.pathType) {
+          const pathValid = await this.validatePath(value, rules.pathType)
+          if (!pathValid.valid) {
+            errors.push(`Invalid path for --${field}: ${pathValid.error}`)
+            continue
+          }
+        }
+
+        // Custom validation function
+        if (rules.validate && typeof rules.validate === 'function') {
+          try {
+            const customResult = await rules.validate(value, options)
+            if (customResult !== true) {
+              errors.push(`Validation failed for --${field}: ${customResult || 'Invalid value'}`)
+            }
+          } catch (error) {
+            errors.push(`Validation error for --${field}: ${error.message}`)
+          }
+        }
+
+        // Warning checks
+        if (rules.warn && typeof rules.warn === 'function') {
+          try {
+            const warnResult = await rules.warn(value, options)
+            if (warnResult !== true && warnResult) {
+              warnings.push(`Warning for --${field}: ${warnResult}`)
+            }
+          } catch (error) {
+            warnings.push(`Warning check failed for --${field}: ${error.message}`)
+          }
+        }
+      }
+    }
+
+    // Cross-field validation
+    if (validationRules.crossValidation && typeof validationRules.crossValidation === 'function') {
+      try {
+        const crossResult = await validationRules.crossValidation(options)
+        if (crossResult !== true && crossResult) {
+          if (Array.isArray(crossResult)) {
+            errors.push(...crossResult)
+          } else {
+            errors.push(crossResult)
+          }
+        }
+      } catch (error) {
+        errors.push(`Cross-validation error: ${error.message}`)
+      }
+    }
+
+    // Show warnings if any
+    if (warnings.length > 0 && this.verbose) {
+      warnings.forEach((warning) => this.logWarning(warning))
+    }
+
+    // Exit with errors if validation failed
+    if (errors.length > 0) {
+      const errorMessage = `Validation failed:\n${errors.map((err) => `  • ${err}`).join('\n')}\n\nUse --help for usage information`
+      this.exitWithError(errorMessage)
+    }
+
+    return { valid: true, warnings }
+  }
+
+  /**
+   * Validate field type
+   * @private
+   */
+  validateFieldType(value, expectedType) {
+    switch (expectedType) {
+      case 'string':
+        return typeof value === 'string'
+      case 'number':
+        return typeof value === 'number' && !isNaN(value)
+      case 'boolean':
+        return typeof value === 'boolean'
+      case 'array':
+        return Array.isArray(value)
+      case 'object':
+        return typeof value === 'object' && value !== null && !Array.isArray(value)
+      default:
+        return true
+    }
+  }
+
+  /**
+   * Validate field format using validators
+   * @private
+   */
+  async validateFieldFormat(value, format) {
+    switch (format) {
+      case 'email':
+        return validators.email(value)
+      case 'url':
+        return validators.url(value)
+      case 'json':
+        return validators.json(value)
+      case 'semver':
+        return validators.semver(value)
+      case 'ruleId':
+        return validators.ruleId(value)
+      case 'platform':
+        return validators.platform(value)
+      default:
+        return true
+    }
+  }
+
+  /**
+   * Validate path existence and type
+   * @private
+   */
+  async validatePath(path, pathType) {
+    try {
+      switch (pathType) {
+        case 'file': {
+          const fileExists = await commandContext.pathExists(path)
+          if (!fileExists) {
+            return { valid: false, error: `File does not exist: ${path}` }
+          }
+          return { valid: true }
+        }
+
+        case 'directory': {
+          const dirExists = await commandContext.pathExists(path)
+          if (!dirExists) {
+            return { valid: false, error: `Directory does not exist: ${path}` }
+          }
+          return { valid: true }
+        }
+
+        case 'writeable': {
+          // Check if parent directory exists for writeable paths
+          const parentDir = commandContext.resolvePath(path).split('/').slice(0, -1).join('/')
+          const parentExists = await commandContext.pathExists(parentDir)
+          if (!parentExists) {
+            return { valid: false, error: `Parent directory does not exist: ${parentDir}` }
+          }
+          return { valid: true }
+        }
+
+        default:
+          return { valid: true }
+      }
+    } catch (error) {
+      return { valid: false, error: error.message }
+    }
+  }
+
+  /**
+   * Legacy validation method for backwards compatibility
+   */
+  validateRequiredOptions(options, requiredFields) {
     const missing = requiredFields.filter((field) => !options[field])
     if (missing.length > 0) {
       this.exitWithError(`Missing required options: ${missing.join(', ')}\nUse --help for usage information`)

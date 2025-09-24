@@ -34,13 +34,12 @@ describe('Hub Generate Command Integration', () => {
       const requirements = 'React TypeScript project with testing setup'
 
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements,
-        '--tech-stack',
+        '--stack',
         'react,typescript,jest',
-        '--output',
+        '--format',
         'bash',
       ])
 
@@ -71,15 +70,14 @@ describe('Hub Generate Command Integration', () => {
       `
 
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements.trim(),
-        '--tech-stack',
+        '--stack',
         'react,nodejs,express,postgresql,docker,jwt',
         '--complexity',
         'high',
-        '--output',
+        '--format',
         'config',
       ])
 
@@ -106,15 +104,14 @@ describe('Hub Generate Command Integration', () => {
       const requirements = 'Cross-platform mobile app with React Native and Firebase'
 
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements,
-        '--tech-stack',
+        '--stack',
         'react-native,firebase,expo',
         '--platform',
         'mobile',
-        '--output',
+        '--format',
         'zip',
       ])
 
@@ -135,15 +132,14 @@ describe('Hub Generate Command Integration', () => {
       const requirements = 'Machine learning pipeline with Python, TensorFlow, and MLflow'
 
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements,
-        '--tech-stack',
+        '--stack',
         'python,tensorflow,mlflow,jupyter',
         '--domain',
         'ml',
-        '--output',
+        '--format',
         'bash',
       ])
 
@@ -170,13 +166,12 @@ describe('Hub Generate Command Integration', () => {
       const requirements = 'Simple Node.js API server'
 
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements,
-        '--tech-stack',
+        '--stack',
         'nodejs,express',
-        '--output',
+        '--format',
         'bash',
       ])
 
@@ -199,13 +194,12 @@ describe('Hub Generate Command Integration', () => {
       const requirements = 'Python Django web application'
 
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements,
-        '--tech-stack',
+        '--stack',
         'python,django,postgresql',
-        '--output',
+        '--format',
         'zip',
       ])
 
@@ -229,13 +223,12 @@ describe('Hub Generate Command Integration', () => {
       const requirements = 'Microservices architecture with Docker and Kubernetes'
 
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements,
-        '--tech-stack',
+        '--stack',
         'docker,kubernetes,nodejs,redis',
-        '--output',
+        '--format',
         'config',
       ])
 
@@ -255,13 +248,12 @@ describe('Hub Generate Command Integration', () => {
       const requirements = 'Full-stack TypeScript application'
 
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements,
-        '--tech-stack',
+        '--stack',
         'typescript,react,nodejs',
-        '--output',
+        '--format',
         'bash,zip,config',
       ])
 
@@ -293,12 +285,11 @@ describe('Hub Generate Command Integration', () => {
       `
 
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements.trim(),
         '--analyze-requirements',
-        '--output',
+        '--format',
         'config',
       ])
 
@@ -325,12 +316,11 @@ describe('Hub Generate Command Integration', () => {
       `
 
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements.trim(),
         '--verbose-stack',
-        '--output',
+        '--format',
         'bash',
       ])
 
@@ -353,12 +343,11 @@ describe('Hub Generate Command Integration', () => {
       `
 
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements,
         '--resolve-conflicts',
-        '--output',
+        '--format',
         'config',
       ])
 
@@ -382,12 +371,11 @@ describe('Hub Generate Command Integration', () => {
       `
 
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements,
         '--validate-feasibility',
-        '--output',
+        '--format',
         'config',
       ])
 
@@ -410,14 +398,13 @@ describe('Hub Generate Command Integration', () => {
 
       // First generation
       const first = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements,
-        '--tech-stack',
+        '--stack',
         'react,typescript',
         '--cache',
-        '--output',
+        '--format',
         'bash',
       ])
 
@@ -426,14 +413,13 @@ describe('Hub Generate Command Integration', () => {
 
       // Second generation should use cache
       const second = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements,
-        '--tech-stack',
+        '--stack',
         'react,typescript',
         '--use-cache',
-        '--output',
+        '--format',
         'bash',
       ])
 
@@ -453,14 +439,13 @@ describe('Hub Generate Command Integration', () => {
       const requirements = 'Vue.js application with Vuetify'
 
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements,
-        '--tech-stack',
+        '--stack',
         'vuejs,vuetify',
         '--share-to-hub',
-        '--output',
+        '--format',
         'config',
       ])
 
@@ -479,14 +464,13 @@ describe('Hub Generate Command Integration', () => {
 
     it('should download and customize community packages', async () => {
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--from-community',
         'react-dashboard-template',
         '--customize',
         '--requirements',
         'Add user authentication',
-        '--output',
+        '--format',
         'zip',
       ])
 
@@ -518,15 +502,14 @@ describe('Hub Generate Command Integration', () => {
 
       const startTime = Date.now()
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements.trim(),
-        '--tech-stack',
+        '--stack',
         'kubernetes,docker,nodejs,postgresql,redis,prometheus',
         '--scale',
         'enterprise',
-        '--output',
+        '--format',
         'config',
       ])
       const duration = Date.now() - startTime
@@ -547,15 +530,14 @@ describe('Hub Generate Command Integration', () => {
       const requirements = 'High-performance web API with caching and load balancing'
 
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements,
-        '--tech-stack',
+        '--stack',
         'nodejs,redis,nginx',
         '--optimize-for',
         'performance',
-        '--output',
+        '--format',
         'config',
       ])
 
@@ -574,14 +556,13 @@ describe('Hub Generate Command Integration', () => {
       const requirements = 'React Native mobile app'
 
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements,
-        '--tech-stack',
+        '--stack',
         'react-native,expo',
         '--analytics',
-        '--output',
+        '--format',
         'bash',
       ])
 
@@ -606,13 +587,12 @@ describe('Hub Generate Command Integration', () => {
       const requirements = 'Web application'
 
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements,
-        '--tech-stack',
+        '--stack',
         'react,vue,angular', // Conflicting frontend frameworks
-        '--output',
+        '--format',
         'bash',
       ])
 
@@ -623,13 +603,12 @@ describe('Hub Generate Command Integration', () => {
 
     it('should validate requirements completeness', async () => {
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         // Empty requirements
-        '--tech-stack',
+        '--stack',
         'nodejs',
-        '--output',
+        '--format',
         'bash',
       ])
 
@@ -641,12 +620,11 @@ describe('Hub Generate Command Integration', () => {
       const requirements = 'I want to build an app'
 
       const result = await runCliCommand([
-        'hub',
-        'generate',
+        'hub-generate',
         '--requirements',
         requirements,
         '--suggest-improvements',
-        '--output',
+        '--format',
         'config',
       ])
 
@@ -662,7 +640,7 @@ describe('Hub Generate Command Integration', () => {
 // Helper functions
 
 async function runCliCommand(args) {
-  const cliPath = path.join(__dirname, '..', 'cli-new.js')
+  const cliPath = path.join(__dirname, '..', 'cli.js')
 
   return new Promise((resolve) => {
     const child = spawn('node', [cliPath, ...args], {

@@ -140,7 +140,7 @@ describe('Security', () => {
 
   describe('CLI Argument Validation', () => {
     it('should validate command arguments', async () => {
-      const cliSource = await fs.readFile(path.join(global.TEST_ROOT, 'cli-new.js'), 'utf8')
+      const cliSource = await fs.readFile(path.join(global.TEST_ROOT, 'cli.js'), 'utf8')
 
       expect(cliSource).toContain('createCLIProgram')
       expect(cliSource).toContain('pkg') // version is passed from pkg

@@ -449,7 +449,7 @@ async function setupLargeIndividualRules(tempDir) {
 }
 
 async function runCliCommand(args) {
-  const cliPath = path.join(__dirname, '..', 'cli-new.js')
+  const cliPath = path.join(__dirname, '..', 'cli.js')
 
   return new Promise((resolve) => {
     // Suppress dotenv output for cleaner test results

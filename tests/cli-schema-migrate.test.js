@@ -665,7 +665,7 @@ async function setupCrossPlatformBlueprints(tempDir) {
 }
 
 async function runCliCommand(args) {
-  const cliPath = path.join(__dirname, '..', 'cli-new.js')
+  const cliPath = path.join(__dirname, '..', 'cli.js')
 
   return new Promise((resolve) => {
     const child = spawn('node', [cliPath, ...args], {

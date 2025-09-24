@@ -117,7 +117,7 @@ export class GenericIDEIntegration extends BaseIntegration {
 
     for (const pattern of aiConfigPatterns) {
       const patternPath = path.join(this.projectPath, pattern)
-      if (await this.directoryExistsAsync(patternPath) || await this.fileExistsAsync(patternPath)) {
+      if ((await this.directoryExistsAsync(patternPath)) || (await this.fileExistsAsync(patternPath))) {
         detection.indicators.push(`Found AI configuration: ${pattern}`)
         detection.isUsed = true
         if (detection.confidence === 'none') detection.confidence = 'low'

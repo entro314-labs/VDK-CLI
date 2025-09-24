@@ -6,8 +6,8 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { BaseCommand } from '../base/BaseCommand.js'
 import { SyncOperations } from '../../shared/sync-operations.js'
+import { BaseCommand } from '../base/BaseCommand.js'
 
 export class TeamSyncCommand extends BaseCommand {
   constructor() {
@@ -51,14 +51,14 @@ export class TeamSyncCommand extends BaseCommand {
         result = await syncOps.syncFromRepository(projectPath, {
           force,
           dryRun,
-          type: 'team-config'
+          type: 'team-config',
         })
       } else if (actualSource === 'hub') {
         result = await syncOps.syncFromHub(projectPath, {
           teamId,
           force,
           dryRun,
-          type: 'team-config'
+          type: 'team-config',
         })
       } else {
         this.logError(`Unknown sync source: ${actualSource}`)
@@ -76,7 +76,7 @@ export class TeamSyncCommand extends BaseCommand {
         success: true,
         source: actualSource,
         synced: result.synced,
-        backupCreated: backup && !dryRun
+        backupCreated: backup && !dryRun,
       }
     } catch (error) {
       this.logError(`Team sync failed: ${error.message}`)
@@ -85,7 +85,6 @@ export class TeamSyncCommand extends BaseCommand {
   }
 
   async detectSource(projectPath) {
-
     // Check if we're in a Git repository with VDK files
     try {
       const { execSync } = await import('child_process')

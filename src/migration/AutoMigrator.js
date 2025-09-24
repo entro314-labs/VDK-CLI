@@ -16,6 +16,7 @@ import { PatternDetector } from '../scanner/core/PatternDetector.js'
 import { ProjectScanner } from '../scanner/core/ProjectScanner.js'
 import { RuleGenerator } from '../scanner/core/RuleGenerator.js'
 import { TechnologyAnalyzer } from '../scanner/core/TechnologyAnalyzer.js'
+import { MigrationBackup } from './core/MigrationBackup.js'
 
 export class AutoMigrator {
   constructor(projectPath) {
@@ -25,6 +26,7 @@ export class AutoMigrator {
     this.technologyAnalyzer = new TechnologyAnalyzer({ verbose: false })
     this.patternDetector = new PatternDetector({ verbose: false })
     this.integrationManager = null
+    this.backup = new MigrationBackup(projectPath)
 
     // Rule format adapters
     this.ruleAdapters = new Map([
@@ -40,6 +42,7 @@ export class AutoMigrator {
    */
   async migrate(options = {}) {
     const spinner = ora('Starting auto-migration...').start()
+    let backupId = null
 
     try {
       // 1. Scan import directory for old rules
@@ -68,33 +71,76 @@ export class AutoMigrator {
         return { success: true, preview }
       }
 
-      // 4. Adapt each rule set to current project
+      // 4. CREATE BACKUP before making any changes
+      if (!options.skipBackup) {
+        spinner.start('Creating migration backup...')
+        backupId = await this.backup.createBackup({
+          operation: 'migration',
+          rulesCount: detectedRules.length,
+          platforms: Object.keys(projectContext.platforms || {}),
+          timestamp: new Date().toISOString(),
+        })
+        spinner.succeed(`Backup created: ${backupId}`)
+      }
+
+      // 5. Adapt each rule set to current project
       spinner.start('Adapting rules to current project...')
       const adaptedRules = await this.adaptRulesToProject(detectedRules, projectContext, options)
       spinner.succeed('Rule adaptation complete')
 
-      // 5. Deploy using existing integration system
+      // 6. Deploy using existing integration system
       spinner.start('Deploying to detected platforms...')
-      const deployResult = await this.deployAdaptedRules(adaptedRules, options)
-      spinner.succeed('Deployment complete')
+      let deployResult
+      try {
+        deployResult = await this.deployAdaptedRules(adaptedRules, options)
+        spinner.succeed('Deployment complete')
+      } catch (deployError) {
+        spinner.fail('Deployment failed')
 
-      // 6. Clean up import directory (optional)
+        // ROLLBACK on deployment failure
+        if (backupId && !options.skipBackup) {
+          console.log(chalk.yellow('🔄 Rolling back changes due to deployment failure...'))
+          try {
+            await this.backup.rollback(backupId, { removeBackup: false })
+            console.log(chalk.green('✅ Successfully rolled back changes'))
+          } catch (rollbackError) {
+            console.error(chalk.red(`❌ Rollback failed: ${rollbackError.message}`))
+            console.error(chalk.red(`   Manual recovery may be required. Backup ID: ${backupId}`))
+          }
+        }
+
+        throw deployError
+      }
+
+      // 7. Clean up import directory (optional)
       if (options.clean && deployResult.success) {
         await this.cleanImportDirectory()
         console.log(chalk.gray('✓ Cleaned import directory'))
       }
 
-      // 7. Show completion message with suggestions
-      this.showCompletionMessage(deployResult)
+      // 8. Clean up old backups (keep last 3)
+      if (!options.skipBackup) {
+        await this.backup.cleanupOldBackups(3)
+      }
+
+      // 9. Show completion message with suggestions
+      this.showCompletionMessage(deployResult, backupId)
 
       return {
         success: true,
         rulesProcessed: detectedRules.length,
         platformsDeployed: deployResult.platforms,
         suggestions: this.generateSuggestions(adaptedRules, projectContext),
+        backupId,
       }
     } catch (error) {
       spinner.fail(`Migration failed: ${error.message}`)
+
+      // Offer rollback option if backup was created
+      if (backupId && !options.skipBackup) {
+        console.log(chalk.yellow(`💡 To rollback changes, run: vdk migrate rollback ${backupId}`))
+      }
+
       throw error
     }
   }

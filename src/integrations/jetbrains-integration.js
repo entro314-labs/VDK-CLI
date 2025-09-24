@@ -38,9 +38,14 @@ export class JetBrainsIntegration extends BaseIntegration {
 
     // Check for .idea folder (project-specific)
     const ideaPath = path.join(this.projectPath, '.idea')
-    this.checkPaths(detection, {
-      'Found .idea configuration folder': ideaPath
-    }, 'high', true) // isProjectSpecific = true
+    this.checkPaths(
+      detection,
+      {
+        'Found .idea configuration folder': ideaPath,
+      },
+      'high',
+      true
+    ) // isProjectSpecific = true
 
     if (detection.isUsed) {
       // Check for specific IDE indicators (only if .idea exists)

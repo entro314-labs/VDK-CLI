@@ -8,8 +8,13 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fetchRuleList } from '../../blueprints-client.js'
 import { MigrationManager } from '../../migration/migration-manager.js'
+import {
+  displayDetailedHubStatus,
+  displayTroubleshootingTips,
+  formatHubStatusForTable,
+  getHubStatus,
+} from '../../shared/hub-status.js'
 import { boxes, colors, format, status, tables } from '../../utils/cli-styles.js'
-import { getHubStatus, formatHubStatusForTable, displayDetailedHubStatus, displayTroubleshootingTips } from '../../shared/hub-status.js'
 import { BaseCommand } from '../base/BaseCommand.js'
 import { commandContext } from '../shared/CommandContext.js'
 

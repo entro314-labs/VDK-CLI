@@ -31,11 +31,82 @@ export class UnifiedMigrateCommand extends BaseCommand {
   }
 
   /**
+   * Get validation rules for UnifiedMigrateCommand
+   */
+  getValidationRules() {
+    return {
+      defaults: {
+        projectPath: process.cwd(),
+        outputPath: './.vdk/rules',
+        type: 'detect',
+        schemaVersion: '2.1.0',
+        dryRun: false,
+        force: false,
+        clean: false,
+        deploy: true,
+        verbose: false,
+      },
+      fields: {
+        projectPath: {
+          type: 'string',
+          pathType: 'directory',
+        },
+        outputPath: {
+          type: 'string',
+          pathType: 'writeable',
+        },
+        type: {
+          type: 'string',
+          enum: ['auto', 'schema', 'context', 'detect'],
+        },
+        source: {
+          type: 'string',
+          pathType: 'directory',
+          validate: (value, options) => {
+            // Source is required for schema migration type
+            if (options.type === 'schema' && !value) {
+              return 'Source path is required for schema migration'
+            }
+            return true
+          },
+        },
+        schemaVersion: {
+          type: 'string',
+          format: 'semver',
+        },
+      },
+      crossValidation: (options) => {
+        const errors = []
+
+        // Check conflicting options
+        if (options.dryRun && options.clean) {
+          errors.push('Cannot use --clean with --dry-run (dry run does not modify files)')
+        }
+
+        if (options.dryRun && options.deploy) {
+          errors.push('Cannot deploy during dry run (use --no-deploy or remove --dry-run)')
+        }
+
+        // Validate schema migration requirements
+        if (options.type === 'schema') {
+          if (!(options.source || options.outputPath)) {
+            errors.push('Schema migration requires either --source or existing rules in output path')
+          }
+        }
+
+        return errors.length > 0 ? errors : true
+      },
+    }
+  }
+
+  /**
    * Execute the unified migration command
    */
   async execute(options) {
     await commandContext.initialize()
     this.showHeader()
+
+    await this.validateOptions(options, this.getValidationRules())
 
     try {
       // Determine migration strategy
@@ -150,7 +221,7 @@ export class UnifiedMigrateCommand extends BaseCommand {
         type: 'schema',
         dryRun: true,
         filesFound: files.length,
-        targetVersion: options.schemaVersion
+        targetVersion: options.schemaVersion,
       }
     } else {
       return await migrator.migrateBlueprints(inputPath, outputPath, {

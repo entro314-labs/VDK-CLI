@@ -23,7 +23,7 @@ const optionReplacements = {
   '--detect-all': '--verbose',
   '--preserve-team-configs': '',
   '--backup': '',
-  '--team-mode': '--verbose'
+  '--team-mode': '--verbose',
 }
 
 // Invalid command line patterns and their replacements
@@ -45,16 +45,18 @@ const replacements = [
   { from: /'init', '--team-mode', '--detect-all'/g, to: "'init', '--verbose'" },
 
   // Fix migrate command options
-  { from: /'migrate',\\s*'--detect-all',\\s*'--enterprise-mode',\\s*'--preserve-team-configs',\\s*'--backup'/g,
-    to: "'migrate', '--dry-run'" }
+  {
+    from: /'migrate',\\s*'--detect-all',\\s*'--enterprise-mode',\\s*'--preserve-team-configs',\\s*'--backup'/g,
+    to: "'migrate', '--dry-run'",
+  },
 ]
 
 async function fixTestFile(filePath) {
   console.log(`Fixing ${filePath}...`)
-  
+
   let content = await fs.readFile(filePath, 'utf8')
   let changed = false
-  
+
   // Apply replacements
   for (const replacement of replacements) {
     const newContent = content.replace(replacement.from, replacement.to)
@@ -63,11 +65,11 @@ async function fixTestFile(filePath) {
       changed = true
     }
   }
-  
+
   // Clean up any empty arguments that might be left
   content = content.replace(/, ''/g, '')
   content = content.replace(/'', /g, '')
-  
+
   if (changed) {
     await fs.writeFile(filePath, content)
     console.log(`  ✓ Updated ${filePath}`)
@@ -86,7 +88,7 @@ async function fixAutoMigratorTests() {
     'tests/cli-import-integration.test.js',
     'tests/cli-migrate-integration.test.js',
     'tests/migration.test.js',
-    'tests/auto-migrator.test.js'
+    'tests/auto-migrator.test.js',
   ]
 
   for (const testFile of testFiles) {
@@ -122,7 +124,7 @@ async function addComprehensiveNetworkMocks() {
   const testFiles = [
     'tests/end-to-end.test.js',
     'tests/community-integration.test.js',
-    'tests/commands-comprehensive.test.js'
+    'tests/commands-comprehensive.test.js',
   ]
 
   const networkMockCode = `
@@ -211,9 +213,7 @@ async function main() {
   const testFiles = await fs.readdir(testDir)
 
   // Filter for .test.js files
-  const testFilesToFix = testFiles
-    .filter(file => file.endsWith('.test.js'))
-    .map(file => path.join(testDir, file))
+  const testFilesToFix = testFiles.filter((file) => file.endsWith('.test.js')).map((file) => path.join(testDir, file))
 
   console.log(`Found ${testFilesToFix.length} test files to check\n`)
 

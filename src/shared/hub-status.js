@@ -16,7 +16,7 @@ export async function getHubStatus(hubOps) {
     return {
       available: false,
       connected: false,
-      error: 'Hub operations not available'
+      error: 'Hub operations not available',
     }
   }
 
@@ -29,13 +29,13 @@ export async function getHubStatus(hubOps) {
       connected: connectivity.success,
       status,
       connectivity,
-      session: hubOps.getSession()
+      session: hubOps.getSession(),
     }
   } catch (error) {
     return {
       available: true,
       connected: false,
-      error: error.message
+      error: error.message,
     }
   }
 }
@@ -54,7 +54,7 @@ export function formatHubStatusForTable(hubStatus) {
     return [
       'VDK Hub Integration',
       'success',
-      `Connected (${hubStatus.connectivity.latency}ms)\nVersion: ${hubStatus.connectivity.version}`
+      `Connected (${hubStatus.connectivity.latency}ms)\nVersion: ${hubStatus.connectivity.version}`,
     ]
   }
 
@@ -86,7 +86,9 @@ export function displayDetailedHubStatus(hubStatus, verbose = false) {
   console.log(
     `Hub Connected: ${hubStatusData.hubConnected ? colors.success('✓ Connected') : colors.error('✗ Disconnected')}`
   )
-  console.log(`Telemetry: ${hubStatusData.telemetryEnabled ? colors.success('✓ Enabled') : colors.warning('✗ Disabled')}`)
+  console.log(
+    `Telemetry: ${hubStatusData.telemetryEnabled ? colors.success('✓ Enabled') : colors.warning('✗ Disabled')}`
+  )
 
   if (session) {
     console.log(`Session ID: ${session.sessionId}`)

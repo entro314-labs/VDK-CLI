@@ -195,7 +195,7 @@ describe('Community Integration Tests', () => {
 
       const shortTimeoutClient = new VDKHubClient({
         hubUrl: 'https://test-hub.example.com',
-        timeout: 100
+        timeout: 100,
       })
 
       // Should return null on timeout
@@ -206,17 +206,15 @@ describe('Community Integration Tests', () => {
 
     it('should handle partial network failures', async () => {
       // Mock intermittent failures
-      fetch
-        .mockRejectedValueOnce(new Error('Network error'))
-        .mockResolvedValueOnce({
-          ok: true,
-          headers: new Map([['content-type', 'application/json']]),
-          json: () =>
-            Promise.resolve({
-              blueprints: [],
-              pagination: { total: 0 },
-            }),
-        })
+      fetch.mockRejectedValueOnce(new Error('Network error')).mockResolvedValueOnce({
+        ok: true,
+        headers: new Map([['content-type', 'application/json']]),
+        json: () =>
+          Promise.resolve({
+            blueprints: [],
+            pagination: { total: 0 },
+          }),
+      })
 
       const hubOps = await quickHubOperations()
 
@@ -282,18 +280,19 @@ describe('Community Integration Tests', () => {
         headers: {
           get: (name) => {
             const headers = {
-              'content-type': 'application/json'
-            };
-            return headers[name.toLowerCase()];
-          }
+              'content-type': 'application/json',
+            }
+            return headers[name.toLowerCase()]
+          },
         },
-        json: () => Promise.resolve({
-          message: 'Telemetry processed successfully',
-          processed: 25,
-          successful: 25,
-          failed: 0
-        }),
-      };
+        json: () =>
+          Promise.resolve({
+            message: 'Telemetry processed successfully',
+            processed: 25,
+            successful: 25,
+            failed: 0,
+          }),
+      }
 
       fetch.mockResolvedValueOnce(mockResponse)
 
@@ -301,10 +300,7 @@ describe('Community Integration Tests', () => {
 
       expect(result).toBeDefined()
       expect(result.success).toBe(true)
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/cli/telemetry/usage'),
-        expect.any(Object)
-      )
+      expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/cli/telemetry/usage'), expect.any(Object))
     })
   })
 
@@ -318,10 +314,11 @@ describe('Community Integration Tests', () => {
         ok: true,
         status: 200,
         headers: new Map([['content-type', 'application/json']]),
-        json: () => Promise.resolve({
-          id: 'recovered',
-          title: 'Recovered Blueprint',
-        }),
+        json: () =>
+          Promise.resolve({
+            id: 'recovered',
+            title: 'Recovered Blueprint',
+          }),
       })
 
       // First call should fail and return null

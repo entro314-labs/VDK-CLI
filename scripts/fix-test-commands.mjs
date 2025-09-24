@@ -13,9 +13,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // Command mappings: old command -> new command
 const commandMappings = {
-  'update': 'sync',           // Update command was replaced by sync
-  'import': 'migrate',        // Import command was replaced by migrate
-  'hub-status': 'status',     // Hub-status was merged into status
+  update: 'sync', // Update command was replaced by sync
+  import: 'migrate', // Import command was replaced by migrate
+  'hub-status': 'status', // Hub-status was merged into status
 }
 
 // Commands that were completely removed
@@ -89,9 +89,7 @@ async function main() {
   const testFiles = await fs.readdir(testDir, { recursive: true })
 
   // Filter for .js test files
-  const testFilesToFix = testFiles
-    .filter(file => file.endsWith('.test.js'))
-    .map(file => path.join(testDir, file))
+  const testFilesToFix = testFiles.filter((file) => file.endsWith('.test.js')).map((file) => path.join(testDir, file))
 
   console.log(`Found ${testFilesToFix.length} test files to check\n`)
 

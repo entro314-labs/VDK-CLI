@@ -157,7 +157,11 @@ describe('Enhanced CLI Commands', () => {
 
       // Check for enhanced section header (can appear after dotenv messages)
       const hasSyncContent =
-        output.includes('VDK Blueprint Sync') || output.includes('Sync') || output.includes('✔') || output.includes('✗') || output.includes('⚠')
+        output.includes('VDK Blueprint Sync') ||
+        output.includes('Sync') ||
+        output.includes('✔') ||
+        output.includes('✗') ||
+        output.includes('⚠')
       expect(hasSyncContent).toBe(true)
 
       // Should contain some form of status or progress output
@@ -178,7 +182,11 @@ describe('Enhanced CLI Commands', () => {
       // Command might fail but should process the path
       const output = result.stdout + result.stderr
       const hasSyncContent =
-        output.includes('VDK Blueprint Sync') || output.includes('Sync') || output.includes('✔') || output.includes('✗') || output.includes('⚠')
+        output.includes('VDK Blueprint Sync') ||
+        output.includes('Sync') ||
+        output.includes('✔') ||
+        output.includes('✗') ||
+        output.includes('⚠')
       expect(hasSyncContent).toBe(true)
     })
   })
