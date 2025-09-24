@@ -147,7 +147,7 @@ VDK CLI includes intelligent migration capabilities to convert your existing AI 
 
 ### Supported Migration Sources
 
-- **Claude Code** - CLAUDE.md files and .claude/ directories  
+- **Claude Code** - CLAUDE.md files and .claude/ directories
 - **Cursor** - .cursorrules and .cursor/ configurations
 - **GitHub Copilot** - .github/copilot-instructions.md and related files
 - **Windsurf** - .windsurf/ rules and configurations
@@ -156,7 +156,7 @@ VDK CLI includes intelligent migration capabilities to convert your existing AI 
 ### Migration Process
 
 1. **Detection**: Automatically identifies existing AI contexts in your project
-2. **Analysis**: Evaluates confidence levels and categorizes found contexts  
+2. **Analysis**: Evaluates confidence levels and categorizes found contexts
 3. **Conversion**: Transforms contexts to VDK blueprint format with project-specific adaptations
 4. **Organization**: Creates structured migration output in `vdk-migration/` folder
 5. **Integration**: Optionally deploys converted rules to your configured AI assistants
@@ -167,7 +167,7 @@ VDK CLI includes intelligent migration capabilities to convert your existing AI 
 # Migrate existing AI contexts
 vdk migrate
 
-# Preview what would be migrated (no files created)  
+# Preview what would be migrated (no files created)
 vdk migrate --dry-run
 
 # Migrate without deploying to IDE integrations
@@ -360,7 +360,7 @@ cd my-existing-project
 vdk status
 # Found: CLAUDE.md, .cursorrules, .github/copilot-instructions.md
 
-# Preview migration without creating files  
+# Preview migration without creating files
 vdk migrate --dry-run
 # Would migrate: 3 contexts with high confidence
 
@@ -424,7 +424,7 @@ We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md)
 
 - [x] **v2.0** - Enhanced technology detection, improved AI integrations
 - [x] **v2.9** - AI context migration system with multi-platform support
-- [ ] **v2.2** - VDK Hub integration for cloud-based rule management  
+- [ ] **v2.2** - VDK Hub integration for cloud-based rule management
 - [ ] **v2.3** - Visual Studio Code extension for seamless IDE integration
 - [ ] **v3.0** - Team collaboration features and shared rule repositories
 
@@ -472,7 +472,6 @@ For detailed history and contributions, see [Project History & Attribution](docs
 
 <div align="center">
 
-**Made with ❤️ by the VibeKit VDK community**
 
 [GitHub](https://github.com/entro314-labs/VibeKit-VDK-CLI) • [Documentation](./docs/) • [VDK Hub](https://vdk.tools) • [NPM](https://www.npmjs.com/package/@vibe-dev-kit/cli)
 

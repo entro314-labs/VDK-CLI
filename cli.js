@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 /**
- * VDK CLI (Refactored)
+ * VDK CLI
  * -----------------------
- * Streamlined main entry point for the VDK command-line interface.
+ * main entry point for the VDK command-line interface.
  * Uses modular command architecture for better maintainability and testability.
  *
  * Repository: https://github.com/entro314-labs/VDK-CLI

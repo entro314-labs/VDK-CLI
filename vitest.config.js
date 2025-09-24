@@ -7,7 +7,6 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
     setupFiles: ['./tests/setup.js'],
-    // Alternative to deprecated 'basic' reporter
     reporters: [['default', { summary: true }]],
     exclude: [
       '**/node_modules/**',
