@@ -35,7 +35,7 @@ platforms:
     aiFeatures: true
 ```
 
-### 2. Enhanced Metadata
+### 2.  Metadata
 
 Rich metadata support for better blueprint discovery and management:
 
@@ -105,7 +105,7 @@ platforms:
     priority: 8    # Higher priority = more important context
 ```
 
-## Using the Enhanced CLI Commands
+## Using the  CLI Commands
 
 ### 1. Create Blueprints with New Schema
 
@@ -153,7 +153,7 @@ vdk validate --path ./.ai/rules --check-dependencies --check-platforms
 vdk validate --verbose
 ```
 
-### 3. Enhanced Project Initialization
+### 3.  Project Initialization
 
 The `vdk init` command now leverages the new schema for better platform detection and configuration:
 
@@ -237,7 +237,7 @@ For existing blueprints, add the new required fields:
 ```yaml
 # Add to existing blueprint frontmatter
 complexity: "medium"
-scope: "project" 
+scope: "project"
 audience: "developer"
 maturity: "stable"
 platforms:
@@ -299,7 +299,7 @@ All blueprints are validated against the official AI Context Schema v2.1.0:
    ```yaml
    # ❌ Wrong
    created: "2025-01-15T10:30:00Z"
-   
+
    # ✅ Correct
    created: "2025-01-15"
    ```
@@ -309,8 +309,8 @@ All blueprints are validated against the official AI Context Schema v2.1.0:
    ```yaml
    # ❌ Wrong
    tags: ["React", "Testing_Setup"]
-   
-   # ✅ Correct  
+
+   # ✅ Correct
    tags: ["react", "testing-setup"]
    ```
 
@@ -321,7 +321,7 @@ All blueprints are validated against the official AI Context Schema v2.1.0:
    platforms:
      cursor:
        priority: "very-high"
-   
+
    # ✅ Correct
    platforms:
      cursor:
@@ -341,7 +341,7 @@ The following features are planned for future releases:
 1. **Dependency Resolution**: Automatic blueprint dependency management
 2. **Platform Configuration Flow**: Extract platform configs from frontmatter during rule generation
 3. **Advanced Validation**: Cross-reference validation with VDK-Blueprints repository
-4. **Blueprint Marketplace**: Enhanced discovery and sharing capabilities
+4. **Blueprint Marketplace**:  discovery and sharing capabilities
 
 ---
 

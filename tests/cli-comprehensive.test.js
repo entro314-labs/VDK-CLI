@@ -1,6 +1,6 @@
 /**
  * Comprehensive CLI Tests - Complete command handler coverage
- * Updated for enhanced CLI styling
+ * Updated for CLI styling
  */
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -156,7 +156,7 @@ describe('Complete CLI Command Coverage', () => {
 
       expect(result.code).toBeDefined()
       if (result.success) {
-        // Check for enhanced status table format
+        // Check for status table format
         expect(result.stdout).toContain('VDK Configuration')
         expect(stripAnsi(result.stdout)).toMatch(/[✔✓]/) // Should show success symbol
       }
@@ -172,7 +172,7 @@ describe('Complete CLI Command Coverage', () => {
       const result = await runCLI(['status', '--configPath', configPath])
 
       expect(result.code).toBeDefined()
-      // With enhanced styling, malformed config shows as warning in status table
+      // With styling, malformed config shows as warning in status table
       expect(result.stdout).toContain('VDK Configuration')
       expect(stripAnsi(result.stdout)).toMatch(/[⚠]/) // Should show warning symbol for malformed config
     })

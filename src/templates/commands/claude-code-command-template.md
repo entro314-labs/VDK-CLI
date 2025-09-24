@@ -67,7 +67,7 @@ compatibilityNotes: "Requires Claude Code 1.0.38+"
 Clearly explain what this Claude Code command does and when to use it. Include:
 
 - Primary use case and objectives
-- Expected outcomes and benefits  
+- Expected outcomes and benefits
 - Prerequisites or setup requirements
 - How it integrates with Claude Code's workflow
 
@@ -115,7 +115,7 @@ Recent commits: !`git log --oneline -5`
 
 **Optional MCP Servers:**
 
-- `github` - Enhanced PR and issue integration
+- `github` -  PR and issue integration
 
 Setup MCP servers:
 
@@ -132,7 +132,7 @@ claude mcp add postgres postgres-mcp-server --env POSTGRES_URL="postgresql://...
 /project:your-command src/components
 ```
 
-**Context**: Standard component refactoring workflow  
+**Context**: Standard component refactoring workflow
 **What it does**:
 
 1. Analyzes component structure in `src/components/`
@@ -152,7 +152,7 @@ claude mcp add postgres postgres-mcp-server --env POSTGRES_URL="postgresql://...
 /project:your-command api/users --verbose
 ```
 
-**Context**: Debugging complex API issues  
+**Context**: Debugging complex API issues
 **What it does**:
 
 1. Deep analysis of user API endpoints
@@ -172,7 +172,7 @@ claude mcp add postgres postgres-mcp-server --env POSTGRES_URL="postgresql://...
 /project:your-command feature/user-auth
 ```
 
-**Context**: Preparing feature branch for review  
+**Context**: Preparing feature branch for review
 **What it does**:
 
 1. Analyzes changes in feature branch: !`git diff main...feature/user-auth`
@@ -241,7 +241,7 @@ The command integrates with Claude Code's hook system:
 3. **Dependency analysis** via package.json and imports
 4. **Database schema alignment** (if applicable) via MCP
 
-### Phase 3: Implementation  
+### Phase 3: Implementation
 
 1. **Apply transformations** using Claude Code's Write/Edit tools
 2. **Update related files** (imports, exports, documentation)
@@ -260,7 +260,7 @@ The command integrates with Claude Code's hook system:
 ### Common Issues
 
 - **MCP server not available**: Command gracefully degrades without database features
-- **Git repository not found**: Operates in single-file mode without version control features  
+- **Git repository not found**: Operates in single-file mode without version control features
 - **Permission denied**: Requests approval for required tools
 - **Invalid arguments**: Provides helpful usage examples
 
@@ -285,7 +285,7 @@ claude /permissions
 - Can update project documentation based on changes
 - Respects `.claudeignore` patterns
 
-### IDE Integration  
+### IDE Integration
 
 - Works with VS Code, Cursor, Windsurf via Claude Code extension
 - File changes appear in IDE diff viewer

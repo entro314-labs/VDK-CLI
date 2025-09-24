@@ -172,7 +172,7 @@ export class AnalyzeCommand extends BaseCommand {
     }
 
     if (analysis.dependencies.suggested.length > 0) {
-      console.log('- Consider installing suggested dependencies for enhanced functionality')
+      console.log('- Consider installing suggested dependencies for functionality')
     }
 
     if (analysis.superseded.length > 0) {

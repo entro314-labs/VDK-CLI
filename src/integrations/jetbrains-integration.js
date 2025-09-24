@@ -67,7 +67,7 @@ export class JetBrainsIntegration extends BaseIntegration {
       if (mcpPath && fs.existsSync(mcpPath)) {
         detection.indicators.push('MCP configuration found')
       } else {
-        detection.recommendations.push('Consider setting up Model Context Protocol (MCP) for enhanced AI integration')
+        detection.recommendations.push('Consider setting up Model Context Protocol (MCP) for  AI integration')
       }
     }
 

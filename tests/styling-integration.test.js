@@ -303,7 +303,7 @@ describe('Styling Integration', () => {
     it('should simulate status command styling integration', async () => {
       const styles = await import('../src/utils/cli-styles.js')
 
-      // Simulate what happens in the enhanced status command
+      // Simulate what happens in the status command
       console.log(styles.headers.section('VDK Status Check'))
 
       const statusTable = styles.tables.status()

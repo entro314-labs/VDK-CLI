@@ -436,7 +436,7 @@ export class WindsurfContextIntegration extends BaseIntegration {
       return // Don't overwrite existing global rules
     }
 
-    const globalRulesContent = `# Global Windsurf Rules - VDK Enhanced
+    const globalRulesContent = `# Global Windsurf Rules - VDK
 
 ## Organization Standards
 

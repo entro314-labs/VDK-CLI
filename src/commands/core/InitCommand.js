@@ -147,7 +147,7 @@ export class InitCommand extends BaseCommand {
     if (this.hubOps) {
       const connectivity = await this.hubOps.testConnection()
       if (connectivity.success) {
-        this.logInfo('🌐 Connected to VDK Hub for enhanced features')
+        this.logInfo('🌐 Connected to VDK Hub for new features')
       }
     } else {
       this.logWarning('⚠️  Hub integration unavailable, using local features')

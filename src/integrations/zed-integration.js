@@ -70,7 +70,7 @@ export class ZedIntegration extends BaseIntegration {
     // Recommendations based on detection
     if (confidence !== 'none') {
       recommendations.push('Use .zed/ai-rules/ folder for VDK Blueprint rules')
-      recommendations.push('Enable Zed AI features in settings for enhanced code assistance')
+      recommendations.push('Enable Zed AI features in settings for code assistance')
       recommendations.push('Consider enabling collaborative features for team development')
 
       if (!fs.existsSync(path.join(this.projectPath, '.zed', 'ai-rules'))) {

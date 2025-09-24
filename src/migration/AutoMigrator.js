@@ -724,7 +724,7 @@ class CursorRuleAdapter {
     // Add TypeScript focus if detected
     if (targetContext.techStack.includes('typescript')) {
       content = content.replace(/javascript/gi, 'TypeScript')
-      adaptations.push('Enhanced TypeScript support')
+      adaptations.push(' TypeScript support')
     }
 
     // Add architecture patterns

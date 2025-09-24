@@ -55,7 +55,7 @@ Release includes 4 new features, 1 bug fix, extensive refactoring
 - Fixed infinite loop issues in CLI interactions
 - Removed conflicting readline interface
 - Added detection for non-interactive environments
-- Enhanced error handling for automated/scripted use cases
+-  error handling for automated/scripted use cases
 
 #### Template and Setup Standardization
 
@@ -68,7 +68,7 @@ Release includes 4 new features, 1 bug fix, extensive refactoring
 
 - Added detailed ROADMAP.md outlining future development goals
 - Updated README to reference roadmap
-- Enhanced core agent documentation rules for clarity
+-  core agent documentation rules for clarity
 
 #### Project Rebranding
 
@@ -137,10 +137,10 @@ Release includes 4 new features, 1 bug fix, extensive refactoring
 
 ### Major Improvements ✨
 
-- **Enhanced Technology Detection**: Accurately detects 20+ technology-specific rules including Tailwind CSS, shadcn/ui, Supabase, TypeScript configurations
+- ** Technology Detection**: Accurately detects 20+ technology-specific rules including Tailwind CSS, shadcn/ui, Supabase, TypeScript configurations
 - **Intelligent Package Manager Detection**: Automatically detects pnpm, yarn, npm, bun based on lock files
 - **Advanced Build Tool Recognition**: Detects Turbopack, Vite, Next.js with version-specific features
-- **Smart IDE Detection**: Enhanced IDE detection without configuration folders, supports VS Code, Cursor, Windsurf, JetBrains, Zed
+- **Smart IDE Detection**:  IDE detection without configuration folders, supports VS Code, Cursor, Windsurf, JetBrains, Zed
 
 ### New Features 🚀
 
@@ -158,7 +158,7 @@ Release includes 4 new features, 1 bug fix, extensive refactoring
 
 ### Technical Improvements 🔧
 
-- **Rule Scoring**: Enhanced relevance scoring algorithm with platform-specific filtering
+- **Rule Scoring**:  relevance scoring algorithm with platform-specific filtering
 - **Content Processing**: Mobile patterns properly excluded from web projects
 - **Template Processing**: Better extraction of actionable guidelines from remote rules
 - **Error Recovery**: Continues operation with missing dependencies or invalid configurations
@@ -173,7 +173,7 @@ Release includes 4 new features, 1 bug fix, extensive refactoring
 ### Changed
 
 - Improved project documentation structure
-- Enhanced integration guides with practical examples
+-  integration guides with practical examples
 
 ---
 

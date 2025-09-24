@@ -95,16 +95,16 @@ export class RuleGenerator {
     // Single RuleAdapter instance for all IDEs (consolidated approach)
     this.ruleAdapter = new RuleAdapter({ ...adapterOptions })
 
-    // Initialize specialized adapters for enhanced IDE-specific functionality
+    // Initialize specialized adapters for IDE-specific functionality
     this.initializeSpecializedAdapters(adapterOptions)
   }
 
   /**
-   * Initialize specialized adapters for enhanced IDE-specific functionality
+   * Initialize specialized adapters for IDE-specific functionality
    * @param {Object} adapterOptions - Options for adapter initialization
    */
   initializeSpecializedAdapters(adapterOptions) {
-    // Initialize specialized adapters that provide enhanced functionality
+    // Initialize specialized adapters that provide functionality
     // beyond the generic RuleAdapter
 
     // Claude Code CLI gets specialized adapter for memory hierarchy and commands
@@ -126,7 +126,7 @@ export class RuleGenerator {
   }
 
   /**
-   * Enhanced rule generation with IDE-native formats
+   *  rule generation with IDE-native formats
    * @param {Object} analysisData - Combined analysis results
    * @param {Object} categoryFilter - Category filtering options for command fetching
    * @returns {Object} Generated rules organized by IDE
@@ -685,7 +685,7 @@ export class RuleGenerator {
   }
 
   /**
-   * Enhanced rule generation implementing VDK ecosystem architecture
+   *  rule generation implementing VDK ecosystem architecture
    * Primary workflow: CLI → Rules Repository → IDE/AI Tools → Hub Analytics
    */
   async generateEnhancedRules(analysisData) {
@@ -1876,7 +1876,7 @@ export class RuleGenerator {
   }
 
   /**
-   * Override: Enhanced remote fetching for rule generation
+   * Override:  remote fetching for rule generation
    * Replaces the basic implementation with comprehensive remote rule fetching
    */
   async fetchAndDeployRemoteRules(ruleType, relevantItems, analysisData) {
@@ -1936,7 +1936,7 @@ export class RuleGenerator {
   }
 
   /**
-   * Override: Enhanced task selection based on comprehensive project analysis
+   * Override:  task selection based on comprehensive project analysis
    * Replaces the basic implementation in the parent class with intelligent analysis
    * @param {Object} analysisData - Analysis data
    * @returns {Array} Array of relevant task names
@@ -1998,7 +1998,7 @@ export class RuleGenerator {
   }
 
   /**
-   * Override: Enhanced tool selection based on project analysis
+   * Override:  tool selection based on project analysis
    * Replaces the basic implementation in the parent class with intelligent analysis
    * @param {Object} analysisData - Analysis data
    * @returns {Array} Array of relevant tool names
@@ -2031,7 +2031,7 @@ export class RuleGenerator {
   }
 
   /**
-   * Override: Enhanced assistant selection based on detected IDEs and integrations
+   * Override:  assistant selection based on detected IDEs and integrations
    * Replaces the basic implementation in the parent class with IDE detection logic
    * @param {Object} analysisData - Analysis data
    * @returns {Array} Array of relevant assistant names

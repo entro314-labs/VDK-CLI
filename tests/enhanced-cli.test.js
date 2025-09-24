@@ -1,6 +1,6 @@
 /**
- * Enhanced CLI Tests
- * Tests for the newly enhanced CLI commands with styling
+ *  CLI Tests
+ * Tests for the newly CLI commands with styling
  */
 
 import stripAnsi from 'strip-ansi'
@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { cleanupTempDir, createTempDir, runCLI } from './helpers/cli-helper.js'
 
-describe('Enhanced CLI Commands', () => {
+describe(' CLI Commands', () => {
   let tempDir
   let originalEnv
 
@@ -55,7 +55,7 @@ describe('Enhanced CLI Commands', () => {
   })
 
   describe('Status Command Enhancement', () => {
-    it('should display enhanced status with table format', async () => {
+    it('should display status with table format', async () => {
       tempDir = await createTempDir()
 
       const result = await runCLI(['status'], {
@@ -66,7 +66,7 @@ describe('Enhanced CLI Commands', () => {
       expect(result.success).toBe(true)
       const output = result.stdout
 
-      // Check for enhanced status elements (can appear after dotenv messages)
+      // Check for status elements (can appear after dotenv messages)
       expect(output).toContain('Check the status of your VDK setup')
 
       // Check for table structure (box drawing characters)
@@ -143,7 +143,7 @@ describe('Enhanced CLI Commands', () => {
   })
 
   describe('sync command Enhancement', () => {
-    it('should display enhanced sync process', async () => {
+    it('should display sync process', async () => {
       tempDir = await createTempDir()
 
       const result = await runCLI(['sync'], {
@@ -152,10 +152,10 @@ describe('Enhanced CLI Commands', () => {
         env: { ...process.env, NODE_ENV: 'test' },
       })
 
-      // The command might fail due to network, but should show enhanced output
+      // The command might fail due to network, but should show output
       const output = result.stdout + result.stderr
 
-      // Check for enhanced section header (can appear after dotenv messages)
+      // Check for section header (can appear after dotenv messages)
       const hasSyncContent =
         output.includes('VDK Blueprint Sync') ||
         output.includes('Sync') ||
@@ -191,7 +191,7 @@ describe('Enhanced CLI Commands', () => {
     })
   })
 
-  describe('Enhanced Output Formatting', () => {
+  describe(' Output Formatting', () => {
     it('should use consistent status symbols across commands', async () => {
       const statusResult = await runCLI(['status'], { timeout: 15000 })
       const cleanStatusOutput = stripAnsi(statusResult.stdout)
@@ -227,8 +227,8 @@ describe('Enhanced CLI Commands', () => {
     })
   })
 
-  describe('Error Handling with Enhanced Styling', () => {
-    it('should display enhanced error messages', async () => {
+  describe('Error Handling with  Styling', () => {
+    it('should display error messages', async () => {
       tempDir = await createTempDir()
 
       // Try to run a command that might fail
@@ -269,7 +269,7 @@ describe('Enhanced CLI Commands', () => {
     })
   })
 
-  describe('Performance with Enhanced Styling', () => {
+  describe('Performance with  Styling', () => {
     it('should complete status command within reasonable time', async () => {
       const start = Date.now()
 

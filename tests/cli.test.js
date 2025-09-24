@@ -1,6 +1,6 @@
 /**
  * CLI Tests - Consolidated CLI functionality tests
- * Updated for enhanced styling features
+ * Updated for styling features
  */
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -61,7 +61,7 @@ describe('CLI Functionality', () => {
       expect(result.code).toBeDefined()
       expect(result.stdout.length + result.stderr.length).toBeGreaterThan(0)
 
-      // Should contain enhanced status elements
+      // Should contain status elements
       const output = result.stdout
       expect(output).toContain('Check the status of your VDK setup')
 

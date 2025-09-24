@@ -230,7 +230,7 @@ Generated rules work automatically with **33+ supported IDEs and AI tools**:
 - **GitHub Copilot**: Rules placed in `.github/copilot/rules/`
 - **Generic AI Platform**: Rules placed in `.ai/rules/`
 
-### Enhanced Detection Features
+###  Detection Features
 
 - **Intelligent Platform Detection**: Analyzes project characteristics to recommend optimal IDE configurations
 - **Confidence Scoring**: Ranks detected IDEs by project compatibility

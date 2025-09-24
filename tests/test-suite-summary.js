@@ -92,7 +92,7 @@ async function analyzeTestCoverage() {
   console.log(`   ✅ Added comprehensive command architecture tests`)
   console.log(`   ✅ Added publishing system tests`)
   console.log(`   ✅ Improved error handling and timeout management`)
-  console.log(`   ✅ Enhanced test isolation and cleanup`)
+  console.log(`   ✅  test isolation and cleanup`)
   console.log()
 
   // Key fixes applied

@@ -170,7 +170,7 @@ export class CommunityDeployer {
     try {
       const projectData = await this.projectScanner.scanProject(this.projectPath)
 
-      // Enhanced project analysis
+      //  project analysis
       const context = {
         name: path.basename(this.projectPath),
 
@@ -633,7 +633,7 @@ export class CommunityDeployer {
 
   // Framework content adaptation methods
   async adaptFrameworkContent(content, change) {
-    // Simple framework adaptation - can be enhanced with more sophisticated NLP
+    // Simple framework adaptation - can be improved with more sophisticated NLP
     let adapted = content
 
     const adaptations = {
@@ -691,7 +691,7 @@ export class CommunityDeployer {
 
 ## Current Setup
 - **Framework**: ${context.framework}
-- **Language**: ${context.language}  
+- **Language**: ${context.language}
 - **Architecture**: ${context.architecture}
 - **Technologies**: ${context.technologies.join(', ')}
 - **Package Manager**: ${context.packageManager}

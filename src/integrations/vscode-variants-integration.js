@@ -133,7 +133,7 @@ class VSCodeVariantIntegration extends BaseIntegration {
     // Add recommendations
     if (detection.confidence !== 'none') {
       detection.recommendations.push(`Use ${this.configFolder}/ai-rules/ folder for VDK Blueprint rules`)
-      detection.recommendations.push('Install AI-related extensions for enhanced coding assistance')
+      detection.recommendations.push('Install AI-related extensions for  coding assistance')
 
       if (!fs.existsSync(path.join(this.projectPath, this.configFolder, 'ai-rules'))) {
         detection.recommendations.push(`Create ${this.configFolder}/ai-rules/ directory for AI integration`)
@@ -142,7 +142,7 @@ class VSCodeVariantIntegration extends BaseIntegration {
 
     // Add MCP recommendation if not configured
     if (detection.isUsed && !detection.indicators.some((i) => i.includes('MCP configuration'))) {
-      detection.recommendations.push('Consider setting up MCP configuration for enhanced AI integration')
+      detection.recommendations.push('Consider setting up MCP configuration for AI integration')
     }
 
     return detection

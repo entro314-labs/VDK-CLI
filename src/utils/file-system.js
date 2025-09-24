@@ -10,7 +10,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 /**
- * Enhanced file operations with error handling
+ *  file operations with error handling
  */
 export const fileSystem = {
   /**

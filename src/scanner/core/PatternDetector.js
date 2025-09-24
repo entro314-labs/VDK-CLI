@@ -234,7 +234,7 @@ export class PatternDetector {
     // Basic pattern detection based on directory structure
     this.detectDirectoryBasedPatterns(projectStructure)
 
-    // Enhanced pattern detection with dependency analysis
+    //  pattern detection with dependency analysis
     await this.detectDependencyBasedPatterns(projectStructure, techData)
 
     // Merge and reconcile pattern detections

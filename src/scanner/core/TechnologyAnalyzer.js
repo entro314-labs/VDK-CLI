@@ -193,9 +193,9 @@ export class TechnologyAnalyzer {
     // Get project root
     const projectRoot = projectStructure.projectPath
 
-    // Use our enhanced package analyzer
+    // Use our package analyzer
     if (this.verbose) {
-      console.log(chalk.gray('Using enhanced package analyzer...'))
+      console.log(chalk.gray('Using package analyzer...'))
     }
 
     try {
@@ -387,7 +387,7 @@ export class TechnologyAnalyzer {
       this.frameworks.push('React')
     }
 
-    // Enhanced Next.js detection
+    //  Next.js detection
     // Check for Next.js config files
     const nextjsConfigFiles = projectStructure.files
       .filter(

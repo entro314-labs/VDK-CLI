@@ -435,7 +435,7 @@ Follow these guidelines when helping with code:
       const cursorAdapter = autoMigrator.ruleAdapters.get('cursor')
       cursorAdapter.adapt = vi.fn().mockResolvedValue({
         content: 'Adapted TypeScript rules for React project.',
-        adaptations: ['Added React patterns', 'Enhanced TypeScript support'],
+        adaptations: ['Added React patterns', ' TypeScript support'],
         projectContext: mockProjectContext,
       })
 
@@ -718,7 +718,7 @@ Follow these guidelines when helping with code:
         expect(result.content).toContain('TypeScript')
         expect(result.content).toContain('Architecture: ssr')
         expect(result.adaptations).toContain('Added nextjs patterns')
-        expect(result.adaptations).toContain('Enhanced TypeScript support')
+        expect(result.adaptations).toContain(' TypeScript support')
         expect(result.adaptations).toContain('Added ssr patterns')
       })
 

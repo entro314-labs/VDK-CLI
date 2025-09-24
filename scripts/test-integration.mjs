@@ -1,7 +1,7 @@
 import { validateBlueprint } from './src/utils/schema-validator.js'
 import { IntegrationManager } from './src/integrations/integration-manager.js'
 
-console.log('🧪 Testing Enhanced Schema Integration...\n')
+console.log('🧪 Testing  Schema Integration...\n')
 
 // Test 1: Schema validation with new platforms
 console.log('1. Testing schema validation with new platforms...')
@@ -9,7 +9,7 @@ console.log('1. Testing schema validation with new platforms...')
 const testBlueprint = {
   id: 'test-new-platforms',
   title: 'Test New Platforms Blueprint',
-  description: 'Testing comprehensive platform support in the enhanced schema',
+  description: 'Testing comprehensive platform support in the schema',
   version: '1.0.0',
   category: 'core',
   platforms: {
@@ -70,4 +70,4 @@ try {
   console.error('❌ IDE detection error:', error.message)
 }
 
-console.log('\n🎉 Enhanced schema integration testing complete!')
+console.log('\n🎉  schema integration testing complete!')

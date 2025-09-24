@@ -4,11 +4,11 @@
  * This module is responsible for all communication with the VDK-Blueprints repository,
  * which includes fetching rule lists, downloading rule files, and checking for updates.
  *
- * Enhanced for AI Context Schema v2.1.0 support:
+ *  for AI Context Schema v2.1.0 support:
  * - Blueprint metadata parsing and validation
  * - Platform compatibility filtering
  * - Dependency relationship processing
- * - Enhanced search and discovery
+ * -  search and discovery
  */
 
 import chalk from 'chalk'
@@ -99,9 +99,9 @@ async function downloadRule(downloadUrl) {
 }
 
 /**
- * Enhanced blueprint fetching with schema v2.1.0 metadata parsing
+ *  blueprint fetching with schema v2.1.0 metadata parsing
  * @param {Object} options - Fetching options
- * @returns {Promise<Array>} Array of enhanced blueprint objects with metadata
+ * @returns {Promise<Array>} Array of blueprint objects with metadata
  */
 async function fetchBlueprintsWithMetadata(options = {}) {
   const spinner = ora('Fetching blueprints with metadata...').start()
@@ -128,7 +128,7 @@ async function fetchBlueprintsWithMetadata(options = {}) {
             content: parsed.content,
             valid: validation.valid,
             validationErrors: validation.errors,
-            // Enhanced v2.1.0 fields
+            //  v2.1.0 fields
             complexity: metadata.complexity,
             scope: metadata.scope,
             audience: metadata.audience,
