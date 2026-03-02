@@ -6,8 +6,8 @@
  */
 
 // Import centralized configuration constants
-import fs from 'node:fs'
-import path from 'node:path'
+import fs from 'node:fs';
+import path from 'node:path';
 
 /**
  * IDE configuration mapping
@@ -40,7 +40,10 @@ const IDE_CONFIGURATIONS = [
     name: 'VSCodium',
     configFolder: '.vscode-oss',
     rulesFolder: '.vscode-oss/ai-rules',
-    configFiles: ['~/.config/VSCodium/User/settings.json', '~/.config/VSCodium/User/keybindings.json'],
+    configFiles: [
+      '~/.config/VSCodium/User/settings.json',
+      '~/.config/VSCodium/User/keybindings.json',
+    ],
     globalConfigPath: '~/.config/VSCodium/User/settings.json',
     logPath: '~/.config/VSCodium/logs',
     description: 'Open source distribution of VS Code with telemetry removed.',
@@ -54,7 +57,8 @@ const IDE_CONFIGURATIONS = [
     mcpConfigFile: '.cursor/mcp.json',
     ignoreFile: '.cursorignore',
     globalConfigPath: '~/.cursor/mcp.json',
-    description: 'Context Platform: Cursor IDE with multi-model AI support (Claude, GPT, etc.) and MDC format.',
+    description:
+      'Context Platform: Cursor IDE with multi-model AI support (Claude, GPT, etc.) and MDC format.',
     priority: 'high',
     type: 'context-platform',
   },
@@ -65,7 +69,8 @@ const IDE_CONFIGURATIONS = [
     rulesFolder: '.windsurf/rules',
     configFiles: ['.windsurf/config.json'],
     mcpConfigFile: '~/.codeium/windsurf/mcp_config.json',
-    description: 'Context Platform: Windsurf IDE with multi-model AI support and native rule format.',
+    description:
+      'Context Platform: Windsurf IDE with multi-model AI support and native rule format.',
     priority: 'high',
     type: 'context-platform',
   },
@@ -105,6 +110,105 @@ const IDE_CONFIGURATIONS = [
     globalConfigPath: '~/.claude/settings.json',
     enterpriseConfigPath: '/Library/Application Support/ClaudeCode/policies.json',
     description: 'Context Platform: Claude Code CLI - works across multiple IDEs via plugins.',
+    priority: 'high',
+    type: 'context-platform',
+  },
+  {
+    id: 'opencode',
+    name: 'OpenCode',
+    configFolder: '.opencode',
+    rulesFolder: '.opencode',
+    configFiles: ['opencode.json', 'opencode.jsonc'],
+    mcpConfigFile: 'opencode.json',
+    description: 'Context Platform: OpenCode with AGENTS.md and opencode.json instructions.',
+    priority: 'high',
+    type: 'context-platform',
+  },
+  {
+    id: 'cline',
+    name: 'Cline',
+    configFolder: '.clinerules',
+    rulesFolder: '.clinerules',
+    configFiles: ['.clinerules/', '.clineignore'],
+    mcpConfigFile: null,
+    description: 'Context Platform: Cline rules/workflows with AGENTS.md compatibility.',
+    priority: 'high',
+    type: 'context-platform',
+  },
+  {
+    id: 'roo-code',
+    name: 'Roo Code',
+    configFolder: '.roo',
+    rulesFolder: '.roo/rules',
+    configFiles: ['.roo/rules/', '.roomodes'],
+    mcpConfigFile: null,
+    description: 'Context Platform: Roo Code mode-aware rule directories and roomodes.',
+    priority: 'high',
+    type: 'context-platform',
+  },
+  {
+    id: 'goose',
+    name: 'Goose',
+    configFolder: '.goose',
+    rulesFolder: '.goose',
+    configFiles: ['.goose/config.yaml'],
+    mcpConfigFile: '.goose/config.yaml',
+    description: 'Context Platform: Goose project config and AGENTS.md-compatible workflows.',
+    priority: 'high',
+    type: 'context-platform',
+  },
+  {
+    id: 'junie',
+    name: 'Junie',
+    configFolder: '.junie',
+    rulesFolder: '.junie',
+    configFiles: ['.junie/guidelines.md', '.aiignore'],
+    mcpConfigFile: '.junie/mcp/',
+    description: 'Context Platform: JetBrains Junie guidelines and project-level MCP integration.',
+    priority: 'high',
+    type: 'context-platform',
+  },
+  {
+    id: 'google-antigravity',
+    name: 'Google Antigravity',
+    configFolder: '.agent',
+    rulesFolder: '.agent/workflows',
+    configFiles: ['GEMINI.md', '.agent/workflows/'],
+    mcpConfigFile: null,
+    description: 'Context Platform: Antigravity with GEMINI.md + .agent/workflows carriers.',
+    priority: 'high',
+    type: 'context-platform',
+  },
+  {
+    id: 'kimi-cli',
+    name: 'Kimi CLI',
+    configFolder: '.kimi',
+    rulesFolder: '.kimi',
+    configFiles: ['.kimi/config.toml'],
+    mcpConfigFile: '.kimi/config.toml',
+    description: 'Context Platform: Kimi CLI with AGENTS.md-compatible project context.',
+    priority: 'high',
+    type: 'context-platform',
+  },
+  {
+    id: 'mistral-vibe',
+    name: 'Mistral Vibe',
+    configFolder: '.vibe',
+    rulesFolder: '.vibe/prompts',
+    configFiles: ['.vibe/config.toml', '.vibe/agents/'],
+    mcpConfigFile: '.vibe/config.toml',
+    description: 'Context Platform: Mistral Vibe with TOML agent definitions and prompt files.',
+    priority: 'high',
+    type: 'context-platform',
+  },
+  {
+    id: 'trae',
+    name: 'Trae',
+    configFolder: '.rules',
+    rulesFolder: '.rules',
+    configFiles: ['.rules/project_rules.md', '.rules/user_rules.md'],
+    mcpConfigFile: null,
+    description: 'Context Platform: Trae .rules markdown context files.',
     priority: 'high',
     type: 'context-platform',
   },
@@ -268,7 +372,7 @@ const IDE_CONFIGURATIONS = [
     configFiles: ['.ai/config.json'],
     description: 'Works with most AI coding assistants and is the VDK CLI standard.',
   },
-]
+];
 
 /**
  * Get IDE configuration by ID
@@ -276,7 +380,7 @@ const IDE_CONFIGURATIONS = [
  * @returns {Object} IDE configuration object or null if not found
  */
 function getIDEConfigById(id) {
-  return IDE_CONFIGURATIONS.find((ide) => ide.id === id) || null
+  return IDE_CONFIGURATIONS.find(ide => ide.id === id) || null;
 }
 
 /**
@@ -286,12 +390,12 @@ function getIDEConfigById(id) {
  * @returns {Object} Configuration paths or default paths if IDE not found
  */
 function getIDEConfigPaths(id, projectPath) {
-  const config = getIDEConfigById(id) || IDE_CONFIGURATIONS.find((ide) => ide.id === 'generic')
+  const config = getIDEConfigById(id) || IDE_CONFIGURATIONS.find(ide => ide.id === 'generic');
 
   return {
     configPath: path.join(projectPath, config.configFolder),
     rulePath: path.join(projectPath, config.rulesFolder),
-  }
+  };
 }
 
 /**
@@ -300,31 +404,31 @@ function getIDEConfigPaths(id, projectPath) {
  * @returns {Array} List of detected IDE configurations
  */
 function detectIDEs(projectPath) {
-  const detectedIDEs = []
+  const detectedIDEs = [];
 
   for (const ide of IDE_CONFIGURATIONS) {
-    const configPath = path.join(projectPath, ide.configFolder)
+    const configPath = path.join(projectPath, ide.configFolder);
     if (fs.existsSync(configPath)) {
-      detectedIDEs.push(ide)
-      continue
+      detectedIDEs.push(ide);
+      continue;
     }
 
     // If config folder doesn't exist, check specific config files
     if (ide.configFiles && ide.configFiles.length > 0) {
-      const configFileExists = ide.configFiles.some((filePath) => {
+      const configFileExists = ide.configFiles.some(filePath => {
         // Handle files with wildcards or relative paths
         if (filePath.includes('~')) {
-          return false // Skip global config files in project detection
+          return false; // Skip global config files in project detection
         }
-        return fs.existsSync(path.join(projectPath, filePath))
-      })
+        return fs.existsSync(path.join(projectPath, filePath));
+      });
       if (configFileExists) {
-        detectedIDEs.push(ide)
+        detectedIDEs.push(ide);
       }
     }
   }
 
-  return detectedIDEs
+  return detectedIDEs;
 }
 
 /**
@@ -333,23 +437,34 @@ function detectIDEs(projectPath) {
  * @returns {Array} List of detected JetBrains IDEs with confidence scores
  */
 function detectSpecificJetBrainsIDEs(projectPath) {
-  const detectedIDEs = []
+  const detectedIDEs = [];
 
   // Check if .idea folder exists first
-  const ideaPath = path.join(projectPath, '.idea')
+  const ideaPath = path.join(projectPath, '.idea');
   if (!fs.existsSync(ideaPath)) {
-    return detectedIDEs
+    return detectedIDEs;
   }
 
   // IDE-specific detection patterns
   const ideDetectionPatterns = {
     intellij: {
-      files: ['.idea/modules.xml', '.idea/compiler.xml', 'src/main/java/', 'pom.xml', 'build.gradle'],
+      files: [
+        '.idea/modules.xml',
+        '.idea/compiler.xml',
+        'src/main/java/',
+        'pom.xml',
+        'build.gradle',
+      ],
       indicators: ['Java', 'Maven', 'Gradle', 'Kotlin'],
       confidence: 0.8,
     },
     webstorm: {
-      files: ['.idea/webServers.xml', '.idea/jsLibraryMappings.xml', 'package.json', 'tsconfig.json'],
+      files: [
+        '.idea/webServers.xml',
+        '.idea/jsLibraryMappings.xml',
+        'package.json',
+        'tsconfig.json',
+      ],
       indicators: ['Node.js', 'TypeScript', 'JavaScript', 'React', 'Vue'],
       confidence: 0.9,
     },
@@ -393,44 +508,44 @@ function detectSpecificJetBrainsIDEs(projectPath) {
       indicators: ['Android', 'Gradle', 'Kotlin'],
       confidence: 0.9,
     },
-  }
+  };
 
   // Check each IDE pattern
   for (const [ideId, pattern] of Object.entries(ideDetectionPatterns)) {
-    let matchCount = 0
-    const totalPatterns = pattern.files.length
+    let matchCount = 0;
+    const totalPatterns = pattern.files.length;
 
     for (const filePattern of pattern.files) {
-      const filePath = path.join(projectPath, filePattern)
+      const filePath = path.join(projectPath, filePattern);
 
       if (filePattern.includes('*')) {
         // Handle wildcard patterns
-        const dir = path.dirname(filePath)
-        const fileName = path.basename(filePattern)
+        const dir = path.dirname(filePath);
+        const fileName = path.basename(filePattern);
 
         try {
           if (fs.existsSync(dir)) {
-            const files = fs.readdirSync(dir)
-            const hasMatch = files.some((file) => {
-              const regex = new RegExp(fileName.replace('*', '.*'))
-              return regex.test(file)
-            })
-            if (hasMatch) matchCount++
+            const files = fs.readdirSync(dir);
+            const hasMatch = files.some(file => {
+              const regex = new RegExp(fileName.replace('*', '.*'));
+              return regex.test(file);
+            });
+            if (hasMatch) matchCount++;
           }
-        } catch (error) {
+        } catch (_error) {
           // Ignore directory read errors
         }
       } else if (fs.existsSync(filePath)) {
-        matchCount++
+        matchCount++;
       }
     }
 
     // Calculate confidence score
-    const matchRatio = matchCount / totalPatterns
-    const confidence = matchRatio >= 0.3 ? pattern.confidence * matchRatio : 0
+    const matchRatio = matchCount / totalPatterns;
+    const confidence = matchRatio >= 0.3 ? pattern.confidence * matchRatio : 0;
 
     if (confidence > 0.5) {
-      const ideConfig = IDE_CONFIGURATIONS.find((ide) => ide.id === ideId)
+      const ideConfig = IDE_CONFIGURATIONS.find(ide => ide.id === ideId);
       if (ideConfig) {
         detectedIDEs.push({
           ...ideConfig,
@@ -438,13 +553,13 @@ function detectSpecificJetBrainsIDEs(projectPath) {
           matchCount,
           totalPatterns,
           indicators: pattern.indicators,
-        })
+        });
       }
     }
   }
 
   // Sort by confidence (highest first)
-  return detectedIDEs.sort((a, b) => b.confidence - a.confidence)
+  return detectedIDEs.sort((a, b) => b.confidence - a.confidence);
 }
 
 /**
@@ -454,14 +569,14 @@ function detectSpecificJetBrainsIDEs(projectPath) {
  * @returns {string} Path to rule directory
  */
 function ensureRuleDirectory(id, projectPath) {
-  const config = getIDEConfigById(id) || IDE_CONFIGURATIONS.find((ide) => ide.id === 'generic')
+  const config = getIDEConfigById(id) || IDE_CONFIGURATIONS.find(ide => ide.id === 'generic');
 
-  const rulePath = path.join(projectPath, config.rulesFolder)
+  const rulePath = path.join(projectPath, config.rulesFolder);
   if (!fs.existsSync(rulePath)) {
-    fs.mkdirSync(rulePath, { recursive: true })
+    fs.mkdirSync(rulePath, { recursive: true });
   }
 
-  return rulePath
+  return rulePath;
 }
 
 /**
@@ -469,12 +584,12 @@ function ensureRuleDirectory(id, projectPath) {
  * @returns {Array} List of IDE options with name and description
  */
 function getIDEOptionsForCLI() {
-  return IDE_CONFIGURATIONS.map((ide) => ({
+  return IDE_CONFIGURATIONS.map(ide => ({
     name: ide.name,
     folder: ide.rulesFolder,
     description: ide.description,
     id: ide.id,
-  }))
+  }));
 }
 
 // Export functions for use in CLI
@@ -486,4 +601,4 @@ export {
   getIDEConfigPaths,
   getIDEOptionsForCLI,
   IDE_CONFIGURATIONS,
-}
+};

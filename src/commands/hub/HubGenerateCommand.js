@@ -5,13 +5,13 @@
  * Supports multiple output formats and custom requirements.
  */
 
-import fs from 'node:fs/promises'
-import { BaseCommand } from '../base/BaseCommand.js'
-import { commandContext } from '../shared/CommandContext.js'
+import fs from 'node:fs/promises';
+import { BaseCommand } from '../base/BaseCommand.js';
+import { commandContext } from '../shared/CommandContext.js';
 
 export class HubGenerateCommand extends BaseCommand {
   constructor() {
-    super('hub-generate', 'Generate custom blueprint package from Hub')
+    super('hub-generate', 'Generate custom blueprint package from Hub');
   }
 
   /**
@@ -26,33 +26,33 @@ export class HubGenerateCommand extends BaseCommand {
       .option('--format <format>', 'Output format (bash, zip, config)', 'bash')
       .option('--requirements <text>', 'Custom requirements or preferences')
       .option('-o, --output <path>', 'Output file path')
-      .option('-v, --verbose', 'Show detailed generation process', false)
+      .option('-v, --verbose', 'Show detailed generation process', false);
   }
 
   /**
    * Execute the hub generate command
    */
   async execute(options) {
-    await commandContext.initialize()
-    this.showHeader()
+    await commandContext.initialize();
+    this.showHeader();
 
     try {
-      const { quickHubOperations } = await import('../../hub/index.js')
-      const hubOps = await quickHubOperations()
+      const { quickHubOperations } = await import('../../hub/index.js');
+      const hubOps = await quickHubOperations();
 
-      const analysisData = this.buildAnalysisData(options)
-      const generateOptions = this.buildGenerateOptions(options)
+      const analysisData = this.buildAnalysisData(options);
+      const generateOptions = this.buildGenerateOptions(options);
 
       if (options.verbose) {
-        this.displayGenerationPlan(analysisData, generateOptions)
+        this.displayGenerationPlan(analysisData, generateOptions);
       }
 
-      const packageResult = await this.generatePackage(hubOps, analysisData, generateOptions)
+      const packageResult = await this.generatePackage(hubOps, analysisData, generateOptions);
 
       if (options.output || options.format !== 'bash') {
-        await this.downloadPackage(hubOps, packageResult, options)
+        await this.downloadPackage(hubOps, packageResult, options);
       } else {
-        this.displayDownloadInfo(packageResult)
+        this.displayDownloadInfo(packageResult);
       }
 
       this.trackSuccess({
@@ -60,11 +60,11 @@ export class HubGenerateCommand extends BaseCommand {
         packageId: packageResult.packageId,
         ruleCount: packageResult.ruleCount,
         hasCustomRequirements: !!options.requirements,
-      })
+      });
 
-      return packageResult
+      return packageResult;
     } catch (error) {
-      this.exitWithError(`Package generation failed: ${error.message}`, error)
+      this.exitWithError(`Package generation failed: ${error.message}`, error);
     }
   }
 
@@ -77,7 +77,7 @@ export class HubGenerateCommand extends BaseCommand {
       languages: options.language || [],
       tools: options.tools || [],
       projectType: 'custom',
-    }
+    };
   }
 
   /**
@@ -87,61 +87,61 @@ export class HubGenerateCommand extends BaseCommand {
     return {
       outputFormat: options.format,
       customRequirements: options.requirements,
-      integrations: (options.ai || []).map((ai) => ({ type: ai })),
-    }
+      integrations: (options.ai || []).map(ai => ({ type: ai })),
+    };
   }
 
   /**
    * Display generation plan
    */
   displayGenerationPlan(analysisData, generateOptions) {
-    console.log(`\n${this.colorCyan('📋 Generation Plan:')}`)
+    console.log(`\n${this.colorCyan('📋 Generation Plan:')}`);
 
     if (analysisData.frameworks.length > 0) {
-      console.log(`Frameworks: ${analysisData.frameworks.join(', ')}`)
+      console.log(`Frameworks: ${analysisData.frameworks.join(', ')}`);
     }
 
     if (analysisData.languages.length > 0) {
-      console.log(`Languages: ${analysisData.languages.join(', ')}`)
+      console.log(`Languages: ${analysisData.languages.join(', ')}`);
     }
 
     if (analysisData.tools.length > 0) {
-      console.log(`Tools: ${analysisData.tools.join(', ')}`)
+      console.log(`Tools: ${analysisData.tools.join(', ')}`);
     }
 
     if (generateOptions.integrations.length > 0) {
-      console.log(`AI Assistants: ${generateOptions.integrations.map((i) => i.type).join(', ')}`)
+      console.log(`AI Assistants: ${generateOptions.integrations.map(i => i.type).join(', ')}`);
     }
 
-    console.log(`Output Format: ${generateOptions.outputFormat}`)
+    console.log(`Output Format: ${generateOptions.outputFormat}`);
 
     if (generateOptions.customRequirements) {
-      console.log(`Custom Requirements: ${generateOptions.customRequirements}`)
+      console.log(`Custom Requirements: ${generateOptions.customRequirements}`);
     }
 
-    console.log('')
+    console.log('');
   }
 
   /**
    * Generate package from Hub
    */
   async generatePackage(hubOps, analysisData, generateOptions) {
-    const spinner = this.createSpinner('Generating package from Hub...')
-    spinner.start()
+    const spinner = this.createSpinner('Generating package from Hub...');
+    spinner.start();
 
     try {
-      const packageResult = await hubOps.generatePackage(analysisData, generateOptions)
-      spinner.succeed('Package generated successfully')
+      const packageResult = await hubOps.generatePackage(analysisData, generateOptions);
+      spinner.succeed('Package generated successfully');
 
-      console.log(`Package ID: ${packageResult.packageId}`)
-      console.log(`Type: ${packageResult.packageType}`)
-      console.log(`Blueprints: ${packageResult.ruleCount}`)
-      console.log(`Size: ${Math.round(packageResult.fileSize / 1024)}KB`)
+      console.log(`Package ID: ${packageResult.packageId}`);
+      console.log(`Type: ${packageResult.packageType}`);
+      console.log(`Blueprints: ${packageResult.ruleCount}`);
+      console.log(`Size: ${Math.round(packageResult.fileSize / 1024)}KB`);
 
-      return packageResult
+      return packageResult;
     } catch (error) {
-      spinner.fail('Package generation failed')
-      throw error
+      spinner.fail('Package generation failed');
+      throw error;
     }
   }
 
@@ -149,26 +149,27 @@ export class HubGenerateCommand extends BaseCommand {
    * Download and save package
    */
   async downloadPackage(hubOps, packageResult, options) {
-    const spinner = this.createSpinner('Downloading package...')
-    spinner.start()
+    const spinner = this.createSpinner('Downloading package...');
+    spinner.start();
 
     try {
-      const packageContent = await hubOps.downloadPackage(packageResult.packageId)
+      const packageContent = await hubOps.downloadPackage(packageResult.packageId);
 
-      const outputPath = options.output || `vdk-package-${packageResult.packageId}.${packageResult.packageType}`
+      const outputPath =
+        options.output || `vdk-package-${packageResult.packageId}.${packageResult.packageType}`;
 
       if (typeof packageContent.content === 'string') {
-        await fs.writeFile(outputPath, packageContent.content)
+        await fs.writeFile(outputPath, packageContent.content);
       } else {
-        await fs.writeFile(outputPath, Buffer.from(packageContent.content))
+        await fs.writeFile(outputPath, Buffer.from(packageContent.content));
       }
 
-      spinner.succeed(`Package saved to ${this.formatPath(outputPath)}`)
+      spinner.succeed(`Package saved to ${this.formatPath(outputPath)}`);
 
-      return { downloadPath: outputPath }
+      return { downloadPath: outputPath };
     } catch (error) {
-      spinner.fail('Package download failed')
-      throw error
+      spinner.fail('Package download failed');
+      throw error;
     }
   }
 
@@ -176,10 +177,10 @@ export class HubGenerateCommand extends BaseCommand {
    * Display download information for bash format
    */
   displayDownloadInfo(packageResult) {
-    console.log(`\nDownload URL: ${packageResult.downloadUrl}`)
-    console.log(`Expires: ${new Date(packageResult.expiresAt).toLocaleString()}`)
-    console.log(`\n${this.colorCyan('💡 To save the package:')}`)
-    console.log(`curl -o vdk-package.sh "${packageResult.downloadUrl}"`)
-    console.log('chmod +x vdk-package.sh && ./vdk-package.sh')
+    console.log(`\nDownload URL: ${packageResult.downloadUrl}`);
+    console.log(`Expires: ${new Date(packageResult.expiresAt).toLocaleString()}`);
+    console.log(`\n${this.colorCyan('💡 To save the package:')}`);
+    console.log(`curl -o vdk-package.sh "${packageResult.downloadUrl}"`);
+    console.log('chmod +x vdk-package.sh && ./vdk-package.sh');
   }
 }

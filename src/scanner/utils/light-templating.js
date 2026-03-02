@@ -19,14 +19,14 @@
  */
 export function applyLightTemplating(content, variables = {}) {
   if (!content || typeof content !== 'string') {
-    return content
+    return content;
   }
 
   // Simple string replacement for ${variable} patterns
   return content.replace(/\$\{([^}]+)\}/g, (match, variableName) => {
-    const value = getNestedValue(variables, variableName.trim())
-    return value !== undefined ? value : match // Keep original if not found
-  })
+    const value = getNestedValue(variables, variableName.trim());
+    return value !== undefined ? value : match; // Keep original if not found
+  });
 }
 
 /**
@@ -37,8 +37,8 @@ export function applyLightTemplating(content, variables = {}) {
  */
 function getNestedValue(obj, path) {
   return path.split('.').reduce((current, key) => {
-    return current && current[key] !== undefined ? current[key] : undefined
-  }, obj)
+    return current && current[key] !== undefined ? current[key] : undefined;
+  }, obj);
 }
 
 /**
@@ -47,9 +47,9 @@ function getNestedValue(obj, path) {
  * @returns {Object} Template variables
  */
 export function prepareTemplateVariables(analysisData) {
-  const projectStructure = analysisData.projectStructure || {}
-  const techData = analysisData.technologyData || {}
-  const patterns = analysisData.patterns || {}
+  const projectStructure = analysisData.projectStructure || {};
+  const techData = analysisData.technologyData || {};
+  const patterns = analysisData.patterns || {};
 
   return {
     // Project basics
@@ -83,9 +83,9 @@ export function prepareTemplateVariables(analysisData) {
 
     // Utilities for templates
     join: (array, separator = ', ') => (Array.isArray(array) ? array.join(separator) : ''),
-    capitalize: (str) => (str ? str.charAt(0).toUpperCase() + str.slice(1) : ''),
-    lowercase: (str) => (str ? str.toLowerCase() : ''),
-  }
+    capitalize: str => (str ? str.charAt(0).toUpperCase() + str.slice(1) : ''),
+    lowercase: str => (str ? str.toLowerCase() : ''),
+  };
 }
 
 /**
@@ -94,143 +94,145 @@ export function prepareTemplateVariables(analysisData) {
 
 function getProjectName(projectStructure) {
   // Try to get from package.json, fallback to directory name
-  const packageJson = projectStructure.packageJson
+  const packageJson = projectStructure.packageJson;
   if (packageJson?.name) {
-    return packageJson.name
+    return packageJson.name;
   }
 
-  const root = projectStructure.root || process.cwd()
-  return root.split('/').pop() || 'UnknownProject'
+  const root = projectStructure.root || process.cwd();
+  return root.split('/').pop() || 'UnknownProject';
 }
 
 function determineProjectType(techData) {
-  const frameworks = techData.frameworks || []
-  const libraries = techData.libraries || []
+  const frameworks = techData.frameworks || [];
+  const libraries = techData.libraries || [];
 
   // Check for CLI indicators first (highest priority)
   if (isCLIProject(techData)) {
-    return 'CLI Application'
+    return 'CLI Application';
   }
 
   if (frameworks.includes('React') || libraries.includes('react')) {
-    return 'React App'
+    return 'React App';
   }
   if (frameworks.includes('Vue') || libraries.includes('vue')) {
-    return 'Vue App'
+    return 'Vue App';
   }
   if (frameworks.includes('Angular') || libraries.includes('@angular/core')) {
-    return 'Angular App'
+    return 'Angular App';
   }
   if (frameworks.includes('Next.js') || libraries.includes('next')) {
-    return 'Next.js App'
+    return 'Next.js App';
   }
   if (frameworks.includes('Express') || libraries.includes('express')) {
-    return 'Express API'
+    return 'Express API';
   }
   if (frameworks.includes('Django')) {
-    return 'Django App'
+    return 'Django App';
   }
   if (frameworks.includes('Rails')) {
-    return 'Rails App'
+    return 'Rails App';
   }
 
-  return 'Application'
+  return 'Application';
 }
 
 function isCLIProject(techData) {
-  const libraries = techData.libraries || []
-  const packageInfo = techData.packageInfo || {}
+  const libraries = techData.libraries || [];
+  const packageInfo = techData.packageInfo || {};
 
   // Has bin field in package.json
   if (packageInfo.bin) {
-    return true
+    return true;
   }
 
   // Has CLI-related dependencies
-  const cliDeps = ['commander', 'yargs', 'inquirer', 'chalk', 'ora', 'boxen']
-  if (cliDeps.some((dep) => libraries.includes(dep))) {
-    return true
+  const cliDeps = ['commander', 'yargs', 'inquirer', 'chalk', 'ora', 'boxen'];
+  if (cliDeps.some(dep => libraries.includes(dep))) {
+    return true;
   }
 
   // Has CLI-related keywords
-  const keywords = packageInfo.keywords || []
-  const cliKeywords = ['cli', 'command-line', 'terminal', 'tool', 'utility']
-  if (cliKeywords.some((keyword) => keywords.includes(keyword))) {
-    return true
+  const keywords = packageInfo.keywords || [];
+  const cliKeywords = ['cli', 'command-line', 'terminal', 'tool', 'utility'];
+  if (cliKeywords.some(keyword => keywords.includes(keyword))) {
+    return true;
   }
 
-  return false
+  return false;
 }
 
 function hasTestDirectory(projectStructure) {
-  const directories = projectStructure.directories || []
-  return directories.some((dir) => /^(test|tests|__tests__|spec|specs)$/i.test(dir.name))
+  const directories = projectStructure.directories || [];
+  return directories.some(dir => /^(test|tests|__tests__|spec|specs)$/i.test(dir.name));
 }
 
 function hasComponentsDirectory(projectStructure) {
-  const directories = projectStructure.directories || []
-  return directories.some((dir) => /^(components|component)$/i.test(dir.name) || dir.path.includes('/components/'))
+  const directories = projectStructure.directories || [];
+  return directories.some(
+    dir => /^(components|component)$/i.test(dir.name) || dir.path.includes('/components/')
+  );
 }
 
 function hasDocsDirectory(projectStructure) {
-  const directories = projectStructure.directories || []
-  return directories.some((dir) => /^(docs|doc|documentation)$/i.test(dir.name))
+  const directories = projectStructure.directories || [];
+  return directories.some(dir => /^(docs|doc|documentation)$/i.test(dir.name));
 }
 
 function getProjectVersion(techData) {
-  const packageJson = techData.packageJson
-  return packageJson?.version ? packageJson.version : '1.0.0'
+  const packageJson = techData.packageJson;
+  return packageJson?.version ? packageJson.version : '1.0.0';
 }
 
 function findSourceDirectory(projectStructure) {
-  const directories = projectStructure.directories || []
-  const srcDir = directories.find((dir) => /^(src|source|lib|app)$/i.test(dir.name))
-  return srcDir ? srcDir.path : './src'
+  const directories = projectStructure.directories || [];
+  const srcDir = directories.find(dir => /^(src|source|lib|app)$/i.test(dir.name));
+  return srcDir ? srcDir.path : './src';
 }
 
 function findTestDirectory(projectStructure) {
-  const directories = projectStructure.directories || []
-  const testDir = directories.find((dir) => /^(test|tests|__tests__|spec|specs)$/i.test(dir.name))
-  return testDir ? testDir.path : './test'
+  const directories = projectStructure.directories || [];
+  const testDir = directories.find(dir => /^(test|tests|__tests__|spec|specs)$/i.test(dir.name));
+  return testDir ? testDir.path : './test';
 }
 
 function findDocsDirectory(projectStructure) {
-  const directories = projectStructure.directories || []
-  const docsDir = directories.find((dir) => /^(docs|doc|documentation)$/i.test(dir.name))
-  return docsDir ? docsDir.path : './docs'
+  const directories = projectStructure.directories || [];
+  const docsDir = directories.find(dir => /^(docs|doc|documentation)$/i.test(dir.name));
+  return docsDir ? docsDir.path : './docs';
 }
 
 /**
  * Template helper functions for processing template variables
  */
 export const templateHelpers = {
-  capitalize: (str) => (str ? str.charAt(0).toUpperCase() + str.slice(1) : ''),
-  lowercase: (str) => (str ? str.toLowerCase() : ''),
+  capitalize: str => (str ? str.charAt(0).toUpperCase() + str.slice(1) : ''),
+  lowercase: str => (str ? str.toLowerCase() : ''),
   join: (array, separator = ', ') => (Array.isArray(array) ? array.join(separator) : ''),
   ifCond: (v1, operator, v2) => {
     switch (operator) {
       case '==':
-        return v1 === v2
+        return v1 === v2;
       case '===':
-        return v1 === v2
+        return v1 === v2;
       case '!=':
-        return v1 !== v2
+        return v1 !== v2;
       case '!==':
-        return v1 !== v2
+        return v1 !== v2;
       case '<':
-        return v1 < v2
+        return v1 < v2;
       case '<=':
-        return v1 <= v2
+        return v1 <= v2;
       case '>':
-        return v1 > v2
+        return v1 > v2;
       case '>=':
-        return v1 >= v2
+        return v1 >= v2;
       case '&&':
-        return v1 && v2
+        return v1 && v2;
       case '||':
-        return v1 || v2
+        return v1 || v2;
       default:
-        return false
+        return false;
     }
   },
-}
+};

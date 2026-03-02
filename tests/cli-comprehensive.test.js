@@ -2,27 +2,27 @@
  * Comprehensive CLI Tests - Complete command handler coverage
  * Updated for CLI styling
  */
-import fs from 'node:fs/promises'
-import path from 'node:path'
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
-import stripAnsi from 'strip-ansi'
-import { afterEach, describe, expect, it } from 'vitest'
+import stripAnsi from 'strip-ansi';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import { cleanupTempDir, createTempDir, runCLI } from './helpers/cli-helper.js'
+import { cleanupTempDir, createTempDir, runCLI } from './helpers/cli-helper.js';
 
 describe('Complete CLI Command Coverage', () => {
-  let tempDir
+  let tempDir;
 
   afterEach(async () => {
     if (tempDir) {
-      await cleanupTempDir(tempDir)
-      tempDir = null
+      await cleanupTempDir(tempDir);
+      tempDir = null;
     }
-  })
+  });
 
   describe('Init Command - Complete Coverage', () => {
     it('should handle all init command options', async () => {
-      tempDir = await createTempDir('comprehensive-init-test')
+      tempDir = await createTempDir('comprehensive-init-test');
 
       const result = await runCLI(
         [
@@ -49,249 +49,256 @@ describe('Complete CLI Command Coverage', () => {
           '--interactive',
         ],
         { timeout: 15000 }
-      )
+      );
 
-      expect(result.code).toBeDefined()
+      expect(result.code).toBeDefined();
       // Should complete without crashing regardless of success/failure
-      expect(result.stdout.length + result.stderr.length).toBeGreaterThan(0)
-    }, 70000)
+      expect(result.stdout.length + result.stderr.length).toBeGreaterThan(0);
+    }, 70000);
 
     it('should handle init with minimal options', async () => {
-      tempDir = await createTempDir('minimal-init-test')
+      tempDir = await createTempDir('minimal-init-test');
 
-      const result = await runCLI(['init', '--projectPath', tempDir], { timeout: 15000 })
+      const result = await runCLI(['init', '--projectPath', tempDir], { timeout: 15000 });
 
-      expect(result.code).toBeDefined()
-      expect(result.stdout.length + result.stderr.length).toBeGreaterThan(0)
-    }, 50000)
+      expect(result.code).toBeDefined();
+      expect(result.stdout.length + result.stderr.length).toBeGreaterThan(0);
+    }, 50000);
 
     it('should handle init with watch mode (quickly exit)', async () => {
-      tempDir = await createTempDir('watch-init-test')
+      tempDir = await createTempDir('watch-init-test');
 
       // Run with timeout to prevent hanging
-      const result = await runCLI(['init', '--projectPath', tempDir, '--watch'], { timeout: 5000 })
+      const result = await runCLI(['init', '--projectPath', tempDir, '--watch'], { timeout: 5000 });
 
       // Will timeout, but should start properly
-      expect(result.code).toBeDefined()
-    })
-  })
+      expect(result.code).toBeDefined();
+    });
+  });
 
   describe('Deploy Command - Complete Coverage', () => {
     it('should execute deploy command', async () => {
-      const result = await runCLI(['deploy'])
+      const result = await runCLI(['deploy']);
 
-      expect(result.code).toBeDefined()
+      expect(result.code).toBeDefined();
       // Deploy command without arguments shows usage guide, not "under development"
-      expect(result.stdout).toContain('Deploy Options')
-    })
+      expect(result.stdout).toContain('Deploy Options');
+    });
 
     it('should handle deploy with help', async () => {
-      const result = await runCLI(['deploy', '--help'])
+      const result = await runCLI(['deploy', '--help']);
 
-      expect(result.success || result.stdout.includes('deploy')).toBe(true)
-    })
-  })
+      expect(result.success || result.stdout.includes('deploy')).toBe(true);
+    });
+  });
 
   // DISABLED: describe('sync command - Complete Coverage' // Command removed () => {
-    it('should execute sync command with default path', async () => {
-      const result = await runCLI(['sync'], { timeout: 15000 })
+  it('should execute sync command with default path', async () => {
+    const result = await runCLI(['sync'], { timeout: 15000 });
 
-      expect(result.code).toBeDefined()
-      expect(result.stdout.length + result.stderr.length).toBeGreaterThan(0)
-    }, 50000)
+    expect(result.code).toBeDefined();
+    expect(result.stdout.length + result.stderr.length).toBeGreaterThan(0);
+  }, 50000);
 
-    it('should execute sync command with custom output path', async () => {
-      tempDir = await createTempDir('update-test')
+  it('should execute sync command with custom output path', async () => {
+    tempDir = await createTempDir('update-test');
 
-      const result = await runCLI(['sync', '--outputPath', path.join(tempDir, 'custom-rules')], {
-        timeout: 15000,
-      })
+    const result = await runCLI(['sync', '--outputPath', path.join(tempDir, 'custom-rules')], {
+      timeout: 15000,
+    });
 
-      expect(result.code).toBeDefined()
-      expect(result.stdout.length + result.stderr.length).toBeGreaterThan(0)
-    }, 50000)
+    expect(result.code).toBeDefined();
+    expect(result.stdout.length + result.stderr.length).toBeGreaterThan(0);
+  }, 50000);
 
-    it('should handle update network failures gracefully', async () => {
-      // This will likely fail due to network/auth, but should handle gracefully
-      const result = await runCLI(['sync'], { timeout: 30000 })
+  it('should handle update network failures gracefully', async () => {
+    // This will likely fail due to network/auth, but should handle gracefully
+    const result = await runCLI(['sync'], { timeout: 30000 });
 
-      expect(result.code).toBeDefined()
-      // Should either succeed or fail with meaningful message
-      expect(result.stdout.length + result.stderr.length).toBeGreaterThan(0)
-    }, 35000)
-  })
+    expect(result.code).toBeDefined();
+    // Should either succeed or fail with meaningful message
+    expect(result.stdout.length + result.stderr.length).toBeGreaterThan(0);
+  }, 35000);
+});
 
-  describe('Status Command - Complete Coverage', () => {
-    it('should execute status with default config', async () => {
-      const result = await runCLI(['status'])
+describe('Status Command - Complete Coverage', () => {
+  it('should execute status with default config', async () => {
+    const result = await runCLI(['status']);
 
-      expect(result.code).toBeDefined()
-      expect(result.stdout.length + result.stderr.length).toBeGreaterThan(0)
-    })
+    expect(result.code).toBeDefined();
+    expect(result.stdout.length + result.stderr.length).toBeGreaterThan(0);
+  });
 
-    it('should execute status with custom config path', async () => {
-      tempDir = await createTempDir('status-test')
-      const configPath = path.join(tempDir, 'custom-vdk.config.json')
+  it('should execute status with custom config path', async () => {
+    tempDir = await createTempDir('status-test');
+    const configPath = path.join(tempDir, 'custom-vdk.config.json');
 
-      const result = await runCLI(['status', '--configPath', configPath, '--outputPath', path.join(tempDir, 'rules')])
+    const result = await runCLI([
+      'status',
+      '--configPath',
+      configPath,
+      '--outputPath',
+      path.join(tempDir, 'rules'),
+    ]);
 
-      expect(result.code).toBeDefined()
-      expect(result.stdout.length + result.stderr.length).toBeGreaterThan(0)
-    })
+    expect(result.code).toBeDefined();
+    expect(result.stdout.length + result.stderr.length).toBeGreaterThan(0);
+  });
 
-    it('should handle status with valid config file', async () => {
-      tempDir = await createTempDir('status-valid-config-test')
-      const configPath = path.join(tempDir, 'vdk.config.json')
+  it('should handle status with valid config file', async () => {
+    tempDir = await createTempDir('status-valid-config-test');
+    const configPath = path.join(tempDir, 'vdk.config.json');
 
-      // Create valid config
-      const config = {
-        project: { name: 'test-project' },
-        ide: 'claude-code',
-        rulesPath: './.vdk/rules',
-        lastUpdated: new Date().toISOString(),
-      }
-      await fs.writeFile(configPath, JSON.stringify(config, null, 2))
+    // Create valid config
+    const config = {
+      project: { name: 'test-project' },
+      ide: 'claude-code',
+      rulesPath: './.vdk/rules',
+      lastUpdated: new Date().toISOString(),
+    };
+    await fs.writeFile(configPath, JSON.stringify(config, null, 2));
 
-      const result = await runCLI(['status', '--configPath', configPath])
+    const result = await runCLI(['status', '--configPath', configPath]);
 
-      expect(result.code).toBeDefined()
-      if (result.success) {
-        // Check for status table format
-        expect(result.stdout).toContain('VDK Configuration')
-        expect(stripAnsi(result.stdout)).toMatch(/[✔✓]/) // Should show success symbol
-      }
-    })
+    expect(result.code).toBeDefined();
+    if (result.success) {
+      // Check for status table format
+      expect(result.stdout).toContain('VDK Configuration');
+      expect(stripAnsi(result.stdout)).toMatch(/[✔✓]/); // Should show success symbol
+    }
+  });
 
-    it('should handle status with malformed config file', async () => {
-      tempDir = await createTempDir('status-malformed-config-test')
-      const configPath = path.join(tempDir, 'vdk.config.json')
+  it('should handle status with malformed config file', async () => {
+    tempDir = await createTempDir('status-malformed-config-test');
+    const configPath = path.join(tempDir, 'vdk.config.json');
 
-      // Create malformed config
-      await fs.writeFile(configPath, '{ invalid json }')
+    // Create malformed config
+    await fs.writeFile(configPath, '{ invalid json }');
 
-      const result = await runCLI(['status', '--configPath', configPath])
+    const result = await runCLI(['status', '--configPath', configPath]);
 
-      expect(result.code).toBeDefined()
-      // With styling, malformed config shows as warning in status table
-      expect(result.stdout).toContain('VDK Configuration')
-      expect(stripAnsi(result.stdout)).toMatch(/[⚠]/) // Should show warning symbol for malformed config
-    })
-  })
+    expect(result.code).toBeDefined();
+    // With styling, malformed config shows as warning in status table
+    expect(result.stdout).toContain('VDK Configuration');
+    expect(stripAnsi(result.stdout)).toMatch(/[⚠]/); // Should show warning symbol for malformed config
+  });
+});
 
-  describe('Help and Version - Complete Coverage', () => {
-    it('should display comprehensive help', async () => {
-      const result = await runCLI(['--help'])
+describe('Help and Version - Complete Coverage', () => {
+  it('should display comprehensive help', async () => {
+    const result = await runCLI(['--help']);
 
-      expect(result.success).toBe(true)
-      expect(result.stdout).toContain('VDK CLI')
-      expect(result.stdout).toContain('init')
-      expect(result.stdout).toContain('deploy')
-      expect(result.stdout).toContain('sync')
-      expect(result.stdout).toContain('status')
-    })
+    expect(result.success).toBe(true);
+    expect(result.stdout).toContain('VDK CLI');
+    expect(result.stdout).toContain('init');
+    expect(result.stdout).toContain('deploy');
+    expect(result.stdout).toContain('sync');
+    expect(result.stdout).toContain('status');
+  });
 
-    it('should display version', async () => {
-      const result = await runCLI(['--version'])
+  it('should display version', async () => {
+    const result = await runCLI(['--version']);
 
-      expect(result.success).toBe(true)
-      expect(result.stdout.trim().length).toBeGreaterThan(0)
-    })
+    expect(result.success).toBe(true);
+    expect(result.stdout.trim().length).toBeGreaterThan(0);
+  });
 
-    it('should display help when no arguments provided', async () => {
-      const result = await runCLI([])
+  it('should display help when no arguments provided', async () => {
+    const result = await runCLI([]);
 
-      expect(result.code).toBeDefined()
-      // Output includes banner and help text - check both stdout and stderr for output
-      const allOutput = result.stdout + result.stderr
-      const hasHelpContent = allOutput.includes('Usage:') || allOutput.includes('VDK CLI')
-      expect(hasHelpContent).toBe(true)
-      // Should also contain the banner
-      expect(allOutput).toContain("The world's first Vibe Development Kit")
-    })
-  })
+    expect(result.code).toBeDefined();
+    // Output includes banner and help text - check both stdout and stderr for output
+    const allOutput = result.stdout + result.stderr;
+    const hasHelpContent = allOutput.includes('Usage:') || allOutput.includes('VDK CLI');
+    expect(hasHelpContent).toBe(true);
+    // Should also contain the banner
+    expect(allOutput).toContain("The world's first Vibe Development Kit");
+  });
+});
 
-  describe('Command Option Combinations', () => {
-    it('should handle multiple short options', async () => {
-      const result = await runCLI(['init', '--help'])
+describe('Command Option Combinations', () => {
+  it('should handle multiple short options', async () => {
+    const result = await runCLI(['init', '--help']);
 
-      expect(result.success).toBe(true)
-      expect(result.stdout).toContain('init')
-    })
+    expect(result.success).toBe(true);
+    expect(result.stdout).toContain('init');
+  });
 
-    it('should handle verbose flag across commands', async () => {
-      const commands = [
-        ['init', '--help', '--verbose'],
-        ['status', '--help'],
-        ['sync', '--help'],
-        ['deploy', '--help'],
-      ]
+  it('should handle verbose flag across commands', async () => {
+    const commands = [
+      ['init', '--help', '--verbose'],
+      ['status', '--help'],
+      ['sync', '--help'],
+      ['deploy', '--help'],
+    ];
 
-      for (const cmd of commands) {
-        const result = await runCLI(cmd)
-        expect(result.code).toBeDefined()
-      }
-    })
-  })
+    for (const cmd of commands) {
+      const result = await runCLI(cmd);
+      expect(result.code).toBeDefined();
+    }
+  });
+});
 
-  describe('Error Handling in Commands', () => {
-    it('should handle init with invalid project path', async () => {
-      const result = await runCLI(['init', '--projectPath', '/invalid/path/that/does/not/exist'], { timeout: 10000 })
+describe('Error Handling in Commands', () => {
+  it('should handle init with invalid project path', async () => {
+    const result = await runCLI(['init', '--projectPath', '/invalid/path/that/does/not/exist'], {
+      timeout: 10000,
+    });
 
-      // Command might not fail immediately but should handle the error gracefully
-      expect(result.code).toBeDefined()
-      // Look for any output indicating the command processed the invalid path
-      expect(result.stdout.length + result.stderr.length).toBeGreaterThan(0)
-    }, 15000)
+    // Command might not fail immediately but should handle the error gracefully
+    expect(result.code).toBeDefined();
+    // Look for any output indicating the command processed the invalid path
+    expect(result.stdout.length + result.stderr.length).toBeGreaterThan(0);
+  }, 15000);
 
-    it('should handle update with invalid output path', async () => {
-      const result = await runCLI(['sync', '--outputPath', '/root/invalid/permission/path'], {
-        timeout: 30000,
-      })
+  it('should handle update with invalid output path', async () => {
+    const result = await runCLI(['sync', '--outputPath', '/root/invalid/permission/path'], {
+      timeout: 30000,
+    });
 
-      expect(result.code).toBeDefined()
-      // Should handle permission errors gracefully
-    }, 35000)
+    expect(result.code).toBeDefined();
+    // Should handle permission errors gracefully
+  }, 35000);
 
-    it('should handle status with invalid config path', async () => {
-      const result = await runCLI(['status', '--configPath', '/invalid/config/path.json'])
+  it('should handle status with invalid config path', async () => {
+    const result = await runCLI(['status', '--configPath', '/invalid/config/path.json']);
 
-      expect(result.code).toBeDefined()
-      // With enhanced styling, missing config shows as warning in status table
-      expect(result.stdout).toContain('VDK Configuration')
-      expect(stripAnsi(result.stdout)).toMatch(/[⚠]/) // Should show warning symbol for missing config
-    })
-  })
+    expect(result.code).toBeDefined();
+    // With enhanced styling, missing config shows as warning in status table
+    expect(result.stdout).toContain('VDK Configuration');
+    expect(stripAnsi(result.stdout)).toMatch(/[⚠]/); // Should show warning symbol for missing config
+  });
+});
 
-  describe('Signal Handling', () => {
-    it('should handle process termination gracefully', async () => {
-      // Test that CLI commands don't leave hanging processes
-      const result = await runCLI(['--help'])
+describe('Signal Handling', () => {
+  it('should handle process termination gracefully', async () => {
+    // Test that CLI commands don't leave hanging processes
+    const result = await runCLI(['--help']);
 
-      expect(result.success).toBe(true)
-      // Command should complete and exit cleanly
-    })
-  })
+    expect(result.success).toBe(true);
+    // Command should complete and exit cleanly
+  });
+});
 
-  describe('Environment Integration', () => {
-    it('should respect environment variables', async () => {
-      // Test with custom env vars
-      const result = await runCLI(['--help'], {
-        env: {
-          VDK_DEBUG: 'true',
-          VDK_GITHUB_TOKEN: 'test-token',
-        },
-      })
+describe('Environment Integration', () => {
+  it('should respect environment variables', async () => {
+    // Test with custom env vars
+    const result = await runCLI(['--help'], {
+      env: {
+        VDK_DEBUG: 'true',
+        VDK_GITHUB_TOKEN: 'test-token',
+      },
+    });
 
-      expect(result.success).toBe(true)
-    })
+    expect(result.success).toBe(true);
+  });
 
-    it('should work without environment variables', async () => {
-      // Test without any VDK env vars
-      const result = await runCLI(['--version'], {
-        env: {}, // Clean environment
-      })
+  it('should work without environment variables', async () => {
+    // Test without any VDK env vars
+    const result = await runCLI(['--version'], {
+      env: {}, // Clean environment
+    });
 
-      expect(result.success).toBe(true)
-    })
-  })
-})
+    expect(result.success).toBe(true);
+  });
+});

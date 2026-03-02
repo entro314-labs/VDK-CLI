@@ -3,7 +3,7 @@
 <div align="center">
 
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-2.0.0-brightgreen.svg)](https://github.com/entro314-labs/VDK-CLI)
+[![Version](https://img.shields.io/badge/Version-2.0.0-brightgreen.svg)](https://github.com/vdkit/VDK-CLI)
 
 _A powerful tool for analyzing project structures and generating customized AI coding rules_
 
@@ -230,7 +230,7 @@ Generated rules work automatically with **33+ supported IDEs and AI tools**:
 - **GitHub Copilot**: Rules placed in `.github/copilot/rules/`
 - **Generic AI Platform**: Rules placed in `.ai/rules/`
 
-###  Detection Features
+### Detection Features
 
 - **Intelligent Platform Detection**: Analyzes project characteristics to recommend optimal IDE configurations
 - **Confidence Scoring**: Ranks detected IDEs by project compatibility
@@ -273,6 +273,6 @@ Contributions are welcome! See [CONTRIBUTING.md](../../CONTRIBUTING.md) for guid
 
 <div align="center">
 
-**Part of [VDK CLI](https://github.com/entro314-labs/VDK-CLI)**
+**Part of [VDK CLI](https://github.com/vdkit/VDK-CLI)**
 
 </div>

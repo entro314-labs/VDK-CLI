@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.10.0] - 2025-01-08
 
-### 🚀  Schema - Universal Platform Support
+### 🚀 Schema - Universal Platform Support
 
 This release introduces comprehensive platform support with an enhanced schema system supporting **33+ IDEs and AI tools** with intelligent detection and configuration.
 
@@ -42,7 +42,7 @@ This release introduces comprehensive platform support with an enhanced schema s
 - **feat**: add wildcard pattern support for complex file detection
 - **feat**: implement intelligent ranking of detected IDEs by project compatibility
 
-### 🔧  Schema & Validation
+### 🔧 Schema & Validation
 
 - **feat**: expand blueprint schema to support all 33 platforms with platform-specific configurations
 - **feat**: add comprehensive platform specification schema (`platform-spec.json`)
@@ -66,7 +66,7 @@ This release introduces comprehensive platform support with an enhanced schema s
 - **feat**: create intelligent rule directory fallback system
 - **feat**: enhance global vs project configuration handling
 
-### 🎯  CLI Features
+### 🎯 CLI Features
 
 - **feat**: update `vdk init` to support individual JetBrains IDE initialization
 - **feat**: add platform-specific scanning with `vdk scan --ide webstorm`
@@ -90,7 +90,7 @@ This release introduces comprehensive platform support with an enhanced schema s
 - **docs**: add MCP integration documentation across platforms
 - **docs**: document confidence-based detection and intelligent recommendations
 
-### 🔗  Integrations
+### 🔗 Integrations
 
 - **feat**: implement MCP (Model Context Protocol) support across 20+ compatible platforms
 - **feat**: add platform-specific configuration templates and optimizations
@@ -223,7 +223,7 @@ This release marks a significant milestone with comprehensive testing, security 
 
 ## [2.0.3] - 2025-08-07
 
-### 🎯  Testing & Quality
+### 🎯 Testing & Quality
 
 ### ✨ Features
 

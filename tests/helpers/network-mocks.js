@@ -5,18 +5,18 @@
  * and external service integrations to prevent test flakiness and timeouts.
  */
 
-import { vi } from 'vitest'
+import { vi } from 'vitest';
 
 /**
  * Mock fetch responses for different scenarios
  */
 export const mockFetchResponses = {
   // Hub API responses
-  hubSuccess: (data) => ({
+  hubSuccess: data => ({
     ok: true,
     status: 200,
     headers: {
-      get: (name) => (name === 'content-type' ? 'application/json' : null),
+      get: name => (name === 'content-type' ? 'application/json' : null),
     },
     json: () => Promise.resolve(data),
     text: () => Promise.resolve(JSON.stringify(data)),
@@ -27,7 +27,7 @@ export const mockFetchResponses = {
     status,
     statusText: message,
     headers: {
-      get: (name) => (name === 'content-type' ? 'application/json' : null),
+      get: name => (name === 'content-type' ? 'application/json' : null),
     },
     json: () => Promise.resolve({ error: message }),
     text: () => Promise.resolve(JSON.stringify({ error: message })),
@@ -37,7 +37,7 @@ export const mockFetchResponses = {
 
   timeout: () =>
     new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Request timeout')), 100)
+      setTimeout(() => reject(new Error('Request timeout')), 100);
     }),
 
   // Blueprint repository responses
@@ -45,21 +45,21 @@ export const mockFetchResponses = {
     ok: true,
     status: 200,
     headers: {
-      get: (name) => (name === 'content-type' ? 'application/json' : null),
+      get: name => (name === 'content-type' ? 'application/json' : null),
     },
     json: () => Promise.resolve(blueprints),
   }),
 
   // GitHub API responses
-  githubSuccess: (data) => ({
+  githubSuccess: data => ({
     ok: true,
     status: 200,
     headers: {
-      get: (name) => (name === 'content-type' ? 'application/json' : null),
+      get: name => (name === 'content-type' ? 'application/json' : null),
     },
     json: () => Promise.resolve(data),
   }),
-}
+};
 
 /**
  * Mock data generators
@@ -118,14 +118,14 @@ export const mockData = {
     },
     ...overrides,
   }),
-}
+};
 
 /**
  * Setup global fetch mock with predefined scenarios
  */
 export function setupFetchMock() {
-  global.fetch = vi.fn()
-  return global.fetch
+  global.fetch = vi.fn();
+  return global.fetch;
 }
 
 /**
@@ -136,7 +136,7 @@ export function setupHubMocks() {
   vi.mock('../src/hub/index.js', () => ({
     isHubAvailable: vi.fn().mockResolvedValue(false),
     quickHubOperations: vi.fn().mockResolvedValue(null),
-  }))
+  }));
 
   // Mock VDK Hub Client
   vi.mock('../src/hub/VDKHubClient.js', () => ({
@@ -151,11 +151,11 @@ export function setupHubMocks() {
     })),
     VDKHubError: class extends Error {
       constructor(message) {
-        super(message)
-        this.name = 'VDKHubError'
+        super(message);
+        this.name = 'VDKHubError';
       }
     },
-  }))
+  }));
 }
 
 /**
@@ -168,7 +168,7 @@ export function setupCommunityMocks() {
       validate: vi.fn().mockResolvedValue({ valid: true, errors: [] }),
       getDeploymentStatus: vi.fn().mockResolvedValue({ status: 'deployed' }),
     })),
-  }))
+  }));
 }
 
 /**
@@ -184,7 +184,7 @@ export function setupBlueprintMocks() {
       content: '# Test Blueprint\nTest content',
       metadata: { title: 'Test', author: 'test' },
     }),
-  }))
+  }));
 }
 
 /**
@@ -220,7 +220,7 @@ export function setupIntegrationMocks() {
       getActiveIntegrations: vi.fn().mockReturnValue([]),
       isIntegrationActive: vi.fn().mockReturnValue(false),
     }),
-  }))
+  }));
 }
 
 /**
@@ -232,7 +232,7 @@ export function createMockBlueprintClient() {
     getBlueprintsByCategory: vi.fn().mockResolvedValue([]),
     searchBlueprints: vi.fn().mockResolvedValue([]),
     getBlueprintMetadata: vi.fn().mockResolvedValue({}),
-  }
+  };
 }
 
 /**
@@ -240,7 +240,7 @@ export function createMockBlueprintClient() {
  */
 export function setupFileSystemMocks() {
   vi.mock('node:fs/promises', async () => {
-    const actual = await vi.importActual('node:fs/promises')
+    const actual = await vi.importActual('node:fs/promises');
     return {
       ...actual,
       access: vi.fn().mockRejectedValue(new Error('File not found')),
@@ -253,18 +253,18 @@ export function setupFileSystemMocks() {
         size: 1024,
       }),
       readdir: vi.fn().mockResolvedValue([]),
-    }
-  })
+    };
+  });
 }
 
 /**
  * Reset all mocks to clean state
  */
 export function resetAllMocks() {
-  vi.clearAllMocks()
-  vi.resetAllMocks()
+  vi.clearAllMocks();
+  vi.resetAllMocks();
   if (global.fetch) {
-    global.fetch.mockClear()
+    global.fetch.mockClear();
   }
 }
 
@@ -276,34 +276,34 @@ export function setupTestEnvironment() {
   Object.defineProperty(process, 'platform', {
     value: 'darwin',
     writable: true,
-  })
+  });
 
   // Set consistent environment variables
-  process.env.HOME = '/Users/testuser'
-  process.env.USERPROFILE = process.env.HOME
-  process.env.NODE_ENV = 'test'
+  process.env.HOME = '/Users/testuser';
+  process.env.USERPROFILE = process.env.HOME;
+  process.env.NODE_ENV = 'test';
 
   // Suppress dotenv output in tests
-  process.env.DOTENV_CONFIG_PATH = '/dev/null'
+  process.env.DOTENV_CONFIG_PATH = '/dev/null';
 
   // Set up global fetch mock
-  setupFetchMock()
+  setupFetchMock();
 }
 
 /**
  * Mock console to avoid test output pollution
  */
 export function mockConsole() {
-  const originalConsole = { ...console }
+  const originalConsole = { ...console };
 
-  console.log = vi.fn()
-  console.info = vi.fn()
-  console.warn = vi.fn()
-  console.error = vi.fn()
+  console.log = vi.fn();
+  console.info = vi.fn();
+  console.warn = vi.fn();
+  console.error = vi.fn();
 
   return () => {
-    Object.assign(console, originalConsole)
-  }
+    Object.assign(console, originalConsole);
+  };
 }
 
 /**
@@ -313,7 +313,7 @@ export function createTimeoutSafePromise(operation, timeout = 1000) {
   return Promise.race([
     operation,
     new Promise((_, reject) => setTimeout(() => reject(new Error('Test timeout')), timeout)),
-  ])
+  ]);
 }
 
 export default {
@@ -330,4 +330,4 @@ export default {
   setupTestEnvironment,
   mockConsole,
   createTimeoutSafePromise,
-}
+};

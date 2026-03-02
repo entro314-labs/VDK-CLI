@@ -1,8 +1,7 @@
 # Development files
 debug-yaml.js
-eslint.config.js
-.eslintignore
-.eslintignore.bak
+.oxlintrc.json
+.oxlintrc.json.backup
 vdk-refactor-report.md
 
 # Test directories and files

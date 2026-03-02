@@ -11,126 +11,126 @@
  * - Console and UI interactions
  */
 
-import { vi } from 'vitest'
+import { vi } from 'vitest';
 
 /**
  * File System Mocks
  * Mock implementations for fs/promises and fs modules
  */
 export const createFileSystemMocks = () => {
-  const mockFiles = new Map()
-  const mockDirectories = new Set()
+  const mockFiles = new Map();
+  const mockDirectories = new Set();
 
   const fsMocks = {
     // fs/promises mocks
-    readFile: vi.fn().mockImplementation(async (path) => {
+    readFile: vi.fn().mockImplementation(async path => {
       if (mockFiles.has(path)) {
-        return mockFiles.get(path)
+        return mockFiles.get(path);
       }
-      throw new Error(`ENOENT: no such file or directory, open '${path}'`)
+      throw new Error(`ENOENT: no such file or directory, open '${path}'`);
     }),
 
-    writeFile: vi.fn().mockImplementation(async (path, content, options) => {
-      mockFiles.set(path, content)
-      return Promise.resolve()
+    writeFile: vi.fn().mockImplementation(async (path, content, _options) => {
+      mockFiles.set(path, content);
+      return Promise.resolve();
     }),
 
-    access: vi.fn().mockImplementation(async (path) => {
+    access: vi.fn().mockImplementation(async path => {
       if (mockFiles.has(path) || mockDirectories.has(path)) {
-        return Promise.resolve()
+        return Promise.resolve();
       }
-      throw new Error(`ENOENT: no such file or directory, access '${path}'`)
+      throw new Error(`ENOENT: no such file or directory, access '${path}'`);
     }),
 
     readdir: vi.fn().mockImplementation(async (path, options) => {
-      const entries = []
-      const pathPrefix = path.endsWith('/') ? path : `${path}/`
+      const entries = [];
+      const pathPrefix = path.endsWith('/') ? path : `${path}/`;
 
       for (const filePath of mockFiles.keys()) {
         if (filePath.startsWith(pathPrefix)) {
-          const relativePath = filePath.substring(pathPrefix.length)
-          const name = relativePath.split('/')[0]
-          if (name && !entries.some((e) => e.name === name || e === name)) {
+          const relativePath = filePath.substring(pathPrefix.length);
+          const name = relativePath.split('/')[0];
+          if (name && !entries.some(e => e.name === name || e === name)) {
             if (options?.withFileTypes) {
               entries.push({
                 name,
                 isFile: () => !relativePath.includes('/'),
                 isDirectory: () => relativePath.includes('/'),
-              })
+              });
             } else {
-              entries.push(name)
+              entries.push(name);
             }
           }
         }
       }
 
-      return entries
+      return entries;
     }),
 
-    unlink: vi.fn().mockImplementation(async (path) => {
+    unlink: vi.fn().mockImplementation(async path => {
       if (mockFiles.has(path)) {
-        mockFiles.delete(path)
-        return Promise.resolve()
+        mockFiles.delete(path);
+        return Promise.resolve();
       }
-      throw new Error(`ENOENT: no such file or directory, unlink '${path}'`)
+      throw new Error(`ENOENT: no such file or directory, unlink '${path}'`);
     }),
 
-    rmdir: vi.fn().mockImplementation(async (path) => {
+    rmdir: vi.fn().mockImplementation(async path => {
       if (mockDirectories.has(path)) {
-        mockDirectories.delete(path)
-        return Promise.resolve()
+        mockDirectories.delete(path);
+        return Promise.resolve();
       }
-      throw new Error(`ENOENT: no such file or directory, rmdir '${path}'`)
+      throw new Error(`ENOENT: no such file or directory, rmdir '${path}'`);
     }),
 
     // fs (sync) mocks
-    readFileSync: vi.fn().mockImplementation((path, encoding) => {
+    readFileSync: vi.fn().mockImplementation((path, _encoding) => {
       if (mockFiles.has(path)) {
-        return mockFiles.get(path)
+        return mockFiles.get(path);
       }
-      throw new Error(`ENOENT: no such file or directory, open '${path}'`)
+      throw new Error(`ENOENT: no such file or directory, open '${path}'`);
     }),
-  }
+  };
 
   // Helper methods for test setup
   const helpers = {
     setFile: (path, content) => {
-      mockFiles.set(path, content)
+      mockFiles.set(path, content);
     },
 
-    setDirectory: (path) => {
-      mockDirectories.add(path)
+    setDirectory: path => {
+      mockDirectories.add(path);
     },
 
     clear: () => {
-      mockFiles.clear()
-      mockDirectories.clear()
+      mockFiles.clear();
+      mockDirectories.clear();
     },
 
-    hasFile: (path) => mockFiles.has(path),
-    hasDirectory: (path) => mockDirectories.has(path),
+    hasFile: path => mockFiles.has(path),
+    hasDirectory: path => mockDirectories.has(path),
 
-    getFile: (path) => mockFiles.get(path),
+    getFile: path => mockFiles.get(path),
     getAllFiles: () => Array.from(mockFiles.entries()),
     getAllDirectories: () => Array.from(mockDirectories),
-  }
+  };
 
-  return { mocks: fsMocks, helpers }
-}
+  return { mocks: fsMocks, helpers };
+};
 
 /**
  * HTTP/Fetch Mocks
  * Mock implementations for network requests
  */
 export const createHttpMocks = () => {
-  const responseQueue = []
-  const requestHistory = []
+  const responseQueue = [];
+  const requestHistory = [];
 
   const fetchMock = vi.fn().mockImplementation(async (url, options) => {
-    requestHistory.push({ url, options })
+    requestHistory.push({ url, options });
 
     if (responseQueue.length > 0) {
-      return responseQueue.shift()
+      return responseQueue.shift();
     }
 
     // Default successful response
@@ -141,16 +141,16 @@ export const createHttpMocks = () => {
         get: vi.fn().mockReturnValue('application/json'),
       },
       json: vi.fn().mockResolvedValue({ success: true }),
-    }
-  })
+    };
+  });
 
   const helpers = {
-    queueResponse: (response) => {
-      responseQueue.push(response)
+    queueResponse: response => {
+      responseQueue.push(response);
     },
 
-    queueResponses: (responses) => {
-      responseQueue.push(...responses)
+    queueResponses: responses => {
+      responseQueue.push(...responses);
     },
 
     getRequestHistory: () => [...requestHistory],
@@ -158,18 +158,18 @@ export const createHttpMocks = () => {
     getLastRequest: () => requestHistory[requestHistory.length - 1],
 
     clearHistory: () => {
-      requestHistory.length = 0
+      requestHistory.length = 0;
     },
 
     clearQueue: () => {
-      responseQueue.length = 0
+      responseQueue.length = 0;
     },
 
     createResponse: (data, status = 200, headers = {}) => ({
       ok: status >= 200 && status < 300,
       status,
       headers: {
-        get: vi.fn().mockImplementation((name) => headers[name.toLowerCase()] || null),
+        get: vi.fn().mockImplementation(name => headers[name.toLowerCase()] || null),
       },
       json: vi.fn().mockResolvedValue(data),
       text: vi.fn().mockResolvedValue(typeof data === 'string' ? data : JSON.stringify(data)),
@@ -184,10 +184,10 @@ export const createHttpMocks = () => {
       },
       json: vi.fn().mockResolvedValue({ error: message }),
     }),
-  }
+  };
 
-  return { mock: fetchMock, helpers }
-}
+  return { mock: fetchMock, helpers };
+};
 
 /**
  * Project Scanner Mocks
@@ -208,28 +208,28 @@ export const createProjectScannerMocks = () => {
     dependencies: ['react', 'typescript'],
     technologies: ['javascript', 'react'],
     patterns: ['modular', 'component-based'],
-  }
+  };
 
   const ProjectScannerMock = vi.fn().mockImplementation(() => ({
     scanProject: vi.fn().mockResolvedValue(defaultProjectData),
-  }))
+  }));
 
   const helpers = {
-    setProjectData: (data) => {
+    setProjectData: data => {
       ProjectScannerMock.mockImplementation(() => ({
         scanProject: vi.fn().mockResolvedValue({ ...defaultProjectData, ...data }),
-      }))
+      }));
     },
 
-    setScanError: (error) => {
+    setScanError: error => {
       ProjectScannerMock.mockImplementation(() => ({
         scanProject: vi.fn().mockRejectedValue(error),
-      }))
+      }));
     },
-  }
+  };
 
-  return { mock: ProjectScannerMock, helpers }
-}
+  return { mock: ProjectScannerMock, helpers };
+};
 
 /**
  * Integration Manager Mocks
@@ -240,7 +240,7 @@ export const createIntegrationManagerMocks = () => {
     { name: 'claude-code', active: true },
     { name: 'cursor', active: true },
     { name: 'windsurf', active: false },
-  ]
+  ];
 
   const integrationManagerMock = {
     discoverIntegrations: vi.fn().mockResolvedValue({
@@ -253,38 +253,40 @@ export const createIntegrationManagerMocks = () => {
 
     initializeActive: vi.fn().mockResolvedValue({
       success: true,
-      deployed: defaultIntegrations.filter((i) => i.active).length,
+      deployed: defaultIntegrations.filter(i => i.active).length,
       errors: [],
     }),
 
-    getActiveIntegrations: vi.fn().mockReturnValue(defaultIntegrations.filter((i) => i.active)),
+    getActiveIntegrations: vi.fn().mockReturnValue(defaultIntegrations.filter(i => i.active)),
 
     getAllIntegrations: vi.fn().mockReturnValue(defaultIntegrations),
-  }
+  };
 
-  const createIntegrationManagerMock = vi.fn().mockReturnValue(integrationManagerMock)
+  const createIntegrationManagerMock = vi.fn().mockReturnValue(integrationManagerMock);
 
   const helpers = {
-    setIntegrations: (integrations) => {
-      integrationManagerMock.getAllIntegrations.mockReturnValue(integrations)
-      integrationManagerMock.getActiveIntegrations.mockReturnValue(integrations.filter((i) => i.active))
+    setIntegrations: integrations => {
+      integrationManagerMock.getAllIntegrations.mockReturnValue(integrations);
+      integrationManagerMock.getActiveIntegrations.mockReturnValue(
+        integrations.filter(i => i.active)
+      );
     },
 
-    setDeploymentError: (error) => {
-      integrationManagerMock.initializeActive.mockRejectedValue(error)
+    setDeploymentError: error => {
+      integrationManagerMock.initializeActive.mockRejectedValue(error);
     },
 
-    setDeploymentResult: (result) => {
-      integrationManagerMock.initializeActive.mockResolvedValue(result)
+    setDeploymentResult: result => {
+      integrationManagerMock.initializeActive.mockResolvedValue(result);
     },
-  }
+  };
 
   return {
     mock: integrationManagerMock,
     factory: createIntegrationManagerMock,
     helpers,
-  }
-}
+  };
+};
 
 /**
  * VDK Hub Client Mocks
@@ -370,33 +372,33 @@ export const createVDKHubClientMocks = () => {
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       confirmationRequired: true,
     }),
-  }
+  };
 
-  const VDKHubClientMock = vi.fn().mockImplementation(() => hubClientMock)
+  const VDKHubClientMock = vi.fn().mockImplementation(() => hubClientMock);
 
   const helpers = {
-    setAuthenticated: (authenticated) => {
-      hubClientMock.checkAuth.mockResolvedValue({ authenticated })
+    setAuthenticated: authenticated => {
+      hubClientMock.checkAuth.mockResolvedValue({ authenticated });
     },
 
     setTelemetryDisabled: () => {
       hubClientMock.sendUsageTelemetry.mockResolvedValue({
         success: true,
         message: 'Telemetry disabled',
-      })
+      });
     },
 
     setError: (method, error) => {
-      hubClientMock[method].mockRejectedValue(error)
+      hubClientMock[method].mockRejectedValue(error);
     },
 
     setBlueprintNotFound: () => {
-      hubClientMock.getCommunityBlueprint.mockResolvedValue(null)
+      hubClientMock.getCommunityBlueprint.mockResolvedValue(null);
     },
-  }
+  };
 
-  return { mock: hubClientMock, factory: VDKHubClientMock, helpers }
-}
+  return { mock: hubClientMock, factory: VDKHubClientMock, helpers };
+};
 
 /**
  * Console and UI Mocks
@@ -409,7 +411,7 @@ export const createConsoleMocks = () => {
     error: vi.fn(),
     info: vi.fn(),
     debug: vi.fn(),
-  }
+  };
 
   const oraMock = vi.fn(() => ({
     start: vi.fn().mockReturnThis(),
@@ -418,19 +420,19 @@ export const createConsoleMocks = () => {
     info: vi.fn().mockReturnThis(),
     warn: vi.fn().mockReturnThis(),
     stop: vi.fn().mockReturnThis(),
-    set text(value) {},
-  }))
+    set text(_value) {},
+  }));
 
   const chalkMocks = {
-    yellow: vi.fn().mockImplementation((str) => str),
-    green: vi.fn().mockImplementation((str) => str),
-    red: vi.fn().mockImplementation((str) => str),
-    cyan: vi.fn().mockImplementation((str) => str),
-    gray: vi.fn().mockImplementation((str) => str),
-    blue: vi.fn().mockImplementation((str) => str),
-    magenta: vi.fn().mockImplementation((str) => str),
-    white: vi.fn().mockImplementation((str) => str),
-  }
+    yellow: vi.fn().mockImplementation(str => str),
+    green: vi.fn().mockImplementation(str => str),
+    red: vi.fn().mockImplementation(str => str),
+    cyan: vi.fn().mockImplementation(str => str),
+    gray: vi.fn().mockImplementation(str => str),
+    blue: vi.fn().mockImplementation(str => str),
+    magenta: vi.fn().mockImplementation(str => str),
+    white: vi.fn().mockImplementation(str => str),
+  };
 
   const helpers = {
     getLogCalls: () => consoleMocks.log.mock.calls,
@@ -438,29 +440,29 @@ export const createConsoleMocks = () => {
     getErrorCalls: () => consoleMocks.error.mock.calls,
 
     clearAll: () => {
-      Object.values(consoleMocks).forEach((mock) => mock.mockClear())
+      Object.values(consoleMocks).forEach(mock => mock.mockClear());
     },
 
-    hasLoggedMessage: (message) => {
-      return consoleMocks.log.mock.calls.some((call) =>
-        call.some((arg) => typeof arg === 'string' && arg.includes(message))
-      )
+    hasLoggedMessage: message => {
+      return consoleMocks.log.mock.calls.some(call =>
+        call.some(arg => typeof arg === 'string' && arg.includes(message))
+      );
     },
 
-    hasWarnedMessage: (message) => {
-      return consoleMocks.warn.mock.calls.some((call) =>
-        call.some((arg) => typeof arg === 'string' && arg.includes(message))
-      )
+    hasWarnedMessage: message => {
+      return consoleMocks.warn.mock.calls.some(call =>
+        call.some(arg => typeof arg === 'string' && arg.includes(message))
+      );
     },
-  }
+  };
 
   return {
     console: consoleMocks,
     ora: oraMock,
     chalk: chalkMocks,
     helpers,
-  }
-}
+  };
+};
 
 /**
  * Common Test Data
@@ -572,25 +574,25 @@ This is a React TypeScript project using modern development practices.
   <windsurf:tech name="react">Use React 18 features</windsurf:tech>
   <windsurf:tech name="typescript">Enable strict mode</windsurf:tech>
 </windsurf:context>`,
-}
+};
 
 /**
  * Test Environment Setup
  * Helper function to set up a complete test environment
  */
 export const setupTestEnvironment = () => {
-  const fs = createFileSystemMocks()
-  const http = createHttpMocks()
-  const scanner = createProjectScannerMocks()
-  const integration = createIntegrationManagerMocks()
-  const hub = createVDKHubClientMocks()
-  const ui = createConsoleMocks()
+  const fs = createFileSystemMocks();
+  const http = createHttpMocks();
+  const scanner = createProjectScannerMocks();
+  const integration = createIntegrationManagerMocks();
+  const hub = createVDKHubClientMocks();
+  const ui = createConsoleMocks();
 
   // Set up global fetch mock
-  global.fetch = http.mock
+  global.fetch = http.mock;
 
   // Set up global console mock
-  global.console = ui.console
+  global.console = ui.console;
 
   return {
     mocks: {
@@ -613,13 +615,13 @@ export const setupTestEnvironment = () => {
     },
     data: testData,
     cleanup: () => {
-      fs.helpers.clear()
-      http.helpers.clearHistory()
-      http.helpers.clearQueue()
-      ui.helpers.clearAll()
+      fs.helpers.clear();
+      http.helpers.clearHistory();
+      http.helpers.clearQueue();
+      ui.helpers.clearAll();
     },
-  }
-}
+  };
+};
 
 /**
  * Mock Factory Functions
@@ -666,7 +668,7 @@ export const mockScenarios = {
     technologies: ['react', 'typescript', 'jest', 'tailwind'],
     patterns: ['component-based', 'hooks-pattern', 'context-pattern', 'testing'],
   }),
-}
+};
 
 export default {
   createFileSystemMocks,
@@ -678,4 +680,4 @@ export default {
   testData,
   setupTestEnvironment,
   mockScenarios,
-}
+};

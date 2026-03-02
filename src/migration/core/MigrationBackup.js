@@ -8,16 +8,16 @@
  * - Cleanup of old backups
  */
 
-import { createHash } from 'node:crypto'
-import fs from 'node:fs/promises'
-import path from 'node:path'
-import chalk from 'chalk'
+import { createHash } from 'node:crypto';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import chalk from 'chalk';
 
 export class MigrationBackup {
   constructor(projectPath) {
-    this.projectPath = projectPath
-    this.backupDir = path.join(projectPath, '.vdk', 'backups')
-    this.migrationId = null
+    this.projectPath = projectPath;
+    this.backupDir = path.join(projectPath, '.vdk', 'backups');
+    this.migrationId = null;
   }
 
   /**
@@ -28,14 +28,17 @@ export class MigrationBackup {
   async createBackup(migrationInfo = {}) {
     try {
       // Generate unique backup ID based on timestamp and content hash
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-      const contentHash = createHash('md5').update(JSON.stringify(migrationInfo)).digest('hex').substring(0, 8)
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const contentHash = createHash('md5')
+        .update(JSON.stringify(migrationInfo))
+        .digest('hex')
+        .substring(0, 8);
 
-      this.migrationId = `migration-${timestamp}-${contentHash}`
-      const backupPath = path.join(this.backupDir, this.migrationId)
+      this.migrationId = `migration-${timestamp}-${contentHash}`;
+      const backupPath = path.join(this.backupDir, this.migrationId);
 
       // Ensure backup directory exists
-      await fs.mkdir(this.backupDir, { recursive: true })
+      await fs.mkdir(this.backupDir, { recursive: true });
 
       // Create backup metadata
       const backupMetadata = {
@@ -46,29 +49,33 @@ export class MigrationBackup {
         version: '1.0.0',
         files: [],
         directories: [],
-      }
+      };
 
       // Backup existing VDK configuration and rules
-      const itemsToBackup = await this.identifyBackupTargets()
+      const itemsToBackup = await this.identifyBackupTargets();
 
       for (const item of itemsToBackup) {
-        await this.backupItem(item, backupPath, backupMetadata)
+        await this.backupItem(item, backupPath, backupMetadata);
       }
 
       // Save backup metadata
-      const metadataPath = path.join(backupPath, 'backup-metadata.json')
-      await fs.writeFile(metadataPath, JSON.stringify(backupMetadata, null, 2))
+      const metadataPath = path.join(backupPath, 'backup-metadata.json');
+      await fs.writeFile(metadataPath, JSON.stringify(backupMetadata, null, 2));
 
       // Create backup integrity check
-      await this.createIntegrityCheck(backupPath, backupMetadata)
+      await this.createIntegrityCheck(backupPath, backupMetadata);
 
-      console.log(chalk.green(`✅ Backup created: ${this.migrationId}`))
-      console.log(chalk.gray(`   Location: ${backupPath}`))
-      console.log(chalk.gray(`   Items backed up: ${backupMetadata.files.length + backupMetadata.directories.length}`))
+      console.log(chalk.green(`✅ Backup created: ${this.migrationId}`));
+      console.log(chalk.gray(`   Location: ${backupPath}`));
+      console.log(
+        chalk.gray(
+          `   Items backed up: ${backupMetadata.files.length + backupMetadata.directories.length}`
+        )
+      );
 
-      return this.migrationId
+      return this.migrationId;
     } catch (error) {
-      throw new Error(`Failed to create migration backup: ${error.message}`)
+      throw new Error(`Failed to create migration backup: ${error.message}`);
     }
   }
 
@@ -79,58 +86,58 @@ export class MigrationBackup {
    */
   async rollback(backupId, options = {}) {
     try {
-      const backupPath = path.join(this.backupDir, backupId)
-      const metadataPath = path.join(backupPath, 'backup-metadata.json')
+      const backupPath = path.join(this.backupDir, backupId);
+      const metadataPath = path.join(backupPath, 'backup-metadata.json');
 
       // Verify backup exists and is valid
       if (!(await this.fileExists(backupPath))) {
-        throw new Error(`Backup not found: ${backupId}`)
+        throw new Error(`Backup not found: ${backupId}`);
       }
 
       if (!(await this.fileExists(metadataPath))) {
-        throw new Error(`Backup metadata not found: ${backupId}`)
+        throw new Error(`Backup metadata not found: ${backupId}`);
       }
 
       // Load and verify backup metadata
-      const metadata = JSON.parse(await fs.readFile(metadataPath, 'utf8'))
+      const metadata = JSON.parse(await fs.readFile(metadataPath, 'utf8'));
 
       // Verify backup integrity
-      const isValid = await this.verifyBackupIntegrity(backupPath, metadata)
+      const isValid = await this.verifyBackupIntegrity(backupPath, metadata);
       if (!isValid) {
-        throw new Error(`Backup integrity check failed: ${backupId}`)
+        throw new Error(`Backup integrity check failed: ${backupId}`);
       }
 
-      console.log(chalk.blue(`🔄 Rolling back migration: ${backupId}`))
-      console.log(chalk.gray(`   Created: ${metadata.timestamp}`))
+      console.log(chalk.blue(`🔄 Rolling back migration: ${backupId}`));
+      console.log(chalk.gray(`   Created: ${metadata.timestamp}`));
 
       // Remove current VDK files/directories that would conflict
-      await this.removeCurrentVDKFiles(options)
+      await this.removeCurrentVDKFiles(options);
 
       // Restore files from backup
-      let restoredCount = 0
+      let restoredCount = 0;
 
       for (const fileInfo of metadata.files) {
-        await this.restoreFile(fileInfo, backupPath)
-        restoredCount++
+        await this.restoreFile(fileInfo, backupPath);
+        restoredCount++;
       }
 
       for (const dirInfo of metadata.directories) {
-        await this.restoreDirectory(dirInfo, backupPath)
-        restoredCount++
+        await this.restoreDirectory(dirInfo, backupPath);
+        restoredCount++;
       }
 
-      console.log(chalk.green(`✅ Rollback completed successfully`))
-      console.log(chalk.gray(`   Restored items: ${restoredCount}`))
+      console.log(chalk.green(`✅ Rollback completed successfully`));
+      console.log(chalk.gray(`   Restored items: ${restoredCount}`));
 
       // Optionally remove backup after successful rollback
       if (options.removeBackup) {
-        await this.removeBackup(backupId)
-        console.log(chalk.gray(`   Backup removed: ${backupId}`))
+        await this.removeBackup(backupId);
+        console.log(chalk.gray(`   Backup removed: ${backupId}`));
       }
 
-      return { success: true, restoredCount, backupId }
+      return { success: true, restoredCount, backupId };
     } catch (error) {
-      throw new Error(`Rollback failed: ${error.message}`)
+      throw new Error(`Rollback failed: ${error.message}`);
     }
   }
 
@@ -141,20 +148,23 @@ export class MigrationBackup {
   async listBackups() {
     try {
       if (!(await this.fileExists(this.backupDir))) {
-        return []
+        return [];
       }
 
-      const backupEntries = await fs.readdir(this.backupDir, { withFileTypes: true })
-      const backups = []
+      const backupEntries = await fs.readdir(this.backupDir, { withFileTypes: true });
+      const backups = [];
 
       for (const entry of backupEntries) {
         if (entry.isDirectory() && entry.name.startsWith('migration-')) {
-          const metadataPath = path.join(this.backupDir, entry.name, 'backup-metadata.json')
+          const metadataPath = path.join(this.backupDir, entry.name, 'backup-metadata.json');
 
           try {
             if (await this.fileExists(metadataPath)) {
-              const metadata = JSON.parse(await fs.readFile(metadataPath, 'utf8'))
-              const isValid = await this.verifyBackupIntegrity(path.join(this.backupDir, entry.name), metadata)
+              const metadata = JSON.parse(await fs.readFile(metadataPath, 'utf8'));
+              const isValid = await this.verifyBackupIntegrity(
+                path.join(this.backupDir, entry.name),
+                metadata
+              );
 
               backups.push({
                 id: entry.name,
@@ -163,20 +173,20 @@ export class MigrationBackup {
                 isValid,
                 migrationInfo: metadata.migrationInfo,
                 path: path.join(this.backupDir, entry.name),
-              })
+              });
             }
-          } catch (error) {
+          } catch (_error) {
             // Skip invalid backup entries
-            console.warn(chalk.yellow(`Warning: Invalid backup metadata for ${entry.name}`))
+            console.warn(chalk.yellow(`Warning: Invalid backup metadata for ${entry.name}`));
           }
         }
       }
 
       // Sort by timestamp (newest first)
-      return backups.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      return backups.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     } catch (error) {
-      console.warn(chalk.yellow(`Warning: Failed to list backups: ${error.message}`))
-      return []
+      console.warn(chalk.yellow(`Warning: Failed to list backups: ${error.message}`));
+      return [];
     }
   }
 
@@ -186,30 +196,36 @@ export class MigrationBackup {
    */
   async cleanupOldBackups(retentionCount = 5) {
     try {
-      const backups = await this.listBackups()
+      const backups = await this.listBackups();
 
       if (backups.length <= retentionCount) {
-        console.log(chalk.gray(`No backup cleanup needed (${backups.length} backups, keeping ${retentionCount})`))
-        return
+        console.log(
+          chalk.gray(
+            `No backup cleanup needed (${backups.length} backups, keeping ${retentionCount})`
+          )
+        );
+        return;
       }
 
-      const backupsToRemove = backups.slice(retentionCount)
-      let removedCount = 0
+      const backupsToRemove = backups.slice(retentionCount);
+      let removedCount = 0;
 
       for (const backup of backupsToRemove) {
         try {
-          await this.removeBackup(backup.id)
-          removedCount++
+          await this.removeBackup(backup.id);
+          removedCount++;
         } catch (error) {
-          console.warn(chalk.yellow(`Warning: Failed to remove backup ${backup.id}: ${error.message}`))
+          console.warn(
+            chalk.yellow(`Warning: Failed to remove backup ${backup.id}: ${error.message}`)
+          );
         }
       }
 
       if (removedCount > 0) {
-        console.log(chalk.green(`✅ Cleaned up ${removedCount} old backups`))
+        console.log(chalk.green(`✅ Cleaned up ${removedCount} old backups`));
       }
     } catch (error) {
-      console.warn(chalk.yellow(`Warning: Backup cleanup failed: ${error.message}`))
+      console.warn(chalk.yellow(`Warning: Backup cleanup failed: ${error.message}`));
     }
   }
 
@@ -221,34 +237,34 @@ export class MigrationBackup {
    */
   async verifyBackupIntegrity(backupPath, metadata) {
     try {
-      const integrityPath = path.join(backupPath, 'integrity.json')
+      const integrityPath = path.join(backupPath, 'integrity.json');
 
       if (!(await this.fileExists(integrityPath))) {
-        return false
+        return false;
       }
 
-      const integrity = JSON.parse(await fs.readFile(integrityPath, 'utf8'))
+      const integrity = JSON.parse(await fs.readFile(integrityPath, 'utf8'));
 
       // Verify all files exist and have correct checksums
       for (const fileInfo of metadata.files) {
-        const backupFilePath = path.join(backupPath, 'files', fileInfo.relativePath)
+        const backupFilePath = path.join(backupPath, 'files', fileInfo.relativePath);
 
         if (!(await this.fileExists(backupFilePath))) {
-          return false
+          return false;
         }
 
-        const expectedChecksum = integrity.files[fileInfo.relativePath]
+        const expectedChecksum = integrity.files[fileInfo.relativePath];
         if (expectedChecksum) {
-          const actualChecksum = await this.calculateFileChecksum(backupFilePath)
+          const actualChecksum = await this.calculateFileChecksum(backupFilePath);
           if (actualChecksum !== expectedChecksum) {
-            return false
+            return false;
           }
         }
       }
 
-      return true
-    } catch (error) {
-      return false
+      return true;
+    } catch (_error) {
+      return false;
     }
   }
 
@@ -258,36 +274,36 @@ export class MigrationBackup {
    * @private
    */
   async identifyBackupTargets() {
-    const targets = []
+    const targets = [];
 
     // VDK configuration file
-    const vdkConfigPath = path.join(this.projectPath, 'vdk.config.json')
+    const vdkConfigPath = path.join(this.projectPath, 'vdk.config.json');
     if (await this.fileExists(vdkConfigPath)) {
       targets.push({
         type: 'file',
         path: vdkConfigPath,
         relativePath: 'vdk.config.json',
-      })
+      });
     }
 
     // VDK rules directory
-    const rulesDir = path.join(this.projectPath, '.vdk', 'rules')
+    const rulesDir = path.join(this.projectPath, '.vdk', 'rules');
     if (await this.fileExists(rulesDir)) {
       targets.push({
         type: 'directory',
         path: rulesDir,
         relativePath: '.vdk/rules',
-      })
+      });
     }
 
     // VDK import directory (if it contains user data)
-    const importDir = path.join(this.projectPath, '.vdk', 'import')
+    const importDir = path.join(this.projectPath, '.vdk', 'import');
     if (await this.fileExists(importDir)) {
       targets.push({
         type: 'directory',
         path: importDir,
         relativePath: '.vdk/import',
-      })
+      });
     }
 
     // IDE-specific configuration files that VDK might modify
@@ -297,21 +313,21 @@ export class MigrationBackup {
       '.windsurf/rules/',
       '.claude/',
       '.github/copilot-instructions.md',
-    ]
+    ];
 
     for (const configPath of ideConfigs) {
-      const fullPath = path.join(this.projectPath, configPath)
+      const fullPath = path.join(this.projectPath, configPath);
       if (await this.fileExists(fullPath)) {
-        const stats = await fs.stat(fullPath)
+        const stats = await fs.stat(fullPath);
         targets.push({
           type: stats.isDirectory() ? 'directory' : 'file',
           path: fullPath,
           relativePath: configPath,
-        })
+        });
       }
     }
 
-    return targets
+    return targets;
   }
 
   /**
@@ -324,12 +340,14 @@ export class MigrationBackup {
   async backupItem(item, backupPath, metadata) {
     try {
       if (item.type === 'file') {
-        await this.backupFile(item, backupPath, metadata)
+        await this.backupFile(item, backupPath, metadata);
       } else if (item.type === 'directory') {
-        await this.backupDirectory(item, backupPath, metadata)
+        await this.backupDirectory(item, backupPath, metadata);
       }
     } catch (error) {
-      console.warn(chalk.yellow(`Warning: Failed to backup ${item.relativePath}: ${error.message}`))
+      console.warn(
+        chalk.yellow(`Warning: Failed to backup ${item.relativePath}: ${error.message}`)
+      );
     }
   }
 
@@ -341,14 +359,14 @@ export class MigrationBackup {
    * @private
    */
   async backupFile(fileInfo, backupPath, metadata) {
-    const backupFilePath = path.join(backupPath, 'files', fileInfo.relativePath)
-    await fs.mkdir(path.dirname(backupFilePath), { recursive: true })
-    await fs.copyFile(fileInfo.path, backupFilePath)
+    const backupFilePath = path.join(backupPath, 'files', fileInfo.relativePath);
+    await fs.mkdir(path.dirname(backupFilePath), { recursive: true });
+    await fs.copyFile(fileInfo.path, backupFilePath);
 
     metadata.files.push({
       ...fileInfo,
       checksum: await this.calculateFileChecksum(fileInfo.path),
-    })
+    });
   }
 
   /**
@@ -359,12 +377,12 @@ export class MigrationBackup {
    * @private
    */
   async backupDirectory(dirInfo, backupPath, metadata) {
-    const backupDirPath = path.join(backupPath, 'directories', dirInfo.relativePath)
+    const backupDirPath = path.join(backupPath, 'directories', dirInfo.relativePath);
 
     // Copy directory recursively
-    await this.copyDirectoryRecursive(dirInfo.path, backupDirPath)
+    await this.copyDirectoryRecursive(dirInfo.path, backupDirPath);
 
-    metadata.directories.push(dirInfo)
+    metadata.directories.push(dirInfo);
   }
 
   /**
@@ -374,18 +392,18 @@ export class MigrationBackup {
    * @private
    */
   async copyDirectoryRecursive(src, dest) {
-    await fs.mkdir(dest, { recursive: true })
+    await fs.mkdir(dest, { recursive: true });
 
-    const entries = await fs.readdir(src, { withFileTypes: true })
+    const entries = await fs.readdir(src, { withFileTypes: true });
 
     for (const entry of entries) {
-      const srcPath = path.join(src, entry.name)
-      const destPath = path.join(dest, entry.name)
+      const srcPath = path.join(src, entry.name);
+      const destPath = path.join(dest, entry.name);
 
       if (entry.isDirectory()) {
-        await this.copyDirectoryRecursive(srcPath, destPath)
+        await this.copyDirectoryRecursive(srcPath, destPath);
       } else {
-        await fs.copyFile(srcPath, destPath)
+        await fs.copyFile(srcPath, destPath);
       }
     }
   }
@@ -400,17 +418,17 @@ export class MigrationBackup {
     const integrity = {
       created: new Date().toISOString(),
       files: {},
-      directories: metadata.directories.map((d) => d.relativePath),
-    }
+      directories: metadata.directories.map(d => d.relativePath),
+    };
 
     // Calculate checksums for all backed up files
     for (const fileInfo of metadata.files) {
-      const backupFilePath = path.join(backupPath, 'files', fileInfo.relativePath)
-      integrity.files[fileInfo.relativePath] = await this.calculateFileChecksum(backupFilePath)
+      const backupFilePath = path.join(backupPath, 'files', fileInfo.relativePath);
+      integrity.files[fileInfo.relativePath] = await this.calculateFileChecksum(backupFilePath);
     }
 
-    const integrityPath = path.join(backupPath, 'integrity.json')
-    await fs.writeFile(integrityPath, JSON.stringify(integrity, null, 2))
+    const integrityPath = path.join(backupPath, 'integrity.json');
+    await fs.writeFile(integrityPath, JSON.stringify(integrity, null, 2));
   }
 
   /**
@@ -420,8 +438,8 @@ export class MigrationBackup {
    * @private
    */
   async calculateFileChecksum(filePath) {
-    const content = await fs.readFile(filePath)
-    return createHash('md5').update(content).digest('hex')
+    const content = await fs.readFile(filePath);
+    return createHash('md5').update(content).digest('hex');
   }
 
   /**
@@ -432,10 +450,10 @@ export class MigrationBackup {
    */
   async fileExists(filePath) {
     try {
-      await fs.access(filePath)
-      return true
+      await fs.access(filePath);
+      return true;
     } catch {
-      return false
+      return false;
     }
   }
 
@@ -446,11 +464,11 @@ export class MigrationBackup {
    * @private
    */
   async restoreFile(fileInfo, backupPath) {
-    const backupFilePath = path.join(backupPath, 'files', fileInfo.relativePath)
-    const restorePath = path.join(this.projectPath, fileInfo.relativePath)
+    const backupFilePath = path.join(backupPath, 'files', fileInfo.relativePath);
+    const restorePath = path.join(this.projectPath, fileInfo.relativePath);
 
-    await fs.mkdir(path.dirname(restorePath), { recursive: true })
-    await fs.copyFile(backupFilePath, restorePath)
+    await fs.mkdir(path.dirname(restorePath), { recursive: true });
+    await fs.copyFile(backupFilePath, restorePath);
   }
 
   /**
@@ -460,18 +478,18 @@ export class MigrationBackup {
    * @private
    */
   async restoreDirectory(dirInfo, backupPath) {
-    const backupDirPath = path.join(backupPath, 'directories', dirInfo.relativePath)
-    const restorePath = path.join(this.projectPath, dirInfo.relativePath)
+    const backupDirPath = path.join(backupPath, 'directories', dirInfo.relativePath);
+    const restorePath = path.join(this.projectPath, dirInfo.relativePath);
 
     // Remove existing directory if it exists
     try {
-      await fs.rm(restorePath, { recursive: true, force: true })
+      await fs.rm(restorePath, { recursive: true, force: true });
     } catch {
       // Directory doesn't exist, that's fine
     }
 
     // Copy directory from backup
-    await this.copyDirectoryRecursive(backupDirPath, restorePath)
+    await this.copyDirectoryRecursive(backupDirPath, restorePath);
   }
 
   /**
@@ -480,19 +498,19 @@ export class MigrationBackup {
    * @private
    */
   async removeCurrentVDKFiles(options = {}) {
-    const filesToRemove = ['vdk.config.json', '.vdk/rules']
+    const filesToRemove = ['vdk.config.json', '.vdk/rules'];
 
     for (const relativePath of filesToRemove) {
-      const fullPath = path.join(this.projectPath, relativePath)
+      const fullPath = path.join(this.projectPath, relativePath);
       try {
         if (await this.fileExists(fullPath)) {
-          await fs.rm(fullPath, { recursive: true, force: true })
+          await fs.rm(fullPath, { recursive: true, force: true });
         }
       } catch (error) {
         if (!options.ignoreErrors) {
-          throw error
+          throw error;
         }
-        console.warn(chalk.yellow(`Warning: Failed to remove ${relativePath}: ${error.message}`))
+        console.warn(chalk.yellow(`Warning: Failed to remove ${relativePath}: ${error.message}`));
       }
     }
   }
@@ -503,7 +521,7 @@ export class MigrationBackup {
    * @private
    */
   async removeBackup(backupId) {
-    const backupPath = path.join(this.backupDir, backupId)
-    await fs.rm(backupPath, { recursive: true, force: true })
+    const backupPath = path.join(this.backupDir, backupId);
+    await fs.rm(backupPath, { recursive: true, force: true });
   }
 }

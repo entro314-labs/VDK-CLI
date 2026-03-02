@@ -3,8 +3,8 @@
 # 🔍 Project Scanner
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-2.0.0-green.svg)](https://github.com/entro314-labs/VDK-CLI)
-[![Status](https://img.shields.io/badge/Status-Active-brightgreen)](https://github.com/entro314-labs/VDK-CLI)
+[![Version](https://img.shields.io/badge/Version-2.0.0-green.svg)](https://github.com/vdkit/VDK-CLI)
+[![Status](https://img.shields.io/badge/Status-Active-brightgreen)](https://github.com/vdkit/VDK-CLI)
 
 **Automatically analyzes codebases to generate custom VDK CLI tailored to your project**
 
@@ -136,7 +136,7 @@ Contributions are welcome! Please check the [CONTRIBUTING.md](../../CONTRIBUTING
 
 ```bash
 # Clone the repository
-git clone https://github.com/entro314-labs/VDK-CLI.git
+git clone https://github.com/vdkit/VDK-CLI.git
 cd VDK-CLI
 
 # Install dependencies
@@ -154,6 +154,6 @@ This project is licensed under the MIT License - see the [LICENSE](../../LICENSE
 
 <div align="center">
 
-**Made with ❤️ by [VDK CLI Team](https://github.com/entro314-labs/VDK-CLI)**
+**Made with ❤️ by [VDK CLI Team](https://github.com/vdkit/VDK-CLI)**
 
 </div>

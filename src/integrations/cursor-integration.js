@@ -12,20 +12,21 @@
  * Priority: HIGH (Context-creating platform)
  */
 
-import fs from 'node:fs'
-import os from 'node:os'
-import path from 'node:path'
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
-import { BaseIntegration } from './base-integration.js'
+import { BaseIntegration } from './base-integration.js';
 
 /**
  * Cursor AI Editor configuration and integration utilities
  */
 export class CursorContextIntegration extends BaseIntegration {
   constructor(projectPath = process.cwd()) {
-    super('Cursor', projectPath)
-    this.cursorConfigPath = path.join(projectPath, '.cursor')
-    this.globalCursorConfigPath = path.join(os.homedir(), '.cursor')
+    super('Cursor', projectPath);
+    this.priority = 'high';
+    this.cursorConfigPath = path.join(projectPath, '.cursor');
+    this.globalCursorConfigPath = path.join(os.homedir(), '.cursor');
   }
 
   /**
@@ -42,7 +43,7 @@ export class CursorContextIntegration extends BaseIntegration {
       globalMcp: path.join(this.globalCursorConfigPath, 'mcp.json'),
       projectMcp: path.join(this.cursorConfigPath, 'mcp.json'),
       extensionsConfig: path.join(this.cursorConfigPath, 'extensions.json'),
-    }
+    };
   }
 
   /**
@@ -50,8 +51,8 @@ export class CursorContextIntegration extends BaseIntegration {
    * @returns {Object} Detection result with details
    */
   detectUsage() {
-    const detection = this.createDetectionResult()
-    const paths = this.getConfigPaths()
+    const detection = this.createDetectionResult();
+    const paths = this.getConfigPaths();
 
     // 1. Check for .cursor directory and key files (project-specific)
     this.checkPaths(
@@ -67,56 +68,66 @@ export class CursorContextIntegration extends BaseIntegration {
       },
       'high',
       true // isProjectSpecific = true
-    )
+    );
 
     // 2. Check for global Cursor installation
-    const platformPaths = this.getPlatformPaths()
+    const platformPaths = this.getPlatformPaths();
     const globalPaths = {
-      'Cursor.app (macOS)': platformPaths.applications ? path.join(platformPaths.applications, 'Cursor.app') : null,
-      'Global .cursor directory': platformPaths.home ? path.join(platformPaths.home, '.cursor') : null,
-      'Cursor config directory': platformPaths.config ? path.join(platformPaths.config, 'Cursor') : null,
-    }
+      'Cursor.app (macOS)': platformPaths.applications
+        ? path.join(platformPaths.applications, 'Cursor.app')
+        : null,
+      'Global .cursor directory': platformPaths.home
+        ? path.join(platformPaths.home, '.cursor')
+        : null,
+      'Cursor config directory': platformPaths.config
+        ? path.join(platformPaths.config, 'Cursor')
+        : null,
+    };
 
     // Filter out null paths and check
-    const filteredGlobalPaths = Object.fromEntries(Object.entries(globalPaths).filter(([, path]) => path !== null))
-    this.checkPaths(detection, filteredGlobalPaths, 'low')
+    const filteredGlobalPaths = Object.fromEntries(
+      Object.entries(globalPaths).filter(([, path]) => path !== null)
+    );
+    this.checkPaths(detection, filteredGlobalPaths, 'low');
 
     // 3. Check for Cursor command availability
     if (this.commandExists('cursor')) {
-      detection.indicators.push('Cursor CLI command is available')
+      detection.indicators.push('Cursor CLI command is available');
       if (detection.confidence === 'none') {
-        detection.confidence = 'medium'
+        detection.confidence = 'medium';
       }
 
-      const version = this.getCommandVersion('cursor', '--version')
+      const version = this.getCommandVersion('cursor', '--version');
       if (version) {
-        detection.indicators.push(`Cursor version: ${version}`)
+        detection.indicators.push(`Cursor version: ${version}`);
       }
     }
 
     // 4. Check for recent activity in .cursor directory
-    this.checkRecentActivity(detection, this.cursorConfigPath, 'Recent .cursor activity')
+    this.checkRecentActivity(detection, this.cursorConfigPath, 'Recent .cursor activity');
 
     // 5. Check .gitignore for Cursor patterns
-    const gitignorePatterns = this.checkGitignore(['.cursor', '.cursorignore'])
+    const gitignorePatterns = this.checkGitignore(['.cursor', '.cursorignore']);
     if (gitignorePatterns.length > 0) {
-      detection.indicators.push(`Cursor paths found in .gitignore: ${gitignorePatterns.join(', ')}`)
+      detection.indicators.push(
+        `Cursor paths found in .gitignore: ${gitignorePatterns.join(', ')}`
+      );
     }
 
     // 6. Check for recent Cursor log activity
     const cursorLogPaths = [
       platformPaths.logs ? path.join(platformPaths.logs, 'Cursor') : null,
       platformPaths.home ? path.join(platformPaths.home, '.cursor', 'logs') : null,
-    ].filter(Boolean)
+    ].filter(Boolean);
 
-    cursorLogPaths.forEach((logPath) => {
-      this.checkRecentActivity(detection, logPath, 'Recent Cursor logs', 7)
-    })
+    cursorLogPaths.forEach(logPath => {
+      this.checkRecentActivity(detection, logPath, 'Recent Cursor logs', 7);
+    });
 
     // 7. Add standard recommendations based on confidence level
-    this.addStandardRecommendations(detection, 'Cursor AI', 'https://cursor.sh')
+    this.addStandardRecommendations(detection, 'Cursor AI', 'https://cursor.sh');
 
-    return detection
+    return detection;
   }
 
   /**
@@ -125,15 +136,15 @@ export class CursorContextIntegration extends BaseIntegration {
    * @returns {boolean} Success status
    */
   async initialize(options = {}) {
-    const paths = this.getConfigPaths()
+    const paths = this.getConfigPaths();
 
     try {
       // Create .cursor directory structure if it doesn't exist
-      await this.ensureDirectory(this.cursorConfigPath)
-      await this.ensureDirectory(paths.rulesDirectory)
+      await this.ensureDirectory(this.cursorConfigPath);
+      await this.ensureDirectory(paths.rulesDirectory);
 
       // Create VDK-specific configuration file (separate from main Cursor settings)
-      const vdkConfigPath = path.join(this.cursorConfigPath, 'vdk.config.json')
+      const vdkConfigPath = path.join(this.cursorConfigPath, 'vdk.config.json');
       const vdkConfig = {
         enabled: true,
         version: '1.0.0',
@@ -149,26 +160,26 @@ export class CursorContextIntegration extends BaseIntegration {
           chat: true,
           rules: true,
         },
-      }
+      };
 
-      await this.writeJsonFile(vdkConfigPath, vdkConfig)
+      await this.writeJsonFile(vdkConfigPath, vdkConfig);
 
       // Add VDK config to .gitignore
-      await this.ensureGitignoreEntry('.cursor/vdk.config.json')
+      await this.ensureGitignoreEntry('.cursor/vdk.config.json');
 
       // Create .cursorignore file with sensible defaults
-      await this.createCursorIgnoreFile(options)
+      await this.createCursorIgnoreFile(options);
 
       // Create MCP configuration for Cursor
-      await this.createCursorMCPConfig(options)
+      await this.createCursorMCPConfig(options);
 
       // Create Cursor-specific AI rules in proper MDC format
-      await this.createCursorAIRules(options)
+      await this.createCursorAIRules(options);
 
-      return true
+      return true;
     } catch (error) {
-      console.error('Failed to initialize Cursor AI configuration:', error.message)
-      return false
+      console.error('Failed to initialize Cursor AI configuration:', error.message);
+      return false;
     }
   }
 
@@ -177,10 +188,10 @@ export class CursorContextIntegration extends BaseIntegration {
    * @param {Object} options - Configuration options
    */
   async createCursorIgnoreFile(_options = {}) {
-    const paths = this.getConfigPaths()
+    const paths = this.getConfigPaths();
 
     if (this.fileExists(paths.cursorIgnore)) {
-      return // Don't overwrite existing .cursorignore
+      return; // Don't overwrite existing .cursorignore
     }
 
     const cursorIgnoreContent = `# VDK Cursor Ignore Patterns
@@ -247,9 +258,9 @@ temp/
 # VDK specific (comment out if you want AI to see these)
 # .vdk/rules/
 # vdk.config.json
-`
+`;
 
-    await fs.promises.writeFile(paths.cursorIgnore, cursorIgnoreContent, 'utf8')
+    await fs.promises.writeFile(paths.cursorIgnore, cursorIgnoreContent, 'utf8');
   }
 
   /**
@@ -257,10 +268,10 @@ temp/
    * @param {Object} options - Configuration options
    */
   async createCursorMCPConfig(options = {}) {
-    const paths = this.getConfigPaths()
+    const paths = this.getConfigPaths();
 
     if (this.fileExists(paths.projectMcp)) {
-      return // Don't overwrite existing MCP config
+      return; // Don't overwrite existing MCP config
     }
 
     const mcpConfig = {
@@ -281,9 +292,9 @@ temp/
         projectName: options.projectName || path.basename(this.projectPath),
         rulesPath: '.cursor/rules',
       },
-    }
+    };
 
-    await this.writeJsonFile(paths.projectMcp, mcpConfig)
+    await this.writeJsonFile(paths.projectMcp, mcpConfig);
   }
 
   /**
@@ -291,23 +302,23 @@ temp/
    * @param {Object} options - Configuration options
    */
   async createCursorAIRules(options = {}) {
-    const paths = this.getConfigPaths()
-    const rulesPath = paths.rulesDirectory
+    const paths = this.getConfigPaths();
+    const rulesPath = paths.rulesDirectory;
 
     // Create multiple rule files following Cursor's MDC format
-    await this.createCursorProjectStandardsRule(rulesPath, options)
-    await this.createCursorWorkflowRule(rulesPath, options)
-    await this.createCursorVDKIntegrationRule(rulesPath, options)
+    await this.createCursorProjectStandardsRule(rulesPath, options);
+    await this.createCursorWorkflowRule(rulesPath, options);
+    await this.createCursorVDKIntegrationRule(rulesPath, options);
   }
 
   /**
    * Create project standards rule (Auto Attached to common files)
    */
   async createCursorProjectStandardsRule(rulesPath, _options = {}) {
-    const rulePath = path.join(rulesPath, 'project-standards.md')
+    const rulePath = path.join(rulesPath, 'project-standards.md');
 
     if (this.fileExists(rulePath)) {
-      return // Don't overwrite existing rules
+      return; // Don't overwrite existing rules
     }
 
     // MDC format with proper metadata for auto-attachment
@@ -340,19 +351,19 @@ When working with project files:
 - Update with \`vdk init\` when project evolves
 
 *Auto-attached to common development files*
-`
+`;
 
-    await fs.promises.writeFile(rulePath, projectStandardsContent, 'utf8')
+    await fs.promises.writeFile(rulePath, projectStandardsContent, 'utf8');
   }
 
   /**
    * Create workflow automation rule (Agent Requested)
    */
   async createCursorWorkflowRule(rulesPath, _options = {}) {
-    const rulePath = path.join(rulesPath, 'vdk-workflow.md')
+    const rulePath = path.join(rulesPath, 'vdk-workflow.md');
 
     if (this.fileExists(rulePath)) {
-      return
+      return;
     }
 
     const workflowContent = `---
@@ -388,19 +399,19 @@ When asked to analyze or work with the project:
 - Use Cursor's multi-file editing for coordinated changes
 
 *Available when AI needs VDK workflow assistance*
-`
+`;
 
-    await fs.promises.writeFile(rulePath, workflowContent, 'utf8')
+    await fs.promises.writeFile(rulePath, workflowContent, 'utf8');
   }
 
   /**
    * Create VDK integration rule (Manual reference)
    */
   async createCursorVDKIntegrationRule(rulesPath, _options = {}) {
-    const rulePath = path.join(rulesPath, 'vdk-integration.md')
+    const rulePath = path.join(rulesPath, 'vdk-integration.md');
 
     if (this.fileExists(rulePath)) {
-      return
+      return;
     }
 
     const integrationContent = `---
@@ -436,9 +447,9 @@ Reference this rule with @vdk-integration when working with VDK CLI.
 - Reference @vdk-integration for integration questions
 
 *Manual reference rule - Use @vdk-integration to activate*
-`
+`;
 
-    await fs.promises.writeFile(rulePath, integrationContent, 'utf8')
+    await fs.promises.writeFile(rulePath, integrationContent, 'utf8');
   }
 
   /**
@@ -446,17 +457,17 @@ Reference this rule with @vdk-integration when working with VDK CLI.
    * @returns {Promise<string[]>} Array of ignore patterns
    */
   async parseCursorIgnore() {
-    const paths = this.getConfigPaths()
+    const paths = this.getConfigPaths();
 
     try {
-      const content = await fs.promises.readFile(paths.cursorIgnore, 'utf8')
+      const content = await fs.promises.readFile(paths.cursorIgnore, 'utf8');
       return content
         .split('\n')
-        .map((line) => line.trim())
-        .filter((line) => line && !line.startsWith('#'))
-        .map((line) => (line.endsWith('/') ? `${line}**` : line))
+        .map(line => line.trim())
+        .filter(line => line && !line.startsWith('#'))
+        .map(line => (line.endsWith('/') ? `${line}**` : line));
     } catch {
-      return []
+      return [];
     }
   }
 
@@ -465,30 +476,30 @@ Reference this rule with @vdk-integration when working with VDK CLI.
    * @returns {Promise<Object>} Feature availability status
    */
   async getCursorFeatures() {
-    const paths = this.getConfigPaths()
+    const paths = this.getConfigPaths();
     const features = {
       aiEnabled: false,
       codeCompletions: false,
       chatEnabled: false,
       mcpConfigured: false,
       rulesConfigured: false,
-    }
+    };
 
     try {
       if (this.fileExists(paths.projectConfig)) {
-        const config = await this.readJsonFile(paths.projectConfig)
-        features.aiEnabled = config?.ai?.enabled
-        features.codeCompletions = config?.ai?.codeCompletions?.enabled
-        features.chatEnabled = config?.ai?.chat?.enabled
+        const config = await this.readJsonFile(paths.projectConfig);
+        features.aiEnabled = config?.ai?.enabled;
+        features.codeCompletions = config?.ai?.codeCompletions?.enabled;
+        features.chatEnabled = config?.ai?.chat?.enabled;
       }
 
-      features.mcpConfigured = this.fileExists(paths.projectMcp)
-      features.rulesConfigured = await this.directoryExistsAsync(paths.rulesDirectory)
+      features.mcpConfigured = this.fileExists(paths.projectMcp);
+      features.rulesConfigured = await this.directoryExistsAsync(paths.rulesDirectory);
     } catch {
       // Features remain false if we can't read config
     }
 
-    return features
+    return features;
   }
 
   /**
@@ -496,9 +507,9 @@ Reference this rule with @vdk-integration when working with VDK CLI.
    * @returns {Promise<Object>} Status summary object
    */
   async getStatusSummary() {
-    const detection = this.getCachedDetection()
-    const features = await this.getCursorFeatures()
-    const paths = this.getConfigPaths()
+    const detection = this.getCachedDetection();
+    const features = await this.getCursorFeatures();
+    const paths = this.getConfigPaths();
 
     return {
       isConfigured: detection.isUsed,
@@ -506,6 +517,250 @@ Reference this rule with @vdk-integration when working with VDK CLI.
       features,
       configPaths: paths,
       recommendations: detection.recommendations,
+    };
+  }
+
+  // ============================================================================
+  // V3.0 COMPONENT METHODS
+  // ============================================================================
+
+  /**
+   * Get all component paths for Cursor platform
+   * @returns {Object} Component paths by type
+   */
+  getComponentPaths() {
+    return {
+      main: path.join(this.cursorConfigPath, 'rules', 'main.mdc'),
+      agents: null, // Cursor doesn't have agents
+      rules: path.join(this.cursorConfigPath, 'rules'),
+      commands: null, // Cursor doesn't have commands
+      skills: null, // Cursor doesn't have skills
+      workflows: null, // Cursor doesn't have workflows
+      settings: path.join(this.cursorConfigPath, 'settings.json'),
+      mcpConfig: path.join(this.cursorConfigPath, 'mcp.json'),
+    };
+  }
+
+  /**
+   * Get platform constraints for Cursor
+   * @returns {Object} Platform constraints
+   */
+  getPlatformConstraints() {
+    return {
+      maxCharacters: null, // No hard limit
+      maxFiles: null,
+      maxDepth: null,
+      supportsFileReferences: true,
+      supportsYAMLFrontmatter: true,
+      supportsAgents: false,
+      supportsRules: true,
+      supportsCommands: false,
+      supportsSkills: false,
+      supportsWorkflows: false,
+      supportsMCP: true,
+      globPatternSyntax: 'minimatch',
+    };
+  }
+
+  /**
+   * Parse rule component with MDC format
+   * @param {string} filePath - Path to rule file
+   * @returns {Promise<Object>} Parsed rule component
+   */
+  async parseRuleComponent(filePath) {
+    try {
+      const content = await fs.promises.readFile(filePath, 'utf8');
+      const frontmatter = this.extractFrontmatter(content);
+
+      const rule = {
+        type: 'rule',
+        name: path.basename(filePath, '.mdc'),
+        file: filePath,
+        content,
+        format: 'mdc',
+      };
+
+      if (frontmatter) {
+        rule.frontmatter = frontmatter;
+        rule.description = frontmatter.description || '';
+        rule.globs = frontmatter.globs || [];
+        rule.alwaysApply = frontmatter.alwaysApply;
+
+        // Determine activation mode
+        if (rule.alwaysApply) {
+          rule.activation = 'always';
+        } else if (rule.globs && rule.globs.length > 0) {
+          rule.activation = 'auto-attached';
+        } else if (rule.description) {
+          rule.activation = 'agent-requested';
+        } else {
+          rule.activation = 'manual';
+        }
+      }
+
+      return rule;
+    } catch (error) {
+      console.error(`Error parsing rule ${filePath}:`, error);
+      return null;
     }
+  }
+
+  /**
+   * Parse rules directory with MDC format handling
+   * @param {string} dirPath - Path to rules directory
+   * @returns {Promise<Array>} Array of parsed rule components
+   */
+  async parseRuleComponents(dirPath) {
+    const rules = [];
+
+    try {
+      if (!(await this.directoryExistsAsync(dirPath))) {
+        return rules;
+      }
+
+      const files = await fs.promises.readdir(dirPath);
+
+      for (const file of files) {
+        if (!file.endsWith('.mdc')) continue;
+
+        const filePath = path.join(dirPath, file);
+        const rule = await this.parseRuleComponent(filePath);
+
+        if (rule) {
+          rules.push(rule);
+        }
+      }
+    } catch (error) {
+      console.error(`Error parsing rules directory ${dirPath}:`, error);
+    }
+
+    return rules;
+  }
+
+  /**
+   * Generate rule component file in MDC format
+   * @param {Object} rule - Rule data
+   * @param {Object} options - Generation options
+   * @returns {Promise<string>} Path to generated file
+   */
+  async generateRuleComponent(rule, _options = {}) {
+    const rulesDir = path.join(this.cursorConfigPath, 'rules');
+    await this.ensureDirectory(rulesDir);
+
+    const fileName = `${rule.name}.mdc`;
+    const filePath = path.join(rulesDir, fileName);
+
+    // Build frontmatter
+    const frontmatter = {
+      description: rule.description || '',
+      globs: rule.globs || [],
+      alwaysApply: rule.alwaysApply,
+    };
+
+    // Build content
+    let content = '---\n';
+    for (const [key, value] of Object.entries(frontmatter)) {
+      if (Array.isArray(value)) {
+        content += `${key}:\n`;
+        value.forEach(item => {
+          content += `  - ${item}\n`;
+        });
+      } else {
+        content += `${key}: ${value}\n`;
+      }
+    }
+    content += '---\n\n';
+    content += rule.content || '';
+
+    await fs.promises.writeFile(filePath, content, 'utf8');
+    return filePath;
+  }
+
+  /**
+   * Generate all components for Cursor
+   * @param {Object} components - Components to generate
+   * @param {Object} options - Generation options
+   * @returns {Promise<Object>} Generation result
+   */
+  async generateComponents(components, options = {}) {
+    const result = {
+      success: true,
+      files: [],
+      errors: [],
+    };
+
+    try {
+      // Generate rules
+      if (components.rules && components.rules.length > 0) {
+        for (const rule of components.rules) {
+          try {
+            const filePath = await this.generateRuleComponent(rule, options);
+            result.files.push({ type: 'rule', path: filePath });
+          } catch (error) {
+            result.errors.push(`Failed to generate rule ${rule.name}: ${error.message}`);
+          }
+        }
+      }
+
+      // Convert agents to rules (Cursor doesn't have agents)
+      if (components.agents && components.agents.length > 0) {
+        for (const agent of components.agents) {
+          try {
+            const ruleFromAgent = {
+              name: agent.name,
+              description: agent.description || `${agent.name} agent`,
+              content: agent.content,
+              globs: [],
+              alwaysApply: false, // Agent-requested mode
+            };
+            const filePath = await this.generateRuleComponent(ruleFromAgent, options);
+            result.files.push({ type: 'rule', path: filePath, convertedFrom: 'agent' });
+          } catch (error) {
+            result.errors.push(`Failed to convert agent ${agent.name}: ${error.message}`);
+          }
+        }
+      }
+
+      // Generate main file if provided
+      if (components.main) {
+        try {
+          const mainPath = path.join(this.cursorConfigPath, 'rules', 'main.mdc');
+          await this.ensureDirectory(path.dirname(mainPath));
+          await fs.promises.writeFile(mainPath, components.main.content, 'utf8');
+          result.files.push({ type: 'main', path: mainPath });
+        } catch (error) {
+          result.errors.push(`Failed to generate main file: ${error.message}`);
+        }
+      }
+
+      // Generate settings if provided
+      if (components.settings) {
+        try {
+          const settingsPath = path.join(this.cursorConfigPath, 'settings.json');
+          await this.writeJsonFile(settingsPath, components.settings.content);
+          result.files.push({ type: 'settings', path: settingsPath });
+        } catch (error) {
+          result.errors.push(`Failed to generate settings: ${error.message}`);
+        }
+      }
+
+      // Generate MCP config if provided
+      if (components.mcpConfig) {
+        try {
+          const mcpPath = path.join(this.cursorConfigPath, 'mcp.json');
+          await this.writeJsonFile(mcpPath, components.mcpConfig.content);
+          result.files.push({ type: 'mcp-config', path: mcpPath });
+        } catch (error) {
+          result.errors.push(`Failed to generate MCP config: ${error.message}`);
+        }
+      }
+
+      result.success = result.errors.length === 0;
+    } catch (error) {
+      result.success = false;
+      result.errors.push(`Component generation failed: ${error.message}`);
+    }
+
+    return result;
   }
 }

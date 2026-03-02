@@ -161,7 +161,7 @@ We encourage behavior that builds a positive community:
 ### Community Resources
 
 - **Discord**: [Join our community](https://discord.gg/vdk)
-- **GitHub Discussions**: [Community discussions](https://github.com/entro314-labs/VDK-CLI/discussions)
+- **GitHub Discussions**: [Community discussions](https://github.com/vdkit/VDK-CLI/discussions)
 - **Documentation**: [Contributing guide](https://docs.vdk.dev/contributing)
 - **Blog**: [Community blog](https://blog.vdk.dev)
 

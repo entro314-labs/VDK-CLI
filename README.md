@@ -9,7 +9,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@vibe-dev-kit/cli?style=flat-square&logo=npm)](https://www.npmjs.com/package/@vibe-dev-kit/cli)
 [![Downloads](https://img.shields.io/npm/dm/@vibe-dev-kit/cli?style=flat-square&logo=npm)](https://www.npmjs.com/package/@vibe-dev-kit/cli)
-[![GitHub Repo stars](https://img.shields.io/github/stars/entro314-labs/VibeKit-VDK-CLI?style=flat-square&logo=github)](https://github.com/entro314-labs/VibeKit-VDK-CLI)
+[![GitHub Repo stars](https://img.shields.io/github/stars/vdkit/VibeKit-VDK-CLI?style=flat-square&logo=github)](https://github.com/vdkit/VibeKit-VDK-CLI)
 
 </div>
 
@@ -29,6 +29,18 @@ The world's first Vibe Development Kit - Train any AI coding assistant to unders
 </div>
 
 VDK CLI revolutionizes AI-assisted development by generating intelligent rules that make AI suggestions 60% faster and perfectly matched to your codebase patterns. This tool helps developers create project-aware AI assistants and provides seamless integration across all major coding platforms.
+
+## Ecosystem Role (CLI is the Execution Core)
+
+VDK CLI is the operational heart of the ecosystem:
+
+1. `ai-context-schema` defines canonical blueprint contract
+2. `VDK-Blueprints` provides curated inventory
+3. `VDK-CLI` resolves, ranks, adapts, and deploys blueprints
+4. `VDK-Hub` surfaces synchronized catalog/distribution UX
+5. `VDK-Wiki` documents schema + CLI operational behavior
+
+Hub and Wiki should mirror CLI retrieval/deployment semantics rather than redefine them.
 
 ## Demo
 
@@ -65,7 +77,7 @@ Automatically detects 20+ technologies, frameworks, and architectural patterns i
 </svg>
 
 **Universal AI Compatibility**
-Works with 33+ IDEs and AI tools: Claude Code, Cursor, VS Code variants, Windsurf, all JetBrains IDEs, Zed, GitHub Copilot, and more
+Works with 33+ IDEs and AI tools: Claude Code, Cursor, OpenCode, Cline, Roo Code, Goose, Junie, Google Antigravity, Kimi CLI, Mistral Vibe, Trae, VS Code variants, Windsurf, all JetBrains IDEs, Zed, GitHub Copilot, and more
 
 </td>
 </tr>
@@ -111,7 +123,7 @@ npm install -g @vibe-dev-kit/cli
 pnpm add -g @vibe-dev-kit/cli
 
 # Or use the installer script
-curl -fsSL https://raw.githubusercontent.com/entro314-labs/VibeKit-VDK-CLI/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/vdkit/VibeKit-VDK-CLI/main/install.sh | sh
 ```
 
 ### Basic Usage
@@ -271,9 +283,57 @@ vdk scan                         # Re-analyze project and update rules
 vdk status                       # Check current VDK configuration
 vdk validate                     # Validate generated rules
 
+# Blueprint library operations
+vdk sync                         # Sync blueprint sources
+vdk browse                       # Browse available blueprints
+vdk search --query nextjs        # Search canonical blueprint metadata
+vdk deploy <blueprint-id>        # Deploy blueprint to active integrations
+vdk repo-stats                   # Repository statistics and compliance summary
+
+# AI Context Management
+vdk generate --type main --name project-memory --platform claude-code   # Generate CLAUDE.md-compatible context
+vdk generate --type rule --name cursor-rules --platform cursor          # Generate Cursor rule content
+vdk import --input ./.claude --analyze                                  # Analyze existing Claude configuration
+vdk import --input ./.cursor                                             # Import existing Cursor rules
+
+# Cross-Platform Conversion
+vdk convert --from claude --to cursor   # Convert Claude rules to Cursor
+vdk convert --from cursor --to copilot  # Convert Cursor rules to Copilot
+
 # Utilities
 vdk --help                       # Show all available commands
 vdk --version                    # Display VDK CLI version
+```
+
+## Canonical Blueprint Retrieval (v3)
+
+VDK CLI uses canonical AI Context Schema v3 metadata when searching and deploying from `VDK-Blueprints`.
+
+- Canonical taxonomy filter: `--kind`
+- Specificity filter: `--specificity L0|L1|L2|L3|L4`
+- Curated default retrieval: blends `L0-L3`
+- Provenance variants (`L4`) are excluded by default and only included with `--include-l4`
+
+### Curated library behavior
+
+The default recommendation flow is intentionally curated to reduce noise:
+
+- Start from generic + specific signal layers (`L0-L3`)
+- Exclude provenance duplicates (`L4`) unless explicitly requested
+- Preserve semantic adaptation outcome on conversion/deployment (`lossless`, `lossy`, `unsupported`)
+
+```bash
+# Search by canonical kind
+vdk search --kind skill --platform claude-code
+
+# Search by specificity layer
+vdk search --query nextjs --specificity L2
+
+# Include provenance variants explicitly
+vdk search --query nextjs --include-l4
+
+# Deploy a canonical blueprint by id/slug
+vdk deploy <blueprint-id>
 ```
 
 ## Supported IDEs & AI Tools
@@ -282,7 +342,7 @@ VDK CLI supports **33+ IDEs and AI assistants** with full auto-detection and con
 
 - **Code Editors**: VS Code, VS Code Insiders, VSCodium, Cursor AI, Windsurf, Windsurf Next, Zed Editor
 - **JetBrains IDEs**: IntelliJ IDEA, WebStorm, PyCharm, PHPStorm, RubyMine, CLion, DataGrip, GoLand, Rider, Android Studio
-- **AI Services**: Claude Code, Claude Desktop, GitHub Copilot, OpenAI API Tools, Generic AI Platform
+- **AI Services**: Claude Code, Claude Desktop, OpenAI Codex, OpenCode, Cline, Roo Code, Goose, Junie, Google Antigravity, Kimi CLI, Mistral Vibe, Trae, GitHub Copilot, OpenAI API Tools, Generic AI Platform
 - **Generic**: Works with any AI coding assistant through universal .ai/ configuration
 
 ✨ ** Features**:
@@ -384,6 +444,22 @@ vdk status
 vdk validate
 ```
 
+### Blueprint contract quality commands
+
+```bash
+# Existing code quality (Biome + markdown)
+pnpm run quality
+
+# Blueprint frontmatter contract linting for .vdk/rules
+pnpm run lint:contracts
+
+# Preview deterministic frontmatter normalization
+pnpm run lint:contracts:dry
+
+# Apply deterministic frontmatter normalization
+pnpm run lint:contracts:fix
+```
+
 ## Real Impact
 
 Teams using VDK CLI v2.0 report:
@@ -411,10 +487,10 @@ Teams using VDK CLI v2.0 report:
 
 We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details.
 
-- [Report bugs](https://github.com/entro314-labs/VibeKit-VDK-CLI/issues)
-- [Request features](https://github.com/entro314-labs/VibeKit-VDK-CLI/issues)
+- [Report bugs](https://github.com/vdkit/VibeKit-VDK-CLI/issues)
+- [Request features](https://github.com/vdkit/VibeKit-VDK-CLI/issues)
 - [Improve documentation](./docs/)
-- [Submit pull requests](https://github.com/entro314-labs/VibeKit-VDK-CLI/pulls)
+- [Submit pull requests](https://github.com/vdkit/VibeKit-VDK-CLI/pulls)
 
 ## Roadmap
 
@@ -422,7 +498,7 @@ We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md)
 <path d="M20 6h-2.18c.11-.31.18-.65.18-1a2.996 2.996 0 0 0-5.5-1.65l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1z" fill="#0891B2"/>
 </svg>
 
-- [x] **v2.0** -  technology detection, improved AI integrations
+- [x] **v2.0** - technology detection, improved AI integrations
 - [x] **v2.9** - AI context migration system with multi-platform support
 - [ ] **v2.2** - VDK Hub integration for cloud-based rule management
 - [ ] **v2.3** - Visual Studio Code extension for seamless IDE integration
@@ -463,7 +539,7 @@ For detailed history and contributions, see [Project History & Attribution](docs
 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#059669"/>
 </svg>
 
-- **GitHub**: [Issues & Feature Requests](https://github.com/entro314-labs/VibeKit-VDK-CLI/issues)
+- **GitHub**: [Issues & Feature Requests](https://github.com/vdkit/VibeKit-VDK-CLI/issues)
 - **Documentation**: [Complete Docs](./docs/)
 - **Community**: [VDK Hub](https://vdk.tools)
 - **Email**: For enterprise support inquiries
@@ -472,7 +548,6 @@ For detailed history and contributions, see [Project History & Attribution](docs
 
 <div align="center">
 
-
-[GitHub](https://github.com/entro314-labs/VibeKit-VDK-CLI) • [Documentation](./docs/) • [VDK Hub](https://vdk.tools) • [NPM](https://www.npmjs.com/package/@vibe-dev-kit/cli)
+[GitHub](https://github.com/vdkit/VibeKit-VDK-CLI) • [Documentation](./docs/) • [VDK Hub](https://vdk.tools) • [NPM](https://www.npmjs.com/package/@vibe-dev-kit/cli)
 
 </div>

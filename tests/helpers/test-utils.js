@@ -5,8 +5,8 @@
  * Provides common testing patterns, assertion helpers, and test data generators.
  */
 
-import { vi } from 'vitest'
-import path from 'path'
+import { vi } from 'vitest';
+import path from 'node:path';
 
 /**
  * Assertion Helpers
@@ -17,19 +17,19 @@ export const assertions = {
    * Assert that a function was called with specific partial arguments
    */
   toHaveBeenCalledWithPartial: (mockFn, partialArgs) => {
-    const calls = mockFn.mock.calls
-    const hasMatchingCall = calls.some((call) => {
+    const calls = mockFn.mock.calls;
+    const hasMatchingCall = calls.some(call => {
       return Object.entries(partialArgs).every(([key, expectedValue]) => {
-        const actualValue = call[0]?.[key]
-        return JSON.stringify(actualValue) === JSON.stringify(expectedValue)
-      })
-    })
+        const actualValue = call[0]?.[key];
+        return JSON.stringify(actualValue) === JSON.stringify(expectedValue);
+      });
+    });
 
     if (!hasMatchingCall) {
       throw new Error(
         `Expected function to be called with partial args ${JSON.stringify(partialArgs)}, ` +
           `but it was called with: ${JSON.stringify(calls)}`
-      )
+      );
     }
   },
 
@@ -37,18 +37,18 @@ export const assertions = {
    * Assert that an object contains specific nested properties
    */
   toContainNestedProperty: (obj, path, expectedValue) => {
-    const keys = path.split('.')
-    let current = obj
+    const keys = path.split('.');
+    let current = obj;
 
     for (const key of keys) {
       if (current === null || current === undefined || !(key in current)) {
-        throw new Error(`Property path "${path}" not found in object`)
+        throw new Error(`Property path "${path}" not found in object`);
       }
-      current = current[key]
+      current = current[key];
     }
 
     if (expectedValue !== undefined && current !== expectedValue) {
-      throw new Error(`Expected property "${path}" to equal ${expectedValue}, but got ${current}`)
+      throw new Error(`Expected property "${path}" to equal ${expectedValue}, but got ${current}`);
     }
   },
 
@@ -56,10 +56,10 @@ export const assertions = {
    * Assert that a string contains all specified substrings
    */
   toContainAllStrings: (str, substrings) => {
-    const missing = substrings.filter((substring) => !str.includes(substring))
+    const missing = substrings.filter(substring => !str.includes(substring));
 
     if (missing.length > 0) {
-      throw new Error(`String "${str}" is missing substrings: ${missing.join(', ')}`)
+      throw new Error(`String "${str}" is missing substrings: ${missing.join(', ')}`);
     }
   },
 
@@ -67,15 +67,19 @@ export const assertions = {
    * Assert that an array contains objects with specific properties
    */
   toContainObjectsWithProperties: (array, properties) => {
-    const matches = array.filter((item) => Object.entries(properties).every(([key, value]) => item[key] === value))
+    const matches = array.filter(item =>
+      Object.entries(properties).every(([key, value]) => item[key] === value)
+    );
 
     if (matches.length === 0) {
-      throw new Error(`Array does not contain any objects with properties: ${JSON.stringify(properties)}`)
+      throw new Error(
+        `Array does not contain any objects with properties: ${JSON.stringify(properties)}`
+      );
     }
 
-    return matches
+    return matches;
   },
-}
+};
 
 /**
  * Async Testing Helpers
@@ -86,43 +90,43 @@ export const asyncHelpers = {
    * Wait for a condition to become true
    */
   waitForCondition: async (condition, timeout = 5000, interval = 100) => {
-    const start = Date.now()
+    const start = Date.now();
 
     while (Date.now() - start < timeout) {
       if (await condition()) {
-        return true
+        return true;
       }
-      await new Promise((resolve) => setTimeout(resolve, interval))
+      await new Promise(resolve => setTimeout(resolve, interval));
     }
 
-    throw new Error(`Condition not met within ${timeout}ms`)
+    throw new Error(`Condition not met within ${timeout}ms`);
   },
 
   /**
    * Wait for all pending promises to resolve
    */
-  flushPromises: () => new Promise((resolve) => setImmediate(resolve)),
+  flushPromises: () => new Promise(resolve => setImmediate(resolve)),
 
   /**
    * Create a promise that resolves after a delay
    */
-  delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  delay: ms => new Promise(resolve => setTimeout(resolve, ms)),
 
   /**
    * Test that a promise rejects with a specific error
    */
   expectToReject: async (promiseFactory, expectedError) => {
     try {
-      await promiseFactory()
-      throw new Error('Expected promise to reject, but it resolved')
+      await promiseFactory();
+      throw new Error('Expected promise to reject, but it resolved');
     } catch (error) {
       if (expectedError && !error.message.includes(expectedError)) {
-        throw new Error(`Expected error to contain "${expectedError}", but got: ${error.message}`)
+        throw new Error(`Expected error to contain "${expectedError}", but got: ${error.message}`);
       }
-      return error
+      return error;
     }
   },
-}
+};
 
 /**
  * Mock Verification Helpers
@@ -132,36 +136,36 @@ export const mockHelpers = {
   /**
    * Get the last call arguments for a mock function
    */
-  getLastCallArgs: (mockFn) => {
-    const calls = mockFn.mock.calls
+  getLastCallArgs: mockFn => {
+    const calls = mockFn.mock.calls;
     if (calls.length === 0) {
-      throw new Error('Mock function was never called')
+      throw new Error('Mock function was never called');
     }
-    return calls[calls.length - 1]
+    return calls[calls.length - 1];
   },
 
   /**
    * Get the first call arguments for a mock function
    */
-  getFirstCallArgs: (mockFn) => {
-    const calls = mockFn.mock.calls
+  getFirstCallArgs: mockFn => {
+    const calls = mockFn.mock.calls;
     if (calls.length === 0) {
-      throw new Error('Mock function was never called')
+      throw new Error('Mock function was never called');
     }
-    return calls[0]
+    return calls[0];
   },
 
   /**
    * Reset all mocks in an object
    */
-  resetAllMocks: (obj) => {
-    Object.values(obj).forEach((value) => {
+  resetAllMocks: obj => {
+    Object.values(obj).forEach(value => {
       if (vi.isMockFunction(value)) {
-        value.mockReset()
+        value.mockReset();
       } else if (typeof value === 'object' && value !== null) {
-        mockHelpers.resetAllMocks(value)
+        mockHelpers.resetAllMocks(value);
       }
-    })
+    });
   },
 
   /**
@@ -169,25 +173,25 @@ export const mockHelpers = {
    */
   createDelayedMock: (returnValue, delay = 100) => {
     return vi.fn().mockImplementation(async (...args) => {
-      await asyncHelpers.delay(delay)
-      return typeof returnValue === 'function' ? returnValue(...args) : returnValue
-    })
+      await asyncHelpers.delay(delay);
+      return typeof returnValue === 'function' ? returnValue(...args) : returnValue;
+    });
   },
 
   /**
    * Create a mock that succeeds after failing N times
    */
   createRetryMock: (successValue, failureCount = 2, failureError = new Error('Mock failure')) => {
-    let attempts = 0
+    let attempts = 0;
     return vi.fn().mockImplementation(() => {
-      attempts++
+      attempts++;
       if (attempts <= failureCount) {
-        throw failureError
+        throw failureError;
       }
-      return successValue
-    })
+      return successValue;
+    });
   },
-}
+};
 
 /**
  * Test Data Generators
@@ -215,19 +219,19 @@ export const dataGenerators = {
         jest: '^29.0.0',
         '@types/react': '^18.0.0',
       },
-    }
+    };
 
-    return JSON.stringify({ ...defaults, ...overrides }, null, 2)
+    return JSON.stringify({ ...defaults, ...overrides }, null, 2);
   },
 
   /**
    * Generate mock project files structure
    */
-  generateProjectFiles: (framework = 'react', language = 'typescript') => {
+  generateProjectFiles: (framework = 'react', _language = 'typescript') => {
     const baseFiles = [
       { name: 'package.json', path: '/project/package.json', type: 'json' },
       { name: 'README.md', path: '/project/README.md', type: 'markdown' },
-    ]
+    ];
 
     const frameworkFiles = {
       react: [
@@ -257,9 +261,9 @@ export const dataGenerators = {
           type: 'vue',
         },
       ],
-    }
+    };
 
-    return [...baseFiles, ...(frameworkFiles[framework] || frameworkFiles.react)]
+    return [...baseFiles, ...(frameworkFiles[framework] || frameworkFiles.react)];
   },
 
   /**
@@ -274,9 +278,9 @@ export const dataGenerators = {
       timestamp: new Date().toISOString(),
       session_id: `test_${Date.now()}`,
       metadata: {},
-    }
+    };
 
-    return { ...defaults, ...overrides }
+    return { ...defaults, ...overrides };
   },
 
   /**
@@ -293,22 +297,22 @@ export const dataGenerators = {
       tags: ['test', 'validation'],
       created: new Date().toISOString(),
       lastUpdated: new Date().toISOString(),
-    }
+    };
 
-    return { ...defaults, ...overrides }
+    return { ...defaults, ...overrides };
   },
 
   /**
    * Generate random string
    */
   generateRandomString: (length = 10, charset = 'abcdefghijklmnopqrstuvwxyz0123456789') => {
-    let result = ''
+    let result = '';
     for (let i = 0; i < length; i++) {
-      result += charset.charAt(Math.floor(Math.random() * charset.length))
+      result += charset.charAt(Math.floor(Math.random() * charset.length));
     }
-    return result
+    return result;
   },
-}
+};
 
 /**
  * File System Test Helpers
@@ -319,42 +323,42 @@ export const fsHelpers = {
    * Create a temporary test directory structure
    */
   createTempStructure: (structure, basePath = '/temp') => {
-    const files = new Map()
-    const directories = new Set()
+    const files = new Map();
+    const directories = new Set();
 
     const processStructure = (obj, currentPath = basePath) => {
       Object.entries(obj).forEach(([name, content]) => {
-        const fullPath = path.join(currentPath, name)
+        const fullPath = path.join(currentPath, name);
 
         if (typeof content === 'string') {
           // It's a file
-          files.set(fullPath, content)
+          files.set(fullPath, content);
         } else if (content === null) {
           // It's an empty directory
-          directories.add(fullPath)
+          directories.add(fullPath);
         } else {
           // It's a directory with contents
-          directories.add(fullPath)
-          processStructure(content, fullPath)
+          directories.add(fullPath);
+          processStructure(content, fullPath);
         }
-      })
-    }
+      });
+    };
 
-    processStructure(structure)
-    return { files, directories }
+    processStructure(structure);
+    return { files, directories };
   },
 
   /**
    * Generate file paths for testing
    */
   generatePaths: (basePath, extensions) => {
-    return extensions.map((ext) => ({
+    return extensions.map(ext => ({
       full: path.join(basePath, `test${ext}`),
       relative: `test${ext}`,
       extension: ext,
-    }))
+    }));
   },
-}
+};
 
 /**
  * Test Environment Helpers
@@ -366,18 +370,18 @@ export const environmentHelpers = {
    */
   withEnv: (envVars, testFunction) => {
     return async () => {
-      const originalEnv = { ...process.env }
+      const originalEnv = { ...process.env };
 
       // Set test environment variables
-      Object.assign(process.env, envVars)
+      Object.assign(process.env, envVars);
 
       try {
-        await testFunction()
+        await testFunction();
       } finally {
         // Restore original environment
-        process.env = originalEnv
+        process.env = originalEnv;
       }
-    }
+    };
   },
 
   /**
@@ -385,15 +389,15 @@ export const environmentHelpers = {
    */
   withCwd: (cwd, testFunction) => {
     return async () => {
-      const originalCwd = process.cwd()
-      const mockCwd = vi.spyOn(process, 'cwd').mockReturnValue(cwd)
+      const originalCwd = process.cwd();
+      const mockCwd = vi.spyOn(process, 'cwd').mockReturnValue(cwd);
 
       try {
-        await testFunction()
+        await testFunction();
       } finally {
-        mockCwd.mockRestore()
+        mockCwd.mockRestore();
       }
-    }
+    };
   },
 
   /**
@@ -401,22 +405,22 @@ export const environmentHelpers = {
    */
   isolatedTest: (setup, testFunction, cleanup) => {
     return async () => {
-      const testContext = {}
+      const testContext = {};
 
       if (setup) {
-        await setup(testContext)
+        await setup(testContext);
       }
 
       try {
-        await testFunction(testContext)
+        await testFunction(testContext);
       } finally {
         if (cleanup) {
-          await cleanup(testContext)
+          await cleanup(testContext);
         }
       }
-    }
+    };
   },
-}
+};
 
 /**
  * Performance Testing Helpers
@@ -426,28 +430,30 @@ export const performanceHelpers = {
   /**
    * Measure execution time
    */
-  measureTime: async (fn) => {
-    const start = process.hrtime.bigint()
-    const result = await fn()
-    const end = process.hrtime.bigint()
-    const duration = Number(end - start) / 1000000 // Convert to milliseconds
+  measureTime: async fn => {
+    const start = process.hrtime.bigint();
+    const result = await fn();
+    const end = process.hrtime.bigint();
+    const duration = Number(end - start) / 1000000; // Convert to milliseconds
 
-    return { result, duration }
+    return { result, duration };
   },
 
   /**
    * Assert that a function completes within a time limit
    */
   expectToCompleteWithin: async (fn, maxDuration) => {
-    const { result, duration } = await performanceHelpers.measureTime(fn)
+    const { result, duration } = await performanceHelpers.measureTime(fn);
 
     if (duration > maxDuration) {
-      throw new Error(`Function took ${duration.toFixed(2)}ms, expected less than ${maxDuration}ms`)
+      throw new Error(
+        `Function took ${duration.toFixed(2)}ms, expected less than ${maxDuration}ms`
+      );
     }
 
-    return result
+    return result;
   },
-}
+};
 
 /**
  * Common Test Patterns
@@ -461,10 +467,10 @@ export const testPatterns = {
     return errorConditions.map(({ name, setup, expectedError }) => ({
       name: `should handle ${name}`,
       test: async () => {
-        if (setup) await setup()
-        await asyncHelpers.expectToReject(functionUnderTest, expectedError)
+        if (setup) await setup();
+        await asyncHelpers.expectToReject(functionUnderTest, expectedError);
       },
-    }))
+    }));
   },
 
   /**
@@ -474,13 +480,13 @@ export const testPatterns = {
     return {
       name: 'should retry failed operations',
       test: async () => {
-        const mockFn = mockHelpers.createRetryMock('success', maxRetries - 1)
-        const result = await functionUnderTest(mockFn)
+        const mockFn = mockHelpers.createRetryMock('success', maxRetries - 1);
+        const result = await functionUnderTest(mockFn);
 
-        expect(result).toBe('success')
-        expect(mockFn).toHaveBeenCalledTimes(maxRetries)
+        expect(result).toBe('success');
+        expect(mockFn).toHaveBeenCalledTimes(maxRetries);
       },
-    }
+    };
   },
 
   /**
@@ -490,12 +496,12 @@ export const testPatterns = {
     return {
       name: 'should merge configurations correctly',
       test: () => {
-        const result = configFunction(defaultConfig, customConfig)
-        expect(result).toEqual(expectedResult)
+        const result = configFunction(defaultConfig, customConfig);
+        expect(result).toEqual(expectedResult);
       },
-    }
+    };
   },
-}
+};
 
 export default {
   assertions,
@@ -506,4 +512,4 @@ export default {
   environmentHelpers,
   performanceHelpers,
   testPatterns,
-}
+};

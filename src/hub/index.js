@@ -19,14 +19,14 @@ export {
   getGlobalConfigManager,
   initializeConfig,
   updateConfig,
-} from './ConfigManager.js'
+} from './ConfigManager.js';
 // Main integration components
 export {
   createHubIntegration,
   getGlobalHubIntegration,
   HubIntegration,
   initializeHubIntegration,
-} from './HubIntegration.js'
+} from './HubIntegration.js';
 
 export {
   createTelemetryManager,
@@ -34,52 +34,50 @@ export {
   initializeTelemetry,
   setGlobalTelemetryManager,
   TelemetryManager,
-} from './TelemetryManager.js'
-export {
-  createVDKHubClient,
-  VDKHubClient,
-  VDKHubError,
-} from './VDKHubClient.js'
+} from './TelemetryManager.js';
+export { createVDKHubClient, VDKHubClient, VDKHubError } from './VDKHubClient.js';
 
 /**
  * Initialize complete Hub integration system
  * This is the main entry point for CLI commands
  */
 export async function initializeHub(config = {}) {
-  const integration = await initializeHubIntegration(config)
-  return integration
+  const integration = await initializeHubIntegration(config);
+  return integration;
 }
 
 /**
  * Quick access to common Hub operations
  */
 export async function quickHubOperations() {
-  const { getGlobalHubIntegration } = await import('./HubIntegration.js')
-  const hub = getGlobalHubIntegration()
-  await hub.initialize()
+  const { getGlobalHubIntegration } = await import('./HubIntegration.js');
+  const hub = getGlobalHubIntegration();
+  await hub.initialize();
 
   return {
     // Blueprint operations
-    syncBlueprints: (options) => hub.syncBlueprints(options),
+    syncBlueprints: options => hub.syncBlueprints(options),
     generatePackage: (analysis, options) => hub.generatePackage(analysis, options),
     downloadPackage: (packageId, outputPath) => hub.downloadPackage(packageId, outputPath),
-    deployBlueprints: (project, blueprints, options) => hub.deployBlueprints(project, blueprints, options),
+    deployBlueprints: (project, blueprints, options) =>
+      hub.deployBlueprints(project, blueprints, options),
 
     // Community blueprint operations
-    getCommunityBlueprint: (id) => hub.hubClient?.getCommunityBlueprint(id),
-    searchCommunityBlueprints: (criteria) => hub.hubClient?.searchCommunityBlueprints(criteria),
-    getTrendingBlueprints: (options) => hub.hubClient?.getTrendingBlueprints(options),
-    trackCommunityBlueprintUsage: (id, usage) => hub.hubClient?.trackCommunityBlueprintUsage(id, usage),
+    getCommunityBlueprint: id => hub.hubClient?.getCommunityBlueprint(id),
+    searchCommunityBlueprints: criteria => hub.hubClient?.searchCommunityBlueprints(criteria),
+    getTrendingBlueprints: options => hub.hubClient?.getTrendingBlueprints(options),
+    trackCommunityBlueprintUsage: (id, usage) =>
+      hub.hubClient?.trackCommunityBlueprintUsage(id, usage),
     getCommunityCategories: () => hub.hubClient?.getCommunityCategories(),
 
     // Recommendations and compatibility
-    getRecommendations: (analysis) => hub.getBlueprintRecommendations(analysis),
+    getRecommendations: analysis => hub.getBlueprintRecommendations(analysis),
     checkCompatibility: () => hub.checkVersionCompatibility(),
 
     // Telemetry and tracking
     trackCommand: (command, options) => hub.trackCommand(command, options),
     trackError: (command, error, context) => hub.trackError(command, error, context),
-    trackIntegrations: (integrations) => hub.trackIntegrationDetection(integrations),
+    trackIntegrations: integrations => hub.trackIntegrationDetection(integrations),
 
     // Status and configuration
     getStatus: () => hub.getStatus(),
@@ -88,7 +86,7 @@ export async function quickHubOperations() {
 
     // Lifecycle
     shutdown: () => hub.shutdown(),
-  }
+  };
 }
 
 /**
@@ -101,7 +99,7 @@ export function createMinimalHubClient(hubUrl = null, apiKey = null) {
     timeout: 30000,
     retryAttempts: 3,
     telemetryEnabled: true,
-  })
+  });
 }
 
 /**
@@ -109,11 +107,11 @@ export function createMinimalHubClient(hubUrl = null, apiKey = null) {
  */
 export async function isHubAvailable() {
   try {
-    const client = createMinimalHubClient()
-    const result = await client.ping()
-    return result.success
+    const client = createMinimalHubClient();
+    const result = await client.ping();
+    return result.success;
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -135,7 +133,7 @@ export const HUB_CONSTANTS = {
     download: 20, // requests per minute
     telemetry: 100, // requests per minute
   },
-}
+};
 
 /**
  * Helper function to create telemetry events
@@ -154,7 +152,7 @@ export function createUsageEvent(command, options = {}) {
     session_id: options.sessionId || `cli_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     timestamp: new Date().toISOString(),
     metadata: options.metadata || {},
-  }
+  };
 }
 
 export function createErrorEvent(command, error, options = {}) {
@@ -169,7 +167,7 @@ export function createErrorEvent(command, error, options = {}) {
     session_id: options.sessionId || `cli_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     timestamp: new Date().toISOString(),
     context: options.context || {},
-  }
+  };
 }
 
 export function createIntegrationEvent(integrationType, action = 'detected', options = {}) {
@@ -182,7 +180,7 @@ export function createIntegrationEvent(integrationType, action = 'detected', opt
     configuration_details: options.configurationDetails || {},
     session_id: options.sessionId || `cli_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     timestamp: new Date().toISOString(),
-  }
+  };
 }
 
 /**
@@ -193,4 +191,4 @@ export const VERSION_INFO = {
   cliApiVersion: '1.0.0',
   schemaVersion: '2.1.0',
   compatibleCliVersions: ['1.0.0', '1.1.0', '1.2.0', '2.0.0'],
-}
+};

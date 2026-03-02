@@ -5,8 +5,8 @@
  * to reduce duplication and ensure consistent validation behavior.
  */
 
-import matter from 'gray-matter'
-import { fileSystem, pathUtils } from './file-system.js'
+import matter from 'gray-matter';
+import { fileSystem, pathUtils } from './file-system.js';
 
 /**
  * Common validation functions
@@ -16,8 +16,8 @@ export const validators = {
    * Validate email format
    */
   email(email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
   },
 
   /**
@@ -25,10 +25,10 @@ export const validators = {
    */
   url(url) {
     try {
-      new URL(url)
-      return true
+      new URL(url);
+      return true;
     } catch {
-      return false
+      return false;
     }
   },
 
@@ -36,14 +36,14 @@ export const validators = {
    * Validate file path exists
    */
   async filePath(path) {
-    return await fileSystem.exists(path)
+    return await fileSystem.exists(path);
   },
 
   /**
    * Validate directory path exists
    */
   async directoryPath(path) {
-    return await fileSystem.isDirectory(path)
+    return await fileSystem.isDirectory(path);
   },
 
   /**
@@ -51,10 +51,10 @@ export const validators = {
    */
   json(jsonString) {
     try {
-      JSON.parse(jsonString)
-      return true
+      JSON.parse(jsonString);
+      return true;
     } catch {
-      return false
+      return false;
     }
   },
 
@@ -63,10 +63,10 @@ export const validators = {
    */
   yamlFrontmatter(content) {
     try {
-      const parsed = matter(content)
-      return parsed.data !== null && typeof parsed.data === 'object'
+      const parsed = matter(content);
+      return parsed.data !== null && typeof parsed.data === 'object';
     } catch {
-      return false
+      return false;
     }
   },
 
@@ -75,16 +75,25 @@ export const validators = {
    */
   ruleId(id) {
     // Rule IDs should be kebab-case strings
-    const ruleIdRegex = /^[a-z0-9]+(-[a-z0-9]+)*$/
-    return typeof id === 'string' && ruleIdRegex.test(id)
+    const ruleIdRegex = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+    return typeof id === 'string' && ruleIdRegex.test(id);
   },
 
   /**
    * Validate blueprint category
    */
   blueprintCategory(category) {
-    const validCategories = ['core', 'language', 'framework', 'tool', 'task', 'security', 'assistant', 'custom']
-    return validCategories.includes(category)
+    const validCategories = [
+      'core',
+      'language',
+      'framework',
+      'tool',
+      'task',
+      'security',
+      'assistant',
+      'custom',
+    ];
+    return validCategories.includes(category);
   },
 
   /**
@@ -92,18 +101,26 @@ export const validators = {
    */
   semver(version) {
     const semverRegex =
-      /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/
-    return semverRegex.test(version)
+      /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
+    return semverRegex.test(version);
   },
 
   /**
    * Validate platform name
    */
   platform(platform) {
-    const validPlatforms = ['cursor', 'windsurf', 'claude-code', 'vscode', 'jetbrains', 'zed', 'generic']
-    return validPlatforms.includes(platform)
+    const validPlatforms = [
+      'cursor',
+      'windsurf',
+      'claude-code',
+      'vscode',
+      'jetbrains',
+      'zed',
+      'generic',
+    ];
+    return validPlatforms.includes(platform);
   },
-}
+};
 
 /**
  * Schema validation helpers
@@ -113,33 +130,33 @@ export const schema = {
    * Validate blueprint schema structure
    */
   blueprint(data) {
-    const errors = []
+    const errors = [];
 
     // Required fields
-    if (!data.id) errors.push('Missing required field: id')
-    if (!data.title) errors.push('Missing required field: title')
-    if (!data.content) errors.push('Missing required field: content')
+    if (!data.id) errors.push('Missing required field: id');
+    if (!data.title) errors.push('Missing required field: title');
+    if (!data.content) errors.push('Missing required field: content');
 
     // Field validations
     if (data.id && !validators.ruleId(data.id)) {
-      errors.push('Invalid rule ID format')
+      errors.push('Invalid rule ID format');
     }
 
     if (data.category && !validators.blueprintCategory(data.category)) {
-      errors.push('Invalid blueprint category')
+      errors.push('Invalid blueprint category');
     }
 
     if (data.version && !validators.semver(data.version)) {
-      errors.push('Invalid semantic version format')
+      errors.push('Invalid semantic version format');
     }
 
     if (data.platforms) {
       if (!Array.isArray(data.platforms)) {
-        errors.push('Platforms must be an array')
+        errors.push('Platforms must be an array');
       } else {
         for (const platform of data.platforms) {
           if (!validators.platform(platform)) {
-            errors.push(`Invalid platform: ${platform}`)
+            errors.push(`Invalid platform: ${platform}`);
           }
         }
       }
@@ -148,65 +165,65 @@ export const schema = {
     return {
       valid: errors.length === 0,
       errors,
-    }
+    };
   },
 
   /**
    * Validate MDC file structure
    */
   mdcFile(content) {
-    const errors = []
+    const errors = [];
 
     try {
-      const parsed = matter(content)
+      const parsed = matter(content);
 
       // Check for YAML frontmatter
       if (!parsed.data || typeof parsed.data !== 'object') {
-        errors.push('No YAML frontmatter found')
-        return { valid: false, errors }
+        errors.push('No YAML frontmatter found');
+        return { valid: false, errors };
       }
 
       // Validate frontmatter fields
-      const validation = this.blueprint(parsed.data)
-      errors.push(...validation.errors)
+      const validation = this.blueprint(parsed.data);
+      errors.push(...validation.errors);
 
       // Check for content after frontmatter
       if (!parsed.content || parsed.content.trim().length === 0) {
-        errors.push('No content found after frontmatter')
+        errors.push('No content found after frontmatter');
       }
     } catch (error) {
-      errors.push(`Failed to parse file: ${error.message}`)
+      errors.push(`Failed to parse file: ${error.message}`);
     }
 
     return {
       valid: errors.length === 0,
       errors,
-    }
+    };
   },
 
   /**
    * Validate project configuration
    */
   projectConfig(config) {
-    const errors = []
+    const errors = [];
 
-    if (!config.name) errors.push('Project name is required')
-    if (!config.version) errors.push('Project version is required')
+    if (!config.name) errors.push('Project name is required');
+    if (!config.version) errors.push('Project version is required');
 
     if (config.version && !validators.semver(config.version)) {
-      errors.push('Invalid version format')
+      errors.push('Invalid version format');
     }
 
     if (config.author?.email && !validators.email(config.author.email)) {
-      errors.push('Invalid author email format')
+      errors.push('Invalid author email format');
     }
 
     return {
       valid: errors.length === 0,
       errors,
-    }
+    };
   },
-}
+};
 
 /**
  * File validation helpers
@@ -221,76 +238,76 @@ export const fileValidation = {
       invalid: [],
       warnings: [],
       duplicateIds: new Map(),
-    }
+    };
 
-    const ruleIds = new Map()
+    const ruleIds = new Map();
 
     for (const filePath of filePaths) {
       try {
-        const content = await fileSystem.readFile(filePath)
-        const validation = schema.mdcFile(content)
+        const content = await fileSystem.readFile(filePath);
+        const validation = schema.mdcFile(content);
 
         if (validation.valid) {
-          results.valid.push(filePath)
+          results.valid.push(filePath);
 
           // Check for duplicate rule IDs
-          const parsed = matter(content)
-          const ruleId = parsed.data.id
+          const parsed = matter(content);
+          const ruleId = parsed.data.id;
 
           if (ruleIds.has(ruleId)) {
             results.duplicateIds.set(ruleId, {
               current: filePath,
               existing: ruleIds.get(ruleId),
-            })
+            });
           } else {
-            ruleIds.set(ruleId, filePath)
+            ruleIds.set(ruleId, filePath);
           }
         } else {
           results.invalid.push({
             file: filePath,
             errors: validation.errors,
-          })
+          });
         }
       } catch (error) {
         results.invalid.push({
           file: filePath,
           errors: [`Failed to read file: ${error.message}`],
-        })
+        });
       }
     }
 
-    return results
+    return results;
   },
 
   /**
    * Validate directory structure
    */
   async validateDirectory(dirPath, expectedStructure = []) {
-    const errors = []
+    const errors = [];
 
     if (!(await fileSystem.exists(dirPath))) {
-      errors.push(`Directory does not exist: ${dirPath}`)
-      return { valid: false, errors }
+      errors.push(`Directory does not exist: ${dirPath}`);
+      return { valid: false, errors };
     }
 
     if (!(await fileSystem.isDirectory(dirPath))) {
-      errors.push(`Path is not a directory: ${dirPath}`)
-      return { valid: false, errors }
+      errors.push(`Path is not a directory: ${dirPath}`);
+      return { valid: false, errors };
     }
 
     for (const expectedPath of expectedStructure) {
-      const fullPath = pathUtils.join(dirPath, expectedPath)
+      const fullPath = pathUtils.join(dirPath, expectedPath);
       if (!(await fileSystem.exists(fullPath))) {
-        errors.push(`Missing expected file/directory: ${expectedPath}`)
+        errors.push(`Missing expected file/directory: ${expectedPath}`);
       }
     }
 
     return {
       valid: errors.length === 0,
       errors,
-    }
+    };
   },
-}
+};
 
 /**
  * Validation result formatting
@@ -300,18 +317,18 @@ export const formatters = {
    * Format validation errors for console output
    */
   formatErrors(errors, filePath = null) {
-    if (errors.length === 0) return ''
+    if (errors.length === 0) return '';
 
-    let output = ''
+    let output = '';
     if (filePath) {
-      output += `Errors in ${filePath}:\n`
+      output += `Errors in ${filePath}:\n`;
     }
 
-    errors.forEach((error) => {
-      output += `  • ${error}\n`
-    })
+    errors.forEach(error => {
+      output += `  • ${error}\n`;
+    });
 
-    return output
+    return output;
   },
 
   /**
@@ -324,9 +341,9 @@ export const formatters = {
       invalid: results.invalid.length,
       warnings: results.warnings?.length || 0,
       duplicates: results.duplicateIds?.size || 0,
-    }
+    };
   },
-}
+};
 
 /**
  * Standard validation patterns for CLI commands
@@ -357,11 +374,11 @@ export const standardPatterns = {
     ide: {
       type: 'string',
       enum: ['vscode', 'jetbrains', 'cursor', 'windsurf', 'zed', 'generic'],
-      validate: (value) => {
+      validate: value => {
         if (value) {
-          return value.toLowerCase() === value ? true : 'IDE name must be lowercase'
+          return value.toLowerCase() === value ? true : 'IDE name must be lowercase';
         }
-        return true
+        return true;
       },
     },
   },
@@ -372,15 +389,15 @@ export const standardPatterns = {
   categoriesValidation: {
     categories: {
       type: 'array',
-      validate: (categories) => {
+      validate: categories => {
         if (categories) {
-          const validCategories = ['development', 'testing', 'workflow', 'deployment', 'analysis']
-          const invalidCategories = categories.filter((cat) => !validCategories.includes(cat))
+          const validCategories = ['development', 'testing', 'workflow', 'deployment', 'analysis'];
+          const invalidCategories = categories.filter(cat => !validCategories.includes(cat));
           if (invalidCategories.length > 0) {
-            return `Invalid categories: ${invalidCategories.join(', ')}. Valid options: ${validCategories.join(', ')}`
+            return `Invalid categories: ${invalidCategories.join(', ')}. Valid options: ${validCategories.join(', ')}`;
           }
         }
-        return true
+        return true;
       },
     },
   },
@@ -388,18 +405,18 @@ export const standardPatterns = {
   /**
    * Standard VDK initialization check
    */
-  vdkInitializedValidation: async (options) => {
-    const path = await import('node:path')
-    const { commandContext } = await import('../commands/shared/CommandContext.js')
+  vdkInitializedValidation: async options => {
+    const path = await import('node:path');
+    const { commandContext } = await import('../commands/shared/CommandContext.js');
 
-    const vdkConfigPath = path.join(options.projectPath, 'vdk.config.json')
-    const configExists = await commandContext.pathExists(vdkConfigPath)
+    const vdkConfigPath = path.join(options.projectPath, 'vdk.config.json');
+    const configExists = await commandContext.pathExists(vdkConfigPath);
     if (!configExists) {
-      return `VDK not initialized in this project. Run 'vdk init' first.\nExpected config file: ${vdkConfigPath}`
+      return `VDK not initialized in this project. Run 'vdk init' first.\nExpected config file: ${vdkConfigPath}`;
     }
-    return true
+    return true;
   },
-}
+};
 
 export default {
   validators,
@@ -407,4 +424,4 @@ export default {
   fileValidation,
   formatters,
   standardPatterns,
-}
+};

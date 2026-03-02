@@ -18,7 +18,7 @@ export const mockProjectStructure = {
     src: { files: ['index.js', 'utils.js'] },
     tests: { files: [] },
   },
-}
+};
 
 export const mockPatterns = {
   namingConventions: {
@@ -31,7 +31,7 @@ export const mockPatterns = {
     namingConsistency: 0.85,
     structureConsistency: 0.9,
   },
-}
+};
 
 export const mockDependencyAnalysis = {
   dependencyGraph: new Map(),
@@ -42,7 +42,7 @@ export const mockDependencyAnalysis = {
   layeredStructure: [['index.js'], ['utils.js']],
   cyclesDetected: false,
   architecturalHints: ['Clean Architecture'],
-}
+};
 
 export const validCommand = {
   id: 'test-command',
@@ -52,13 +52,15 @@ export const validCommand = {
   commandType: 'slash',
   version: '1.0.0',
   scope: 'project',
-}
+};
 
 export const validBlueprint = {
+  schemaVersion: '3.0',
   id: 'test-blueprint',
   title: 'Test Blueprint',
   description: 'Test blueprint for validation purposes and comprehensive testing',
   version: '1.0.0',
+  kind: 'project-memory',
   category: 'core',
   platforms: {
     'claude-code': {
@@ -86,21 +88,28 @@ export const validBlueprint = {
       priority: 5,
     },
   },
-}
+};
 
 // Additional test fixture for comprehensive platform testing
 export const comprehensivePlatformBlueprint = {
+  schemaVersion: '3.0',
   id: 'comprehensive-platform-test',
   title: 'Comprehensive Platform Test Blueprint',
   description: 'Blueprint for testing all supported platforms and their configurations',
   version: '2.0.0',
+  kind: 'plugin-distribution',
   category: 'tool',
   complexity: 'medium',
   scope: 'project',
   platforms: {
     'claude-code': { compatible: true, command: true, memory: true },
     'claude-desktop': { compatible: true, mcpIntegration: true, rules: true },
-    cursor: { compatible: true, activation: 'auto-attached', priority: 'high' },
+    cursor: {
+      compatible: true,
+      activation: 'auto-attached',
+      globs: ['**/*'],
+      priority: 'high',
+    },
     windsurf: { compatible: true, mode: 'workspace', characterLimit: 4000 },
     'windsurf-next': { compatible: true, mode: 'workspace', priority: 8 },
     'github-copilot': { compatible: true, priority: 7, reviewType: 'code-quality' },
@@ -121,7 +130,7 @@ export const comprehensivePlatformBlueprint = {
     'android-studio': { compatible: true, androidSdk: '33', gradleVersion: '7.4' },
     'generic-ai': { compatible: true, configPath: '.vdk/', priority: 5 },
   },
-}
+};
 
 export const malformedCodeSamples = [
   '}{invalid javascript syntax!@#$%',
@@ -130,6 +139,11 @@ export const malformedCodeSamples = [
   'require("fs").readFileSync("/etc/passwd")',
   ''.repeat(1000), // Long string
   '\x00\x01\x02\x03', // Binary data
-]
+];
 
-export const dangerousFilePaths = ['/etc/passwd', '../../../etc/passwd', '/dev/null', 'nonexistent-directory-12345']
+export const dangerousFilePaths = [
+  '/etc/passwd',
+  '../../../etc/passwd',
+  '/dev/null',
+  'nonexistent-directory-12345',
+];

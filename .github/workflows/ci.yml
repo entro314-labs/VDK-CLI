@@ -35,6 +35,9 @@ jobs:
       - name: Run linter
         run: pnpm run lint
 
+      - name: Run blueprint contract lint
+        run: pnpm run lint:contracts
+
       - name: Run tests
         run: pnpm test
 

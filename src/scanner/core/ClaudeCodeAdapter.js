@@ -1,11 +1,11 @@
-import os from 'node:os'
-import path from 'node:path'
+import os from 'node:os';
+import path from 'node:path';
 
-import chalk from 'chalk'
-import fs from 'fs-extra'
+import chalk from 'chalk';
+import fs from 'fs-extra';
 
-import { validateCommand } from '../../utils/schema-validator.js'
-import { RuleAdapter } from './RuleAdapter.js'
+import { validateCommand } from '../../utils/schema-validator.js';
+import { RuleAdapter } from './RuleAdapter.js';
 
 /**
  *  Claude Code CLI Adapter - AI SERVICE ADAPTATION ONLY
@@ -28,20 +28,26 @@ import { RuleAdapter } from './RuleAdapter.js'
  */
 export class ClaudeCodeAdapter extends RuleAdapter {
   constructor(options = {}) {
-    super(options)
-    this.claudeConfigPath = path.join(this.projectPath, '.claude')
-    this.claudeUserPath = path.join(os.homedir(), '.claude')
-    this.ruleGenerator = options.ruleGenerator // Reference to parent RuleGenerator for centralized fetching
+    super(options);
+    this.claudeConfigPath = path.join(this.projectPath, '.claude');
+    this.claudeUserPath = path.join(os.homedir(), '.claude');
+    this.ruleGenerator = options.ruleGenerator; // Reference to parent RuleGenerator for centralized fetching
   }
 
   /**
    *  Claude Code CLI adaptation - extends base RuleAdapter functionality
    */
   async adaptForClaude(rules, projectContext, platformConfig = {}, categoryFilter = null) {
-    console.log('🧠 Generating Claude Code CLI memory hierarchy...')
+    console.log('🧠 Generating Claude Code CLI memory hierarchy...');
 
     // First, get the base adaptation from parent class (includes platform config handling)
-    const baseAdaptation = await super.adaptForClaude(rules, projectContext, platformConfig)
+    // First, get the base adaptation from parent class
+    const baseAdaptation = await super.adaptRules(
+      rules,
+      'claude-code',
+      projectContext,
+      platformConfig
+    );
 
     // Then enhance with specialized Claude Code CLI features
     const enhancements = {
@@ -49,108 +55,156 @@ export class ClaudeCodeAdapter extends RuleAdapter {
       slashCommands: await this.generateSlashCommands(rules, projectContext, categoryFilter),
       mcpIntegrations: await this.generateMcpIntegrations(rules, projectContext),
       settings: await this.generateClaudeSettings(rules, projectContext),
-    }
+      agents: await this.generateAgents(rules, projectContext),
+      conditionalRules: await this.generateConditionalRules(rules, projectContext),
+      skills: await this.generateSkills(rules, projectContext),
+    };
 
     // Merge base adaptation with enhancements
     const adapted = {
       files: [...baseAdaptation.files],
       directories: [...baseAdaptation.directories, this.claudeConfigPath],
       ...enhancements,
-    }
+    };
 
     // Add memory files (avoid duplicates with base adapter)
     const enhancedMemoryFiles = adapted.memoryHierarchy.filter(
-      (memory) => !adapted.files.some((file) => path.basename(file.path || file) === path.basename(memory.path))
-    )
+      memory =>
+        !adapted.files.some(file => path.basename(file.path || file) === path.basename(memory.path))
+    );
 
     for (const memory of enhancedMemoryFiles) {
       adapted.files.push({
         path: memory.path,
         content: memory.content,
         type: 'memory',
-      })
+      });
     }
 
     // Add slash commands (these are unique to ClaudeCodeAdapter)
     for (const command of adapted.slashCommands) {
-      const commandPath = path.join(this.claudeConfigPath, 'commands', `${command.name}.md`)
+      const commandPath = path.join(this.claudeConfigPath, 'commands', `${command.name}.md`);
       adapted.files.push({
         path: commandPath,
         content: command.content,
         type: 'command',
-      })
+      });
     }
 
     // Add settings
     if (adapted.settings) {
-      const settingsPath = path.join(this.claudeConfigPath, 'settings.json')
+      const settingsPath = path.join(this.claudeConfigPath, 'settings.json');
       adapted.files.push({
         path: settingsPath,
         content: JSON.stringify(adapted.settings, null, 2),
         type: 'settings',
-      })
+      });
     }
 
-    console.log(`✅ Generated ${adapted.files.length} Claude Code CLI files`)
-    return adapted
+    // Add agents (v3.0)
+    if (adapted.agents) {
+      for (const agent of adapted.agents) {
+        // Use manifest filename if available, otherwise name
+        const filename = agent.manifest?.file || `${agent.name}.md`;
+        adapted.files.push({
+          path: path.join(this.claudeConfigPath, 'agents', filename),
+          content: agent.content,
+          type: 'agent',
+        });
+      }
+    }
+
+    // Add conditional rules (v3.0)
+    if (adapted.conditionalRules) {
+      for (const rule of adapted.conditionalRules) {
+        const filename = rule.manifest?.file || `${rule.name}.md`;
+        adapted.files.push({
+          path: path.join(this.claudeConfigPath, 'rules', filename),
+          content: rule.content,
+          type: 'rule',
+        });
+      }
+    }
+
+    // Add skills (v3.0)
+    if (adapted.skills) {
+      for (const skill of adapted.skills) {
+        const filename = skill.manifest?.file || `${skill.name}.md`;
+        adapted.files.push({
+          path: path.join(this.claudeConfigPath, 'skills', filename),
+          content: skill.content,
+          type: 'skill',
+        });
+      }
+    }
+
+    console.log(`✅ Generated ${adapted.files.length} Claude Code CLI files`);
+    return adapted;
   }
 
   /**
    * Generate hierarchical memory structure using CORRECT Claude Code CLI format
    */
   async generateMemoryHierarchy(rules, projectContext, categoryFilter = null) {
-    const memories = []
-    const _projectName = projectContext.name || path.basename(this.projectPath)
+    const memories = [];
+    const _projectName = projectContext.name || path.basename(this.projectPath);
 
     // Fetch technology-specific rules from remote repository
-    let technologyRules = []
+    let technologyRules = [];
     if (this.ruleGenerator?.fetchFromRepository) {
       try {
-        console.log('🔍 Fetching technology-specific rules for Claude Code CLI...')
+        console.log('🔍 Fetching technology-specific rules for Claude Code CLI...');
         // Use the full projectContext as analysisData since it contains technologyData
         technologyRules = await this.ruleGenerator.fetchFromRepository(
           projectContext,
           'rules',
           null, // No specific platform filter for rules
           categoryFilter
-        )
-        console.log(`📚 Fetched ${technologyRules.length} technology-specific rules`)
+        );
+        console.log(`📚 Fetched ${technologyRules.length} technology-specific rules`);
         if (technologyRules.length > 0) {
-          console.log(`📋 Rule names: ${technologyRules.map((r) => r.name).join(', ')}`)
+          console.log(`📋 Rule names: ${technologyRules.map(r => r.name).join(', ')}`);
         }
       } catch (error) {
-        console.warn(`⚠️ Failed to fetch technology rules: ${error.message}`)
+        console.warn(`⚠️ Failed to fetch technology rules: ${error.message}`);
       }
     }
 
     // Main project memory with CORRECT Claude Code CLI structure and technology rules
-    const mainMemory = await this.generateCorrectClaudeMainMemory(rules, projectContext, technologyRules)
+    const mainMemory = await this.generateCorrectClaudeMainMemory(
+      rules,
+      projectContext,
+      technologyRules
+    );
     memories.push({
       path: path.join(this.projectPath, 'CLAUDE.md'),
       content: mainMemory,
       type: 'project',
       priority: 'high',
-    })
+    });
 
-    return memories
+    return memories;
   }
 
   /**
    * Generate CORRECT Claude Code CLI memory structure as per report findings
    */
   async generateCorrectClaudeMainMemory(_rules, projectContext, technologyRules = []) {
-    const projectName = projectContext.name || path.basename(this.projectPath)
+    const projectName = projectContext.name || path.basename(this.projectPath);
     // Handle both techStack and technologyData structure
-    const techData = projectContext.techStack || projectContext.technologyData || {}
-    const frameworks = techData.frameworks || []
-    const languages = techData.primaryLanguages || []
-    const libraries = techData.libraries || []
-    const packageManager = await this.detectPackageManager(projectContext)
-    const buildTool = await this.detectBuildTool(projectContext)
-    const testFramework = techData.testFramework || 'jest'
+    const techData = projectContext.techStack || projectContext.technologyData || {};
+    const frameworks = techData.frameworks || [];
+    const languages = techData.primaryLanguages || [];
+    const libraries = techData.libraries || [];
+    const packageManager = await this.detectPackageManager(projectContext);
+    const buildTool = await this.detectBuildTool(projectContext);
+    const testFramework = techData.testFramework || 'jest';
 
     // Extract technology-specific guidelines from remote rules
-    const technologyGuidelines = await this.extractTechnologyGuidelines(technologyRules, projectContext)
+    const technologyGuidelines = await this.extractTechnologyGuidelines(
+      technologyRules,
+      projectContext
+    );
 
     return `# ${projectName} - Claude Code CLI Memory
 
@@ -212,7 +266,7 @@ ${technologyGuidelines}
 
 ---
 *Generated by VDK CLI -  for Claude Code CLI*
-*Technology rules: ${technologyRules.length} rules integrated*`
+*Technology rules: ${technologyRules.length} rules integrated*`;
   }
 
   // determineProjectType method removed - now uses parent RuleAdapter.determineProjectType()
@@ -226,29 +280,31 @@ ${technologyGuidelines}
       return `### General Guidelines
 - Follow established patterns in the codebase
 - Maintain consistency with existing code
-- Use project-specific conventions`
+- Use project-specific conventions`;
     }
 
-    console.log(`🔍 Processing ${technologyRules.length} technology rules for guidelines extraction`)
+    console.log(
+      `🔍 Processing ${technologyRules.length} technology rules for guidelines extraction`
+    );
     if (this.verbose) {
-      technologyRules.forEach((rule) => {
-        console.log(`   📄 Rule: ${rule.name}, Content length: ${rule.content?.length || 0}`)
-      })
+      technologyRules.forEach(rule => {
+        console.log(`   📄 Rule: ${rule.name}, Content length: ${rule.content?.length || 0}`);
+      });
     }
 
-    const guidelines = []
+    const guidelines = [];
     // Handle both techStack and technologyData structure
-    const techData = projectContext.techStack || projectContext.technologyData || {}
-    const frameworks = techData.frameworks || []
-    const languages = techData.primaryLanguages || []
+    const techData = projectContext.techStack || projectContext.technologyData || {};
+    const frameworks = techData.frameworks || [];
+    const languages = techData.primaryLanguages || [];
 
     // Group rules by category for better organization
-    const _rulesByCategory = this.groupRulesByCategory(technologyRules)
+    const _rulesByCategory = this.groupRulesByCategory(technologyRules);
 
     // Extract framework-specific guidelines
     for (const framework of frameworks) {
       //  framework matching with aliases
-      const frameworkLower = framework.toLowerCase()
+      const frameworkLower = framework.toLowerCase();
       const frameworkAliases = {
         'tailwind css': ['tailwind', 'tailwindcss'],
         'next.js': ['nextjs'],
@@ -256,95 +312,100 @@ ${technologyGuidelines}
         react: ['react'],
         typescript: ['typescript', 'ts'],
         'shadcn/ui': ['shadcn', 'shadcnui'],
-      }
+      };
 
-      const searchTerms = [frameworkLower]
+      const searchTerms = [frameworkLower];
       if (frameworkAliases[frameworkLower]) {
-        searchTerms.push(...frameworkAliases[frameworkLower])
+        searchTerms.push(...frameworkAliases[frameworkLower]);
       }
 
-      const frameworkRules = technologyRules.filter((rule) =>
-        searchTerms.some((term) => rule.name.toLowerCase().includes(term) || rule.path?.toLowerCase().includes(term))
-      )
+      const frameworkRules = technologyRules.filter(rule =>
+        searchTerms.some(
+          term => rule.name.toLowerCase().includes(term) || rule.path?.toLowerCase().includes(term)
+        )
+      );
 
       if (frameworkRules.length > 0) {
-        guidelines.push(`### ${framework} Guidelines`)
+        guidelines.push(`### ${framework} Guidelines`);
         for (const rule of frameworkRules.slice(0, 3)) {
           // Limit to 3 most relevant
-          const extractedContent = this.extractRuleContent(rule.content, projectContext)
+          const extractedContent = this.extractRuleContent(rule.content, projectContext);
           if (extractedContent) {
-            guidelines.push(extractedContent)
+            guidelines.push(extractedContent);
           }
         }
-        guidelines.push('') // Add spacing
+        guidelines.push(''); // Add spacing
       }
     }
 
     // Extract language-specific guidelines
     for (const language of languages) {
       const languageRules = technologyRules.filter(
-        (rule) =>
+        rule =>
           rule.name.toLowerCase().includes(language.toLowerCase()) ||
           rule.path?.toLowerCase().includes(language.toLowerCase())
-      )
+      );
 
       if (languageRules.length > 0) {
-        guidelines.push(`### ${language} Guidelines`)
+        guidelines.push(`### ${language} Guidelines`);
         for (const rule of languageRules.slice(0, 2)) {
           // Limit to 2 most relevant
-          const extractedContent = this.extractRuleContent(rule.content, projectContext)
+          const extractedContent = this.extractRuleContent(rule.content, projectContext);
           if (extractedContent) {
-            guidelines.push(extractedContent)
+            guidelines.push(extractedContent);
           }
         }
-        guidelines.push('') // Add spacing
+        guidelines.push(''); // Add spacing
       }
     }
 
     // Extract library-specific guidelines (important for shadcn/ui, etc.)
-    const libraries = techData.libraries || []
+    const libraries = techData.libraries || [];
     for (const library of libraries) {
-      const libraryLower = library.toLowerCase()
+      const libraryLower = library.toLowerCase();
       const libraryAliases = {
         'shadcn/ui': ['shadcn', 'shadcnui'],
         'tailwind css': ['tailwind', 'tailwindcss'],
         'radix ui': ['radix'],
         'framer motion': ['framer'],
-      }
+      };
 
-      const searchTerms = [libraryLower]
+      const searchTerms = [libraryLower];
       if (libraryAliases[libraryLower]) {
-        searchTerms.push(...libraryAliases[libraryLower])
+        searchTerms.push(...libraryAliases[libraryLower]);
       }
 
-      const libraryRules = technologyRules.filter((rule) =>
-        searchTerms.some((term) => rule.name.toLowerCase().includes(term) || rule.path?.toLowerCase().includes(term))
-      )
+      const libraryRules = technologyRules.filter(rule =>
+        searchTerms.some(
+          term => rule.name.toLowerCase().includes(term) || rule.path?.toLowerCase().includes(term)
+        )
+      );
 
       if (libraryRules.length > 0) {
-        guidelines.push(`### ${library} Guidelines`)
+        guidelines.push(`### ${library} Guidelines`);
         for (const rule of libraryRules.slice(0, 2)) {
           // Limit to 2 most relevant
-          const extractedContent = this.extractRuleContent(rule.content, projectContext)
+          const extractedContent = this.extractRuleContent(rule.content, projectContext);
           if (extractedContent) {
-            guidelines.push(extractedContent)
+            guidelines.push(extractedContent);
           }
         }
-        guidelines.push('') // Add spacing
+        guidelines.push(''); // Add spacing
       }
     }
 
     // Add core/general rules
     const coreRules = technologyRules.filter(
-      (rule) => rule.path?.includes('core/') || rule.name.includes('core') || rule.name.includes('general')
-    )
+      rule =>
+        rule.path?.includes('core/') || rule.name.includes('core') || rule.name.includes('general')
+    );
 
     if (coreRules.length > 0) {
-      guidelines.push('### Core Development Practices')
+      guidelines.push('### Core Development Practices');
       for (const rule of coreRules.slice(0, 2)) {
-        const extractedContent = this.extractRuleContent(rule.content)
+        const extractedContent = this.extractRuleContent(rule.content);
         if (extractedContent) {
-          guidelines.push(extractedContent)
+          guidelines.push(extractedContent);
         }
       }
     }
@@ -354,7 +415,7 @@ ${technologyGuidelines}
       : `### Project-Specific Guidelines
 - Follow patterns established in this ${frameworks.join('/')} codebase
 - Maintain consistency with existing ${languages.join('/')} code
-- Reference remote rules: ${technologyRules.length} rules available`
+- Reference remote rules: ${technologyRules.length} rules available`;
   }
 
   /**
@@ -362,25 +423,25 @@ ${technologyGuidelines}
    */
   extractRuleContent(content, projectContext = null) {
     if (!content) {
-      return null
+      return null;
     }
 
     try {
       // Remove frontmatter (YAML between ---)
-      const withoutFrontmatter = this.stripFrontmatter(content)
+      const withoutFrontmatter = this.stripFrontmatter(content);
 
       // Split into lines and process
-      const lines = withoutFrontmatter.split('\n')
-      const relevantLines = []
-      let _currentSection = null
-      let captureContent = false
+      const lines = withoutFrontmatter.split('\n');
+      const relevantLines = [];
+      let _currentSection = null;
+      let captureContent = false;
 
       for (let i = 0; i < lines.length; i++) {
-        const line = lines[i]
-        const trimmed = line.trim()
+        const line = lines[i];
+        const trimmed = line.trim();
 
         if (!trimmed) {
-          continue
+          continue;
         }
 
         // Check for section headers that indicate useful content
@@ -389,9 +450,9 @@ ${technologyGuidelines}
             /^#+\s*(core principles|best practices|guidelines|rules|conventions|patterns|key concepts|important|essential|recommendations|development practices|coding standards)/i
           )
         ) {
-          _currentSection = trimmed.replace(/^#+\s*/, '')
-          captureContent = true
-          continue
+          _currentSection = trimmed.replace(/^#+\s*/, '');
+          captureContent = true;
+          continue;
         }
 
         // Check for technology-specific sections
@@ -400,9 +461,9 @@ ${technologyGuidelines}
             /^#+\s*(typescript|nextjs|supabase|react|development|code)\s+(guidelines|best practices|rules|patterns|conventions)/i
           )
         ) {
-          _currentSection = trimmed.replace(/^#+\s*/, '')
-          captureContent = true
-          continue
+          _currentSection = trimmed.replace(/^#+\s*/, '');
+          captureContent = true;
+          continue;
         }
 
         // Stop capturing if we hit unrelated sections or tech stacks (which are just lists)
@@ -411,36 +472,36 @@ ${technologyGuidelines}
             /^#+\s+(meta|compatibility|examples|implementation|setup|overview|tech stack|technology stack|recommended|stack)/i
           )
         ) {
-          captureContent = false
-          continue
+          captureContent = false;
+          continue;
         }
 
         // Capture content if we're in a relevant section
         if (captureContent) {
           // CRITICAL: Filter out mobile/native patterns for web projects
-          const isMobilePattern = this.isMobilePattern(trimmed)
-          const isWebProject = this.isWebProject(projectContext)
+          const isMobilePattern = this.isMobilePattern(trimmed);
+          const isWebProject = this.isWebProject(projectContext);
 
           if (isWebProject && isMobilePattern) {
-            continue // Skip mobile patterns for web projects
+            continue; // Skip mobile patterns for web projects
           }
 
           // Skip technology lists that start with **Technology** (like **Next.js 15+**)
           if (trimmed.match(/^-\s*\*\*[A-Z][^*]+\*\*\s*(with|for|v?\d)/i)) {
-            continue // Skip technology stack items
+            continue; // Skip technology stack items
           }
 
           // Capture bullet points that are actual guidelines (contain action words)
           if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
             if (this.isActionableGuideline(trimmed)) {
-              relevantLines.push(trimmed)
+              relevantLines.push(trimmed);
             }
           }
           // Capture numbered lists that are guidelines
           else if (trimmed.match(/^\d+\.\s/)) {
-            const content = trimmed.replace(/^\d+\.\s/, '')
+            const content = trimmed.replace(/^\d+\.\s/, '');
             if (this.isActionableGuideline(content)) {
-              relevantLines.push(`- ${content}`)
+              relevantLines.push(`- ${content}`);
             }
           }
           // Capture important standalone statements
@@ -456,32 +517,32 @@ ${technologyGuidelines}
               trimmed.includes('never') ||
               trimmed.includes('implement'))
           ) {
-            relevantLines.push(`- ${trimmed}`)
+            relevantLines.push(`- ${trimmed}`);
           }
         }
 
         // Limit content extraction
         if (relevantLines.length >= 10) {
-          break
+          break;
         }
       }
 
       // If no structured content found, extract first few bullet points from anywhere
       if (relevantLines.length === 0) {
         const bullets = lines
-          .filter((line) => {
-            const trimmed = line.trim()
-            return (trimmed.startsWith('- ') || trimmed.startsWith('* ')) && trimmed.length > 15
+          .filter(line => {
+            const trimmed = line.trim();
+            return (trimmed.startsWith('- ') || trimmed.startsWith('* ')) && trimmed.length > 15;
           })
-          .slice(0, 5)
+          .slice(0, 5);
 
-        return bullets.length > 0 ? bullets.join('\n') : null
+        return bullets.length > 0 ? bullets.join('\n') : null;
       }
 
-      return relevantLines.slice(0, 8).join('\n') // Limit to 8 most relevant points
+      return relevantLines.slice(0, 8).join('\n'); // Limit to 8 most relevant points
     } catch (error) {
-      console.warn(`Failed to extract content from rule: ${error.message}`)
-      return null
+      console.warn(`Failed to extract content from rule: ${error.message}`);
+      return null;
     }
   }
 
@@ -490,24 +551,26 @@ ${technologyGuidelines}
    */
   stripFrontmatter(content) {
     if (content.startsWith('---')) {
-      const parts = content.split('---')
-      return parts.slice(2).join('---').trim()
+      const parts = content.split('---');
+      return parts.slice(2).join('---').trim();
     }
-    return content
+    return content;
   }
 
   /**
    * Check if a line contains mobile/native patterns that shouldn't be in web projects
    */
   isMobilePattern(line) {
-    const mobilePatternsLower = line.toLowerCase()
+    const mobilePatternsLower = line.toLowerCase();
     return (
       mobilePatternsLower.includes('expo-font') ||
       mobilePatternsLower.includes('react-native') ||
-      (mobilePatternsLower.includes('usecolorscheme') && mobilePatternsLower.includes('react-native')) ||
+      (mobilePatternsLower.includes('usecolorscheme') &&
+        mobilePatternsLower.includes('react-native')) ||
       mobilePatternsLower.includes('expo router') ||
       mobilePatternsLower.includes('@expo/') ||
-      (mobilePatternsLower.includes('error boundaries') && mobilePatternsLower.includes('navigation tree')) ||
+      (mobilePatternsLower.includes('error boundaries') &&
+        mobilePatternsLower.includes('navigation tree')) ||
       (mobilePatternsLower.includes('ios') && mobilePatternsLower.includes('android')) ||
       (mobilePatternsLower.includes('mobile') &&
         (mobilePatternsLower.includes('app') || mobilePatternsLower.includes('device'))) ||
@@ -515,18 +578,18 @@ ${technologyGuidelines}
       mobilePatternsLower.includes('capacitor') ||
       mobilePatternsLower.includes('cordova') ||
       (mobilePatternsLower.includes('ionic') && !mobilePatternsLower.includes('ionic')) // Keep general ionic references
-    )
+    );
   }
 
   /**
    * Check if the project is a web project (Next.js, React web, etc.)
    */
   isWebProject(projectContext) {
-    const techData = projectContext.techStack || projectContext.technologyData || {}
-    const frameworks = techData.frameworks || []
+    const techData = projectContext.techStack || projectContext.technologyData || {};
+    const frameworks = techData.frameworks || [];
 
-    return frameworks.some((framework) => {
-      const fw = framework.toLowerCase()
+    return frameworks.some(framework => {
+      const fw = framework.toLowerCase();
       return (
         fw.includes('next.js') ||
         fw.includes('nextjs') ||
@@ -537,15 +600,15 @@ ${technologyGuidelines}
         fw.includes('remix') ||
         fw.includes('gatsby') ||
         (fw.includes('supabase') && !fw.includes('mobile'))
-      )
-    })
+      );
+    });
   }
 
   /**
    * Check if a line contains actionable guidelines rather than just technology lists
    */
   isActionableGuideline(line) {
-    const lineLower = line.toLowerCase()
+    const lineLower = line.toLowerCase();
 
     // Skip technology stack items that just list versions/tools
     const techStackPatterns = [
@@ -553,10 +616,10 @@ ${technologyGuidelines}
       /\*\*[^*]+\*\*\s*for\s+/i, // **Supabase** for backend services
       /\*\*[^*]+\d+\.\d+\*\*/i, // **TypeScript 5.4+**
       /^-?\s*\*\*[A-Z]/, // **React 19+**
-    ]
+    ];
 
-    if (techStackPatterns.some((pattern) => pattern.test(line))) {
-      return false
+    if (techStackPatterns.some(pattern => pattern.test(line))) {
+      return false;
     }
 
     // Look for actionable language that indicates actual guidelines
@@ -593,9 +656,9 @@ ${technologyGuidelines}
       'test',
       'document',
       'review',
-    ]
+    ];
 
-    return actionableWords.some((word) => lineLower.includes(word)) && line.length > 20
+    return actionableWords.some(word => lineLower.includes(word)) && line.length > 20;
   }
 
   /**
@@ -609,36 +672,36 @@ ${technologyGuidelines}
       technologies: [],
       core: [],
       other: [],
-    }
+    };
 
     for (const rule of rules) {
-      const path = rule.path?.toLowerCase() || ''
-      const name = rule.name?.toLowerCase() || ''
+      const path = rule.path?.toLowerCase() || '';
+      const name = rule.name?.toLowerCase() || '';
 
       if (path.includes('frameworks/') || name.includes('framework')) {
-        categories.frameworks.push(rule)
+        categories.frameworks.push(rule);
       } else if (path.includes('languages/') || name.includes('language')) {
-        categories.languages.push(rule)
+        categories.languages.push(rule);
       } else if (path.includes('stacks/') || name.includes('stack')) {
-        categories.stacks.push(rule)
+        categories.stacks.push(rule);
       } else if (path.includes('technologies/') || name.includes('tech')) {
-        categories.technologies.push(rule)
+        categories.technologies.push(rule);
       } else if (path.includes('core/') || name.includes('core')) {
-        categories.core.push(rule)
+        categories.core.push(rule);
       } else {
-        categories.other.push(rule)
+        categories.other.push(rule);
       }
     }
 
-    return categories
+    return categories;
   }
 
   /**
    * Generate CORRECT Claude Code CLI settings.json with permissions system
    */
   async generateClaudeSettings(_rules, projectContext) {
-    const packageManager = projectContext.techStack?.packageManager || 'npm'
-    const frameworks = projectContext.techStack?.frameworks || []
+    const packageManager = projectContext.techStack?.packageManager || 'npm';
+    const frameworks = projectContext.techStack?.frameworks || [];
 
     const settings = {
       allowedTools: [
@@ -655,77 +718,157 @@ ${technologyGuidelines}
         'Glob(**/*.tsx)',
         'Grep(*)',
       ],
-      deniedTools: ['Bash(rm -rf:*)', 'Bash(sudo:*)', 'Edit(.env*)', 'Write(node_modules/**/*)', 'Write(.git/**/*)'],
+      deniedTools: [
+        'Bash(rm -rf:*)',
+        'Bash(sudo:*)',
+        'Edit(.env*)',
+        'Write(node_modules/**/*)',
+        'Write(.git/**/*)',
+      ],
       env: {
         BASH_DEFAULT_TIMEOUT_MS: this.getOptimalTimeout(projectContext),
         PROJECT_NAME: projectContext.name || path.basename(this.projectPath),
       },
-    }
+    };
 
     // Add framework-specific permissions
     for (const framework of frameworks) {
-      const frameworkPermissions = this.getFrameworkPermissions(framework)
-      settings.allowedTools.push(...frameworkPermissions)
+      const frameworkPermissions = this.getFrameworkPermissions(framework);
+      settings.allowedTools.push(...frameworkPermissions);
     }
 
     // Add project-specific environment variables
     if (projectContext.techStack?.buildTools?.includes('vite')) {
-      settings.env.VITE_DEV_MODE = 'true'
+      settings.env.VITE_DEV_MODE = 'true';
     }
 
     if (projectContext.techStack?.testingFrameworks?.includes('jest')) {
-      settings.allowedTools.push('Bash(npm run test:*)', 'Bash(jest:*)')
+      settings.allowedTools.push('Bash(npm run test:*)', 'Bash(jest:*)');
     }
 
-    return settings
+    return settings;
+  }
+
+  /**
+   * Generate agents from v3.0 rules
+   */
+  async generateAgents(rules, _projectContext) {
+    const agents = [];
+    const agentRules = rules.filter(
+      r => r.frontmatter?.type === 'agents' || r.frontmatter?.type === 'claude-agent'
+    );
+
+    for (const rule of agentRules) {
+      // Validate agent requirements
+      const content = rule.content || '';
+      const manifest = rule.frontmatter;
+
+      // Ensure agent has required sections if not structured
+      let enrichedContent = content;
+      if (!content.includes('## Role')) {
+        enrichedContent = `# ${manifest.name}\n\n## Role\n${manifest.description || 'Specialized agent'}\n\n${content}`;
+      }
+
+      agents.push({
+        name: rule.name || manifest.name,
+        content: enrichedContent,
+        manifest: manifest,
+      });
+    }
+    return agents;
+  }
+
+  /**
+   * Generate conditional rules from v3.0 specs
+   */
+  async generateConditionalRules(rules, _projectContext) {
+    const conditionalRules = [];
+    const ruleSpecs = rules.filter(
+      r => r.frontmatter?.type === 'rules' || r.frontmatter?.type === 'claude-rule'
+    );
+
+    for (const rule of ruleSpecs) {
+      const manifest = rule.frontmatter;
+
+      // Construct file content with frontmatter for Claude to read (if it supports frontmatter-based rules)
+      // or just pure markdown. Claude Code rules usually need to be in .claude/rules/ and matched by globs?
+      // Actually v3.0 spec says conditional rules have `paths` in manifest.
+
+      // We'll preserve specific frontmatter for the rule file if needed
+      conditionalRules.push({
+        name: rule.name || manifest.name,
+        content: rule.content,
+        manifest: manifest,
+      });
+    }
+    return conditionalRules;
+  }
+
+  /**
+   * Generate skills from v3.0 specs
+   */
+  async generateSkills(rules, _projectContext) {
+    const skills = [];
+    const skillSpecs = rules.filter(
+      r => r.frontmatter?.type === 'skills' || r.frontmatter?.type === 'claude-skill'
+    );
+
+    for (const skill of skillSpecs) {
+      skills.push({
+        name: skill.name || skill.frontmatter?.name,
+        content: skill.content,
+        manifest: skill.frontmatter,
+      });
+    }
+    return skills;
   }
 
   // Helper methods for Claude Code CLI structure
   detectIndentation(projectContext) {
     if (projectContext.techStack?.languages?.includes('Python')) {
-      return '4-space'
+      return '4-space';
     }
     if (projectContext.techStack?.languages?.includes('Go')) {
-      return '4-space'
+      return '4-space';
     }
-    return '2-space'
+    return '2-space';
   }
 
   generateStyleGuidelines(projectContext) {
-    const guidelines = []
+    const guidelines = [];
     if (projectContext.techStack?.frameworks?.includes('React')) {
-      guidelines.push('Use functional components with hooks')
+      guidelines.push('Use functional components with hooks');
     }
     if (projectContext.techStack?.languages?.includes('TypeScript')) {
-      guidelines.push('Always use TypeScript strict mode')
+      guidelines.push('Always use TypeScript strict mode');
     }
-    return guidelines.join('\n- ') || 'Follow project conventions'
+    return guidelines.join('\n- ') || 'Follow project conventions';
   }
 
   detectProjectStructure(projectContext) {
     if (projectContext.techStack?.frameworks?.includes('Next.js')) {
-      return 'Next.js App Router'
+      return 'Next.js App Router';
     }
     if (projectContext.techStack?.frameworks?.includes('React')) {
-      return 'React component-based'
+      return 'React component-based';
     }
-    return 'standard module'
+    return 'standard module';
   }
 
   generateStructureGuidelines(projectContext) {
     if (projectContext.techStack?.frameworks?.includes('React')) {
-      return 'Keep components in src/components/, hooks in src/hooks/'
+      return 'Keep components in src/components/, hooks in src/hooks/';
     }
-    return 'Follow conventional directory structures'
+    return 'Follow conventional directory structures';
   }
 
   generateTestingGuidelines(_projectContext) {
-    return 'Write tests for all business logic, use descriptive test names'
+    return 'Write tests for all business logic, use descriptive test names';
   }
 
   async detectPrimaryIDE(projectContext) {
     try {
-      const projectPath = projectContext.projectPath || this.projectPath
+      const projectPath = projectContext.projectPath || this.projectPath;
 
       // Check for IDE-specific files and folders with platform detection
       const ideIndicators = {
@@ -751,22 +894,22 @@ ${technologyGuidelines}
         'JetBrains (Generic)': ['.idea/', '*.iml'],
         'GitHub Copilot': ['.github/copilot/', '.github/copilot/config.json'],
         'Generic AI': ['.vdk/', '.vdk/config.json', '.vdk/rules/'],
-      }
+      };
 
       for (const [ide, indicators] of Object.entries(ideIndicators)) {
         for (const indicator of indicators) {
           if (await this.fileExists(path.join(projectPath, indicator))) {
-            return ide
+            return ide;
           }
         }
       }
 
       // Additional detection methods for VS Code without .vscode folder:
       // 1. Check for VS Code specific extensions in package.json
-      const packageJsonPath = path.join(projectPath, 'package.json')
+      const packageJsonPath = path.join(projectPath, 'package.json');
       if (await this.fileExists(packageJsonPath)) {
-        const packageContent = await fs.readFile(packageJsonPath, 'utf8')
-        const packageData = JSON.parse(packageContent)
+        const packageContent = await fs.readFile(packageJsonPath, 'utf8');
+        const packageData = JSON.parse(packageContent);
 
         // Check for VS Code extension development
         if (
@@ -775,29 +918,29 @@ ${technologyGuidelines}
           packageData.categories?.includes('Extension Packs') ||
           packageData.main?.includes('extension.js')
         ) {
-          return 'VS Code'
+          return 'VS Code';
         }
 
         // Check for common VS Code specific dev dependencies
-        const vscodeDevDeps = ['@types/vscode', 'vscode-test', '@vscode/test-electron']
-        const allDeps = { ...packageData.dependencies, ...packageData.devDependencies }
-        if (vscodeDevDeps.some((dep) => allDeps[dep])) {
-          return 'VS Code'
+        const vscodeDevDeps = ['@types/vscode', 'vscode-test', '@vscode/test-electron'];
+        const allDeps = { ...packageData.dependencies, ...packageData.devDependencies };
+        if (vscodeDevDeps.some(dep => allDeps[dep])) {
+          return 'VS Code';
         }
       }
 
       // 2. Check for common workspace files that suggest VS Code
-      const vscodeWorkspaceFiles = ['*.code-workspace', 'workspace.json']
+      const vscodeWorkspaceFiles = ['*.code-workspace', 'workspace.json'];
       for (const pattern of vscodeWorkspaceFiles) {
         // This is a simplified check - in practice you'd use glob matching
         if (await this.fileExists(path.join(projectPath, pattern.replace('*', 'project')))) {
-          return 'VS Code'
+          return 'VS Code';
         }
       }
 
-      return 'Not specified'
+      return 'Not specified';
     } catch {
-      return 'Not specified'
+      return 'Not specified';
     }
   }
 
@@ -806,26 +949,26 @@ ${technologyGuidelines}
    */
   async detectPackageManager(projectContext) {
     try {
-      const projectPath = projectContext.projectPath || this.projectPath
+      const projectPath = projectContext.projectPath || this.projectPath;
 
       // Check for lock files in order of preference
       if (await this.fileExists(path.join(projectPath, 'pnpm-lock.yaml'))) {
-        return 'pnpm'
+        return 'pnpm';
       }
       if (await this.fileExists(path.join(projectPath, 'yarn.lock'))) {
-        return 'yarn'
+        return 'yarn';
       }
       if (await this.fileExists(path.join(projectPath, 'bun.lockb'))) {
-        return 'bun'
+        return 'bun';
       }
       if (await this.fileExists(path.join(projectPath, 'package-lock.json'))) {
-        return 'npm'
+        return 'npm';
       }
 
       // Default fallback
-      return 'npm'
+      return 'npm';
     } catch {
-      return 'npm'
+      return 'npm';
     }
   }
 
@@ -834,10 +977,10 @@ ${technologyGuidelines}
    */
   async fileExists(filePath) {
     try {
-      await fs.access(filePath)
-      return true
+      await fs.access(filePath);
+      return true;
     } catch {
-      return false
+      return false;
     }
   }
 
@@ -846,109 +989,113 @@ ${technologyGuidelines}
    */
   async extractPackageScripts(projectContext) {
     try {
-      const projectPath = projectContext.projectPath || this.projectPath
-      const packageJsonPath = path.join(projectPath, 'package.json')
+      const projectPath = projectContext.projectPath || this.projectPath;
+      const packageJsonPath = path.join(projectPath, 'package.json');
 
       if (await this.fileExists(packageJsonPath)) {
-        const packageJsonContent = await fs.readFile(packageJsonPath, 'utf8')
-        const packageData = JSON.parse(packageJsonContent)
-        return packageData.scripts || {}
+        const packageJsonContent = await fs.readFile(packageJsonPath, 'utf8');
+        const packageData = JSON.parse(packageJsonContent);
+        return packageData.scripts || {};
       }
     } catch {
       // Silently fail and return empty object
     }
-    return {}
+    return {};
   }
 
   async detectDevCommand(projectContext) {
-    const pm = await this.detectPackageManager(projectContext)
-    const scripts = await this.extractPackageScripts(projectContext)
+    const pm = await this.detectPackageManager(projectContext);
+    const scripts = await this.extractPackageScripts(projectContext);
 
     // Check for common dev script variations
     if (scripts.dev) {
-      return `${pm} run dev`
+      return `${pm} run dev`;
     }
     if (scripts.start) {
-      return `${pm} run start`
+      return `${pm} run start`;
     }
     if (scripts.serve) {
-      return `${pm} run serve`
+      return `${pm} run serve`;
     }
 
-    return `${pm} run dev`
+    return `${pm} run dev`;
   }
 
   async detectTestCommand(projectContext) {
-    const pm = await this.detectPackageManager(projectContext)
-    const scripts = await this.extractPackageScripts(projectContext)
+    const pm = await this.detectPackageManager(projectContext);
+    const scripts = await this.extractPackageScripts(projectContext);
 
     if (scripts.test) {
-      return `${pm} run test`
+      return `${pm} run test`;
     }
     if (scripts['test:unit']) {
-      return `${pm} run test:unit`
+      return `${pm} run test:unit`;
     }
 
-    return `${pm} run test`
+    return `${pm} run test`;
   }
 
   async detectBuildCommand(projectContext) {
-    const pm = await this.detectPackageManager(projectContext)
-    const scripts = await this.extractPackageScripts(projectContext)
+    const pm = await this.detectPackageManager(projectContext);
+    const scripts = await this.extractPackageScripts(projectContext);
 
     if (scripts.build) {
-      return `${pm} run build`
+      return `${pm} run build`;
     }
     if (scripts['build:prod']) {
-      return `${pm} run build:prod`
+      return `${pm} run build:prod`;
     }
 
-    return `${pm} run build`
+    return `${pm} run build`;
   }
 
   async detectBuildTool(projectContext) {
-    const techData = projectContext.techStack || projectContext.technologyData || {}
-    const frameworks = techData.frameworks || []
+    const techData = projectContext.techStack || projectContext.technologyData || {};
+    const frameworks = techData.frameworks || [];
 
     // Check for turbopack in Next.js projects
-    if (frameworks.some((fw) => fw.toLowerCase().includes('next.js') || fw.toLowerCase().includes('nextjs'))) {
-      const scripts = await this.extractPackageScripts(projectContext)
+    if (
+      frameworks.some(
+        fw => fw.toLowerCase().includes('next.js') || fw.toLowerCase().includes('nextjs')
+      )
+    ) {
+      const scripts = await this.extractPackageScripts(projectContext);
       // Check if dev script uses --turbo flag
       if (scripts.dev?.includes('--turbo')) {
-        return 'Turbopack (Next.js)'
+        return 'Turbopack (Next.js)';
       }
-      return 'Next.js'
+      return 'Next.js';
     }
-    if (frameworks.some((fw) => fw.toLowerCase().includes('nuxt'))) {
-      return 'Nuxt.js'
+    if (frameworks.some(fw => fw.toLowerCase().includes('nuxt'))) {
+      return 'Nuxt.js';
     }
-    if (frameworks.some((fw) => fw.toLowerCase().includes('gatsby'))) {
-      return 'Gatsby'
+    if (frameworks.some(fw => fw.toLowerCase().includes('gatsby'))) {
+      return 'Gatsby';
     }
-    if (frameworks.some((fw) => fw.toLowerCase().includes('astro'))) {
-      return 'Astro'
+    if (frameworks.some(fw => fw.toLowerCase().includes('astro'))) {
+      return 'Astro';
     }
 
     // Check for build tools in libraries/buildTools
-    const buildTools = techData.buildTools || []
+    const buildTools = techData.buildTools || [];
     if (buildTools.includes('Vite')) {
-      return 'Vite'
+      return 'Vite';
     }
     if (buildTools.includes('Webpack')) {
-      return 'Webpack'
+      return 'Webpack';
     }
     if (buildTools.includes('esbuild')) {
-      return 'esbuild'
+      return 'esbuild';
     }
     if (buildTools.includes('Rollup')) {
-      return 'Rollup'
+      return 'Rollup';
     }
     if (buildTools.includes('Parcel')) {
-      return 'Parcel'
+      return 'Parcel';
     }
 
     // Default fallback
-    return 'npm scripts'
+    return 'npm scripts';
   }
 
   generateWorkflowPreferences(_rules, projectContext) {
@@ -959,40 +1106,40 @@ ${technologyGuidelines}
 - Plan for rollback strategies
 
 ### Framework-Specific Guidelines
-${this.generateFrameworkSpecificGuidelines(projectContext)}`
+${this.generateFrameworkSpecificGuidelines(projectContext)}`;
   }
 
   generateFrameworkSpecificGuidelines(projectContext) {
-    const frameworks = projectContext.techStack?.frameworks || []
-    const guidelines = []
+    const frameworks = projectContext.techStack?.frameworks || [];
+    const guidelines = [];
 
     if (frameworks.includes('React')) {
-      guidelines.push('- Use React hooks over class components')
-      guidelines.push('- Implement proper state management patterns')
+      guidelines.push('- Use React hooks over class components');
+      guidelines.push('- Implement proper state management patterns');
     }
     if (frameworks.includes('Next.js')) {
-      guidelines.push('- Use App Router for new routes')
-      guidelines.push('- Leverage server components when possible')
+      guidelines.push('- Use App Router for new routes');
+      guidelines.push('- Leverage server components when possible');
     }
 
-    return guidelines.join('\n') || '- Follow established patterns in the codebase'
+    return guidelines.join('\n') || '- Follow established patterns in the codebase';
   }
 
   getOptimalTimeout(projectContext) {
     // Longer timeout for complex builds
     if (projectContext.techStack?.frameworks?.includes('Next.js')) {
-      return '180000'
+      return '180000';
     }
-    return '120000'
+    return '120000';
   }
 
   /**
    * Generate main CLAUDE.md with import-based structure
    */
   async generateMainMemory(rules, projectContext) {
-    const projectName = path.basename(this.projectPath)
-    const primaryLanguages = projectContext.techStack?.primaryLanguages || ['JavaScript']
-    const frameworks = projectContext.techStack?.frameworks || []
+    const projectName = path.basename(this.projectPath);
+    const primaryLanguages = projectContext.techStack?.primaryLanguages || ['JavaScript'];
+    const frameworks = projectContext.techStack?.frameworks || [];
 
     return `# ${projectName} - Claude Code CLI Memory
 
@@ -1033,15 +1180,15 @@ ${await this.generateCodingStandards(rules, projectContext)}
 
 ---
 *Generated by VDK CLI -  Claude Code CLI Integration*
-*Last updated: ${new Date().toISOString().split('T')[0]}*`
+*Last updated: ${new Date().toISOString().split('T')[0]}*`;
   }
 
   /**
    * Generate CLAUDE-patterns.md for code patterns and conventions
    */
   async generatePatternsMemory(rules, projectContext) {
-    const patterns = projectContext.patterns || {}
-    const namingConventions = patterns.namingConventions || {}
+    const patterns = projectContext.patterns || {};
+    const namingConventions = patterns.namingConventions || {};
 
     return `# Code Patterns and Conventions
 
@@ -1067,7 +1214,7 @@ ${await this.generateErrorHandlingPatterns(rules, projectContext)}
 ${await this.generatePerformancePatterns(rules, projectContext)}
 
 ---
-*This file contains project-specific patterns discovered through codebase analysis*`
+*This file contains project-specific patterns discovered through codebase analysis*`;
   }
 
   /**
@@ -1097,13 +1244,13 @@ ${await this.generateHookIntegration(rules, projectContext)}
 ${await this.generateExternalServices(rules, projectContext)}
 
 ---
-*This file manages Claude Code CLI's integration with external tools and services*`
+*This file manages Claude Code CLI's integration with external tools and services*`;
   }
 
   /**
    * Generate sophisticated slash commands by fetching from remote repository
    */
-  async generateSlashCommands(rules, projectContext, categoryFilter = null) {
+  async generateSlashCommands(_rules, projectContext, categoryFilter = null) {
     try {
       // Use the centralized repository fetch method from RuleGenerator
       if (this.ruleGenerator?.fetchFromRepository) {
@@ -1112,25 +1259,25 @@ ${await this.generateExternalServices(rules, projectContext)}
           'commands',
           null, // No platform filter - commands are organized by categories
           categoryFilter
-        )
+        );
 
         if (remoteCommands.length > 0) {
-          console.log(`✅ Fetched ${remoteCommands.length} commands from repository`)
+          console.log(`✅ Fetched ${remoteCommands.length} commands from repository`);
           // Transform the templates into command format
-          return this.transformTemplatesIntoCommands(remoteCommands, projectContext)
+          return this.transformTemplatesIntoCommands(remoteCommands, projectContext);
         }
       }
 
-      console.log('⚠️ No remote commands found, generating fallback commands')
-      console.log(chalk.yellow('💡 To get more commands when available:'))
-      console.log(chalk.gray('   • Check your GitHub token: VDK_GITHUB_TOKEN in .env.local'))
-      console.log(chalk.gray('   • Get a token from: https://github.com/settings/tokens'))
+      console.log('⚠️ No remote commands found, generating fallback commands');
+      console.log(chalk.yellow('💡 To get more commands when available:'));
+      console.log(chalk.gray('   • Check your GitHub token: VDK_GITHUB_TOKEN in .env.local'));
+      console.log(chalk.gray('   • Get a token from: https://github.com/settings/tokens'));
 
       // Return empty array as fallback
-      return []
+      return [];
     } catch (error) {
-      console.error('Error fetching slash commands:', error.message)
-      return []
+      console.error('Error fetching slash commands:', error.message);
+      return [];
     }
   }
 
@@ -1141,12 +1288,12 @@ ${await this.generateExternalServices(rules, projectContext)}
    * @returns {Array} Commands in Claude Code CLI format
    */
   transformTemplatesIntoCommands(templates, _projectContext) {
-    const commands = []
+    const commands = [];
 
     for (const template of templates) {
       try {
         // Parse the template content as a command
-        const parsedCommand = this.parseClaudeCodeCommand(template.content)
+        const parsedCommand = this.parseClaudeCodeCommand(template.content);
         if (parsedCommand) {
           commands.push({
             name: template.name.replace('.md', ''),
@@ -1155,14 +1302,14 @@ ${await this.generateExternalServices(rules, projectContext)}
             category: this.getCategoryFromPath(template.path),
             source: 'repository',
             relevanceScore: template.relevanceScore || 0.5,
-          })
+          });
         }
       } catch (error) {
-        console.log(`Warning: Could not parse command ${template.name}: ${error.message}`)
+        console.log(`Warning: Could not parse command ${template.name}: ${error.message}`);
       }
     }
 
-    return commands.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
+    return commands.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
   }
 
   /**
@@ -1171,42 +1318,44 @@ ${await this.generateExternalServices(rules, projectContext)}
    * @returns {string} Category name
    */
   getCategoryFromPath(path) {
-    const pathParts = path.split('/')
+    const pathParts = path.split('/');
     // Path structure: blueprints/vdk/commands/claude-code/category/command.md
     if (pathParts.length >= 4) {
-      return pathParts[3] // Get the category directory name
+      return pathParts[3]; // Get the category directory name
     }
-    return 'general'
+    return 'general';
   }
 
   /**
    * Fetch commands from VDK-Blueprints repository
    */
   async fetchRemoteCommands(platform, projectContext) {
-    const VDK_RULES_REPO_API_URL = 'https://api.github.com/repos/entro314-labs/VDK-Blueprints'
-    const commands = []
+    const VDK_RULES_REPO_API_URL = 'https://api.github.com/repos/vdkit/VDK-Blueprints';
+    const commands = [];
 
     try {
       // Fetch command categories for the platform
-      const response = await fetch(`${VDK_RULES_REPO_API_URL}/contents/blueprints/vdk/commands/${platform}`)
+      const response = await fetch(
+        `${VDK_RULES_REPO_API_URL}/contents/blueprints/vdk/commands/${platform}`
+      );
       if (!response.ok) {
-        return []
+        return [];
       }
 
-      const categories = await response.json()
+      const categories = await response.json();
 
       // Fetch commands from each category
-      for (const category of categories.filter((item) => item.type === 'dir')) {
+      for (const category of categories.filter(item => item.type === 'dir')) {
         try {
-          const categoryResponse = await fetch(category.url)
+          const categoryResponse = await fetch(category.url);
           if (categoryResponse.ok) {
-            const commandFiles = await categoryResponse.json()
+            const commandFiles = await categoryResponse.json();
 
-            for (const file of commandFiles.filter((f) => f.name.endsWith('.md'))) {
-              const commandContent = await this.downloadFile(file.download_url)
+            for (const file of commandFiles.filter(f => f.name.endsWith('.md'))) {
+              const commandContent = await this.downloadFile(file.download_url);
               if (commandContent) {
                 // Parse and validate command content
-                const parsedCommand = this.parseClaudeCodeCommand(commandContent)
+                const parsedCommand = this.parseClaudeCodeCommand(commandContent);
                 if (parsedCommand && (await this.validateClaudeCodeCommand(parsedCommand))) {
                   commands.push({
                     name: file.name.replace('.md', ''),
@@ -1215,21 +1364,21 @@ ${await this.generateExternalServices(rules, projectContext)}
                     category: category.name,
                     source: 'repository',
                     relevanceScore: this.calculateCommandRelevance(parsedCommand, projectContext),
-                  })
+                  });
                 }
               }
             }
           }
         } catch (error) {
-          console.log(`Could not fetch commands from ${category.name}: ${error.message}`)
+          console.log(`Could not fetch commands from ${category.name}: ${error.message}`);
         }
       }
     } catch (error) {
-      console.log(`Failed to fetch command categories: ${error.message}`)
+      console.log(`Failed to fetch command categories: ${error.message}`);
     }
 
     // Sort by relevance score
-    return commands.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
+    return commands.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
   }
 
   /**
@@ -1237,48 +1386,48 @@ ${await this.generateExternalServices(rules, projectContext)}
    */
   parseClaudeCodeCommand(content) {
     try {
-      const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/)
+      const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
       if (!frontmatterMatch) {
-        return null
+        return null;
       }
 
       // Simple YAML parsing for the schema fields
-      const yamlContent = frontmatterMatch[1]
-      const parsed = {}
+      const yamlContent = frontmatterMatch[1];
+      const parsed = {};
 
-      const lines = yamlContent.split('\n')
-      let _currentKey = null
-      let currentObject = null
+      const lines = yamlContent.split('\n');
+      let _currentKey = null;
+      let currentObject = null;
 
       for (const line of lines) {
-        const trimmed = line.trim()
+        const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith('#')) {
-          continue
+          continue;
         }
 
         if (line.match(/^[a-zA-Z]/)) {
           // Top-level key
-          const [key, value] = trimmed.split(':').map((s) => s.trim())
+          const [key, value] = trimmed.split(':').map(s => s.trim());
           if (value && value !== '') {
-            parsed[key] = value.replace(/['"]/g, '')
+            parsed[key] = value.replace(/['"]/g, '');
           } else {
-            _currentKey = key
-            currentObject = {}
-            parsed[key] = currentObject
+            _currentKey = key;
+            currentObject = {};
+            parsed[key] = currentObject;
           }
         } else if (currentObject && line.match(/^\s+[a-zA-Z]/)) {
           // Nested key
-          const [key, value] = trimmed.split(':').map((s) => s.trim())
+          const [key, value] = trimmed.split(':').map(s => s.trim());
           if (value && value !== '') {
-            currentObject[key] = value.replace(/['"]/g, '')
+            currentObject[key] = value.replace(/['"]/g, '');
           }
         }
       }
 
-      return parsed
+      return parsed;
     } catch (error) {
-      console.log(`Failed to parse command frontmatter: ${error.message}`)
-      return null
+      console.log(`Failed to parse command frontmatter: ${error.message}`);
+      return null;
     }
   }
 
@@ -1287,24 +1436,24 @@ ${await this.generateExternalServices(rules, projectContext)}
    */
   async validateClaudeCodeCommand(commandData) {
     if (!commandData) {
-      return false
+      return false;
     }
 
     try {
-      const validation = await validateCommand(commandData)
+      const validation = await validateCommand(commandData);
 
       if (!validation.valid) {
         if (this.verbose) {
-          console.log('Command validation failed:')
-          validation.errors.forEach((error) => console.log(`  - ${error}`))
+          console.log('Command validation failed:');
+          validation.errors.forEach(error => console.log(`  - ${error}`));
         }
-        return false
+        return false;
       }
 
-      return true
+      return true;
     } catch (error) {
-      console.log(`Schema validation error: ${error.message}`)
-      return false
+      console.log(`Schema validation error: ${error.message}`);
+      return false;
     }
   }
 
@@ -1312,41 +1461,41 @@ ${await this.generateExternalServices(rules, projectContext)}
    * Calculate command relevance based on project context
    */
   calculateCommandRelevance(commandData, projectContext) {
-    let score = 0.5 // Base score
+    let score = 0.5; // Base score
 
-    const frameworks = projectContext.techStack?.frameworks || []
-    const languages = projectContext.techStack?.primaryLanguages || []
-    const tags = commandData.tags || []
-    const category = commandData.category || ''
+    const frameworks = projectContext.techStack?.frameworks || [];
+    const languages = projectContext.techStack?.primaryLanguages || [];
+    const tags = commandData.tags || [];
+    const category = commandData.category || '';
 
     // Framework matching
-    frameworks.forEach((framework) => {
-      if (tags.some((tag) => tag.toLowerCase().includes(framework.toLowerCase()))) {
-        score += 0.3
+    frameworks.forEach(framework => {
+      if (tags.some(tag => tag.toLowerCase().includes(framework.toLowerCase()))) {
+        score += 0.3;
       }
-    })
+    });
 
     // Language matching
-    languages.forEach((language) => {
-      if (tags.some((tag) => tag.toLowerCase().includes(language.toLowerCase()))) {
-        score += 0.2
+    languages.forEach(language => {
+      if (tags.some(tag => tag.toLowerCase().includes(language.toLowerCase()))) {
+        score += 0.2;
       }
-    })
+    });
 
     // Category relevance
     if (category === 'development') {
-      score += 0.2
+      score += 0.2;
     }
     if (category === 'testing') {
-      score += 0.1
+      score += 0.1;
     }
 
     // Command type preference
     if (commandData.commandType === 'slash') {
-      score += 0.1
+      score += 0.1;
     }
 
-    return Math.min(score, 1.0)
+    return Math.min(score, 1.0);
   }
 
   /**
@@ -1354,21 +1503,21 @@ ${await this.generateExternalServices(rules, projectContext)}
    */
   async downloadFile(url) {
     try {
-      const response = await fetch(url)
+      const response = await fetch(url);
       if (response.ok) {
-        return await response.text()
+        return await response.text();
       }
     } catch (error) {
-      console.log(`Failed to download file: ${error.message}`)
+      console.log(`Failed to download file: ${error.message}`);
     }
-    return null
+    return null;
   }
 
   /**
    * Generate Claude Code CLI command content from schema-compliant data
    */
   generateClaudeCodeCommand(commandData) {
-    const { claudeCode, examples, permissions, frameworks, languages } = commandData
+    const { claudeCode, examples, permissions, frameworks, languages } = commandData;
 
     return `---
 id: "${commandData.id}"
@@ -1408,7 +1557,7 @@ permissions:
 examples:${
       examples
         ?.map(
-          (ex) => `
+          ex => `
   - usage: "${ex.usage}"
     description: "${ex.description}"
     context: "${ex.context}"
@@ -1465,7 +1614,7 @@ This command will:
 ${
   examples
     ?.map(
-      (ex) => `### ${ex.description}
+      ex => `### ${ex.description}
 \`\`\`
 ${ex.usage}
 \`\`\`
@@ -1477,22 +1626,22 @@ ${ex.usage}
 }
 
 ---
-*Generated by VDK CLI - Claude Code CLI Integration*`
+*Generated by VDK CLI - Claude Code CLI Integration*`;
   }
 
   /**
    * Generate task commands from rules
    */
   async generateTaskCommands(rules, projectContext) {
-    const commands = []
+    const commands = [];
     const taskRules = rules.filter(
-      (rule) => rule.frontmatter?.category === 'task' || rule.frontmatter?.type?.includes('task')
-    )
+      rule => rule.frontmatter?.category === 'task' || rule.frontmatter?.type?.includes('task')
+    );
 
     for (const rule of taskRules) {
-      const commandName = this.generateCommandName(rule.frontmatter.description || rule.name)
+      const commandName = this.generateCommandName(rule.frontmatter.description || rule.name);
       const allowedTools = rule.frontmatter['allowed-tools'] ||
-        rule.frontmatter.allowedTools || ['Read', 'Write', 'Edit']
+        rule.frontmatter.allowedTools || ['Read', 'Write', 'Edit'];
 
       commands.push({
         name: commandName,
@@ -1514,10 +1663,10 @@ ${rule.content || 'Perform project-specific task based on established patterns.'
 ## Usage
 \`/project:${commandName} $ARGUMENTS\`
 `,
-      })
+      });
     }
 
-    return commands
+    return commands;
   }
 
   /**
@@ -1528,7 +1677,7 @@ ${rule.content || 'Perform project-specific task based on established patterns.'
       servers: {},
       tools: [],
       configuration: {},
-    }
+    };
 
     // File system MCP for project access
     integrations.servers.filesystem = {
@@ -1536,7 +1685,7 @@ ${rule.content || 'Perform project-specific task based on established patterns.'
       command: 'npx',
       args: ['-y', '@modelcontextprotocol/server-filesystem', this.projectPath],
       env: {},
-    }
+    };
 
     // Git MCP for version control
     integrations.servers.git = {
@@ -1544,29 +1693,31 @@ ${rule.content || 'Perform project-specific task based on established patterns.'
       command: 'npx',
       args: ['-y', '@modelcontextprotocol/server-git'],
       env: {},
-    }
+    };
 
     // Database MCP if database detected
     if (this.detectsDatabase(projectContext)) {
-      integrations.servers.database = await this.generateDatabaseMCP(projectContext)
+      integrations.servers.database = await this.generateDatabaseMCP(projectContext);
     }
 
     // Framework-specific MCP servers
-    const frameworks = projectContext.techStack?.frameworks || []
+    const frameworks = projectContext.techStack?.frameworks || [];
     for (const framework of frameworks) {
-      const frameworkMCP = await this.generateFrameworkMCP(framework, projectContext)
+      const frameworkMCP = await this.generateFrameworkMCP(framework, projectContext);
       if (frameworkMCP) {
-        integrations.servers[framework.toLowerCase()] = frameworkMCP
+        integrations.servers[framework.toLowerCase()] = frameworkMCP;
       }
     }
 
-    return integrations
+    return integrations;
   }
 
   detectsDatabase(projectContext) {
-    const dbIndicators = ['prisma', 'sequelize', 'mongoose', 'postgresql', 'mysql', 'sqlite']
-    const libraries = projectContext.techStack?.libraries || []
-    return libraries.some((lib) => dbIndicators.some((indicator) => lib.toLowerCase().includes(indicator)))
+    const dbIndicators = ['prisma', 'sequelize', 'mongoose', 'postgresql', 'mysql', 'sqlite'];
+    const libraries = projectContext.techStack?.libraries || [];
+    return libraries.some(lib =>
+      dbIndicators.some(indicator => lib.toLowerCase().includes(indicator))
+    );
   }
 
   getFrameworkPermissions(framework) {
@@ -1576,70 +1727,72 @@ ${rule.content || 'Perform project-specific task based on established patterns.'
       vue: ['Bash(npm run serve)', 'Bash(npm run build)'],
       angular: ['Bash(ng serve)', 'Bash(ng build)', 'Bash(ng test)'],
       express: ['Bash(npm run dev)', 'Bash(npm run start)'],
-    }
+    };
 
-    return permissions[framework.toLowerCase()] || []
+    return permissions[framework.toLowerCase()] || [];
   }
 
   // Additional helper methods for generating memory content sections
 
   async generateQuickCommandsSection(_rules, projectContext) {
-    const commands = []
+    const commands = [];
 
     // Add common project commands
-    commands.push('- `/project:create-component` - Create new component following project patterns')
-    commands.push('- `/project:review-code` - Comprehensive code review')
-    commands.push('- `/project:analyze-performance` - Performance analysis and optimization')
+    commands.push(
+      '- `/project:create-component` - Create new component following project patterns'
+    );
+    commands.push('- `/project:review-code` - Comprehensive code review');
+    commands.push('- `/project:analyze-performance` - Performance analysis and optimization');
 
     // Add framework-specific commands
-    const frameworks = projectContext.techStack?.frameworks || []
+    const frameworks = projectContext.techStack?.frameworks || [];
     if (frameworks.includes('React')) {
-      commands.push('- `/project:create-react-hook` - Create custom React hook')
+      commands.push('- `/project:create-react-hook` - Create custom React hook');
     }
 
-    return commands.join('\n')
+    return commands.join('\n');
   }
 
   async generateProjectStructureSummary(projectContext) {
     if (!projectContext.projectStructure) {
-      return 'Project structure analysis pending...'
+      return 'Project structure analysis pending...';
     }
 
-    const structure = projectContext.projectStructure
-    const summary = []
+    const structure = projectContext.projectStructure;
+    const summary = [];
 
     // Add main directories
-    const mainDirs = structure.directories?.slice(0, 8) || []
-    mainDirs.forEach((dir) => {
-      const depth = '  '.repeat(dir.depth || 0)
-      summary.push(`${depth}${dir.name}/`)
-    })
+    const mainDirs = structure.directories?.slice(0, 8) || [];
+    mainDirs.forEach(dir => {
+      const depth = '  '.repeat(dir.depth || 0);
+      summary.push(`${depth}${dir.name}/`);
+    });
 
     if (structure.directories?.length > 8) {
-      summary.push('  ...')
+      summary.push('  ...');
     }
 
-    return summary.join('\n')
+    return summary.join('\n');
   }
 
   async generateDevelopmentCommands(projectContext) {
-    const commands = []
-    const packageCommands = this.extractPackageCommands(projectContext)
+    const commands = [];
+    const packageCommands = this.extractPackageCommands(projectContext);
 
     if (packageCommands.dev) {
-      commands.push(`- \`${packageCommands.dev}\` - Start development server`)
+      commands.push(`- \`${packageCommands.dev}\` - Start development server`);
     }
     if (packageCommands.build) {
-      commands.push(`- \`${packageCommands.build}\` - Build for production`)
+      commands.push(`- \`${packageCommands.build}\` - Build for production`);
     }
     if (packageCommands.test) {
-      commands.push(`- \`${packageCommands.test}\` - Run test suite`)
+      commands.push(`- \`${packageCommands.test}\` - Run test suite`);
     }
     if (packageCommands.lint) {
-      commands.push(`- \`${packageCommands.lint}\` - Run code linting`)
+      commands.push(`- \`${packageCommands.lint}\` - Run code linting`);
     }
 
-    return commands.join('\n')
+    return commands.join('\n');
   }
 
   extractPackageCommands(_projectContext) {
@@ -1649,33 +1802,33 @@ ${rule.content || 'Perform project-specific task based on established patterns.'
       build: 'npm run build',
       test: 'npm run test',
       lint: 'npm run lint',
-    }
+    };
   }
 
   async generateCodingStandards(_rules, projectContext) {
-    const standards = []
+    const standards = [];
 
     // Extract standards from rules and project analysis
-    const namingConventions = projectContext.patterns?.namingConventions
+    const namingConventions = projectContext.patterns?.namingConventions;
     if (namingConventions) {
       if (namingConventions.variables?.dominant) {
-        standards.push(`- **Variables**: Use ${namingConventions.variables.dominant} naming`)
+        standards.push(`- **Variables**: Use ${namingConventions.variables.dominant} naming`);
       }
       if (namingConventions.functions?.dominant) {
-        standards.push(`- **Functions**: Use ${namingConventions.functions.dominant} naming`)
+        standards.push(`- **Functions**: Use ${namingConventions.functions.dominant} naming`);
       }
     }
 
     // Add framework-specific standards
-    const frameworks = projectContext.techStack?.frameworks || []
+    const frameworks = projectContext.techStack?.frameworks || [];
     for (const framework of frameworks) {
-      const frameworkStandards = this.getFrameworkStandards(framework)
-      standards.push(...frameworkStandards)
+      const frameworkStandards = this.getFrameworkStandards(framework);
+      standards.push(...frameworkStandards);
     }
 
     return standards.length > 0
       ? standards.join('\n')
-      : '- Follow established project patterns\n- Maintain consistency with existing code'
+      : '- Follow established project patterns\n- Maintain consistency with existing code';
   }
 
   getFrameworkStandards(framework) {
@@ -1695,109 +1848,111 @@ ${rule.content || 'Perform project-specific task based on established patterns.'
         '- Implement proper reactive patterns',
         '- Follow Vue 3 best practices',
       ],
-    }
+    };
 
-    return standards[framework] || []
+    return standards[framework] || [];
   }
 
   // Additional memory generation methods for patterns, naming conventions, etc.
 
   async generateNamingConventions(namingConventions) {
     if (!namingConventions || Object.keys(namingConventions).length === 0) {
-      return '- Follow consistent naming patterns discovered in codebase analysis'
+      return '- Follow consistent naming patterns discovered in codebase analysis';
     }
 
-    const sections = []
+    const sections = [];
 
     if (namingConventions.variables) {
       sections.push(
         `### Variables\n- **Preferred**: ${namingConventions.variables.dominant}\n- **Confidence**: ${namingConventions.variables.confidence}%`
-      )
+      );
     }
 
     if (namingConventions.functions) {
       sections.push(
         `### Functions\n- **Preferred**: ${namingConventions.functions.dominant}\n- **Confidence**: ${namingConventions.functions.confidence}%`
-      )
+      );
     }
 
     if (namingConventions.files) {
       sections.push(
         `### Files\n- **Preferred**: ${namingConventions.files.dominant}\n- **Confidence**: ${namingConventions.files.confidence}%`
-      )
+      );
     }
 
-    return sections.join('\n\n')
+    return sections.join('\n\n');
   }
 
   async generateArchitecturalPatterns(patterns) {
     if (!patterns || patterns.length === 0) {
-      return '- Follow established architectural patterns discovered in codebase'
+      return '- Follow established architectural patterns discovered in codebase';
     }
 
     return patterns
       .map(
-        (pattern) =>
+        pattern =>
           `- **${pattern.name}**: ${pattern.confidence}% confidence${pattern.description ? ` - ${pattern.description}` : ''}`
       )
-      .join('\n')
+      .join('\n');
   }
 
   async generateCodeOrganization(projectContext) {
-    const structure = projectContext.projectStructure
+    const structure = projectContext.projectStructure;
     if (!structure) {
-      return '- Maintain existing project structure patterns'
+      return '- Maintain existing project structure patterns';
     }
 
-    const organization = []
+    const organization = [];
 
     // Analyze directory patterns
     const srcDirs =
       structure.directories?.filter(
-        (dir) => dir.name.includes('src') || dir.name.includes('app') || dir.name.includes('lib')
-      ) || []
+        dir => dir.name.includes('src') || dir.name.includes('app') || dir.name.includes('lib')
+      ) || [];
 
     if (srcDirs.length > 0) {
-      organization.push('### Source Organization')
-      srcDirs.forEach((dir) => {
-        organization.push(`- **${dir.name}**: ${dir.path}`)
-      })
+      organization.push('### Source Organization');
+      srcDirs.forEach(dir => {
+        organization.push(`- **${dir.name}**: ${dir.path}`);
+      });
     }
 
-    return organization.length > 0 ? organization.join('\n') : '- Follow established directory structure'
+    return organization.length > 0
+      ? organization.join('\n')
+      : '- Follow established directory structure';
   }
 
   async generateFrameworkPatterns(rules, projectContext) {
-    const frameworks = projectContext.techStack?.frameworks || []
-    const patterns = []
+    const frameworks = projectContext.techStack?.frameworks || [];
+    const patterns = [];
 
     for (const framework of frameworks) {
       const frameworkRules = rules.filter(
-        (rule) =>
+        rule =>
           rule.frontmatter?.framework?.toLowerCase() === framework.toLowerCase() ||
           rule.frontmatter?.tags?.includes(framework.toLowerCase())
-      )
+      );
 
       if (frameworkRules.length > 0) {
-        patterns.push(`### ${framework} Patterns`)
-        frameworkRules.forEach((rule) => {
-          patterns.push(`- ${rule.frontmatter?.description || rule.name}`)
-        })
-        patterns.push('')
+        patterns.push(`### ${framework} Patterns`);
+        frameworkRules.forEach(rule => {
+          patterns.push(`- ${rule.frontmatter?.description || rule.name}`);
+        });
+        patterns.push('');
       }
     }
 
-    return patterns.join('\n')
+    return patterns.join('\n');
   }
 
   async generateTestingPatterns(_rules, projectContext) {
-    const testingFrameworks = projectContext.techStack?.testingFrameworks || []
+    const testingFrameworks = projectContext.techStack?.testingFrameworks || [];
     if (testingFrameworks.length === 0) {
-      return '- Implement comprehensive testing following project standards'
+      return '- Implement comprehensive testing following project standards';
     }
 
-    const patterns = [`### Testing Framework: ${testingFrameworks.join(', ')}`]
-    return patterns.join('\n')
+    const patterns = [`### Testing Framework: ${testingFrameworks.join(', ')}`];
+    return patterns.join('\n');
   }
 
   // Additional methods for MCP and configuration generation...
@@ -1813,7 +1968,7 @@ ${rule.content || 'Perform project-specific task based on established patterns.'
 - **Capabilities**: Git operations, commit history, diff analysis
 
 ### External APIs
-- Additional MCP servers configured based on project requirements`
+- Additional MCP servers configured based on project requirements`;
   }
 
   async generateAvailableTools(_rules, _projectContext) {
@@ -1827,7 +1982,7 @@ ${rule.content || 'Perform project-specific task based on established patterns.'
 
 ### Project-Specific Tools
 - Configured based on detected technologies and frameworks
-- MCP-enabled tools for external service integration`
+- MCP-enabled tools for external service integration`;
   }
 
   async generatePermissionConfig(_rules, _projectContext) {
@@ -1843,7 +1998,7 @@ ${rule.content || 'Perform project-specific task based on established patterns.'
 - Node modules modifications
 
 ### Framework-Specific Permissions
-- Additional permissions based on detected frameworks`
+- Additional permissions based on detected frameworks`;
   }
 
   async generateHookIntegration(_rules, _projectContext) {
@@ -1857,52 +2012,52 @@ ${rule.content || 'Perform project-specific task based on established patterns.'
 - Documentation updates
 
 ### Custom Hooks
-- Project-specific automation based on development workflow`
+- Project-specific automation based on development workflow`;
   }
 
   async generateExternalServices(_rules, projectContext) {
-    const services = []
+    const services = [];
 
     // Detect common external services
     if (this.detectsDatabase(projectContext)) {
-      services.push('- **Database**: MCP integration for schema and query operations')
+      services.push('- **Database**: MCP integration for schema and query operations');
     }
 
-    if (projectContext.techStack?.libraries?.some((lib) => lib.includes('api'))) {
-      services.push('- **APIs**: External API integration capabilities')
+    if (projectContext.techStack?.libraries?.some(lib => lib.includes('api'))) {
+      services.push('- **APIs**: External API integration capabilities');
     }
 
     if (services.length === 0) {
-      services.push('- External services configured based on project requirements')
+      services.push('- External services configured based on project requirements');
     }
 
-    return services.join('\n')
+    return services.join('\n');
   }
 
   async generateTechnologyMemories(rules, projectContext) {
-    const memories = []
-    const frameworks = projectContext.techStack?.frameworks || []
+    const memories = [];
+    const frameworks = projectContext.techStack?.frameworks || [];
 
     // Generate memory files for complex technology stacks
     for (const framework of frameworks) {
       if (this.requiresDetailedMemory(framework)) {
-        const memoryContent = await this.generateFrameworkMemory(framework, rules, projectContext)
+        const memoryContent = await this.generateFrameworkMemory(framework, rules, projectContext);
         memories.push({
           path: path.join(this.projectPath, `CLAUDE-${framework.toLowerCase()}.md`),
           content: memoryContent,
           type: 'technology',
           priority: 'medium',
-        })
+        });
       }
     }
 
-    return memories
+    return memories;
   }
 
   requiresDetailedMemory(framework) {
     // Complex frameworks that benefit from dedicated memory files
-    const complexFrameworks = ['Next.js', 'Angular', 'Django', 'FastAPI']
-    return complexFrameworks.includes(framework)
+    const complexFrameworks = ['Next.js', 'Angular', 'Django', 'FastAPI'];
+    return complexFrameworks.includes(framework);
   }
 
   async generateFrameworkMemory(framework, rules, projectContext) {
@@ -1921,25 +2076,25 @@ ${await this.getFrameworkCommonPatterns(framework, projectContext)}
 ${this.getFrameworkPerformancePatterns(framework).join('\n')}
 
 ---
-*Generated for ${framework} framework integration*`
+*Generated for ${framework} framework integration*`;
   }
 
   async getFrameworkSpecificPatterns(framework, rules) {
     const frameworkRules = rules.filter(
-      (rule) => rule.frontmatter?.framework?.toLowerCase() === framework.toLowerCase()
-    )
+      rule => rule.frontmatter?.framework?.toLowerCase() === framework.toLowerCase()
+    );
 
     if (frameworkRules.length === 0) {
-      return `- Follow ${framework} best practices and conventions`
+      return `- Follow ${framework} best practices and conventions`;
     }
 
-    return frameworkRules.map((rule) => `- ${rule.frontmatter?.description || rule.name}`).join('\n')
+    return frameworkRules.map(rule => `- ${rule.frontmatter?.description || rule.name}`).join('\n');
   }
 
   async generateDatabaseMCP(projectContext) {
-    const libraries = projectContext.techStack?.libraries || []
+    const libraries = projectContext.techStack?.libraries || [];
 
-    if (libraries.some((lib) => lib.includes('prisma'))) {
+    if (libraries.some(lib => lib.includes('prisma'))) {
       return {
         type: 'stdio',
         command: 'npx',
@@ -1947,7 +2102,7 @@ ${this.getFrameworkPerformancePatterns(framework).join('\n')}
         env: {
           DATABASE_URL: '${DATABASE_URL}',
         },
-      }
+      };
     }
 
     // Default database MCP
@@ -1956,7 +2111,7 @@ ${this.getFrameworkPerformancePatterns(framework).join('\n')}
       command: 'npx',
       args: ['-y', '@modelcontextprotocol/server-database'],
       env: {},
-    }
+    };
   }
 
   async generateFrameworkMCP(framework, _projectContext) {
@@ -1968,31 +2123,31 @@ ${this.getFrameworkPerformancePatterns(framework).join('\n')}
         args: ['-y', '@modelcontextprotocol/server-react-devtools'],
         env: {},
       },
-    }
+    };
 
-    return mcpServers[framework.toLowerCase()] || null
+    return mcpServers[framework.toLowerCase()] || null;
   }
 
   async generateArchitectureCommands(_rules, projectContext) {
-    const commands = []
-    const architecturalPatterns = projectContext.patterns?.architecturalPatterns || []
+    const commands = [];
+    const architecturalPatterns = projectContext.patterns?.architecturalPatterns || [];
 
     // Generate commands based on detected architectural patterns
     for (const pattern of architecturalPatterns) {
       if (pattern.confidence > 70) {
         // Only for high-confidence patterns
-        const command = await this.generatePatternCommand(pattern, projectContext)
+        const command = await this.generatePatternCommand(pattern, projectContext);
         if (command) {
-          commands.push(command)
+          commands.push(command);
         }
       }
     }
 
-    return commands
+    return commands;
   }
 
   async generatePatternCommand(pattern, _projectContext) {
-    const patternName = pattern.name.toLowerCase().replace(/\s+/g, '-')
+    const patternName = pattern.name.toLowerCase().replace(/\s+/g, '-');
 
     return {
       name: `analyze-${patternName}`,
@@ -2030,24 +2185,24 @@ Analyze the implementation of ${pattern.name} architectural pattern in the codeb
 ## Usage
 \`/project:analyze-${patternName}\`
 `,
-    }
+    };
   }
 
   /**
    * Generate technology-specific commands
    */
   async generateTechnologyCommands(_rules, projectContext) {
-    const commands = []
-    const technologies = projectContext.techStack?.libraries || []
+    const commands = [];
+    const technologies = projectContext.techStack?.libraries || [];
 
     // Generate technology-specific commands based on project stack
     if (technologies.includes('react')) {
       commands.push({
         name: 'react-component',
         content: 'Generate React component following project conventions',
-      })
+      });
     }
 
-    return commands
+    return commands;
   }
 }

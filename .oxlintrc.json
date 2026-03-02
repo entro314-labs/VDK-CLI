@@ -1,0 +1,129 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "ignorePatterns": ["node_modules/**", "dist/**", "build/**", "coverage/**", "tests/temp/**"],
+  "categories": {
+    "correctness": "warn",
+    "suspicious": "warn"
+  },
+  "plugins": ["oxc", "typescript", "unicorn", "vitest"],
+  "jsPlugins": [
+    {
+      "name": "vdk",
+      "specifier": "@vdk/oxlint-plugin-blueprints"
+    }
+  ],
+  "rules": {
+    "no-useless-catch": "warn",
+    "no-useless-constructor": "warn",
+    "typescript/no-useless-empty-export": "warn",
+    "react/jsx-no-useless-fragment": "warn",
+    "no-useless-rename": "warn",
+    "no-const-assign": "error",
+    "no-unused-vars": "warn",
+    "no-undef": "error",
+    "oxc/no-accumulating-spread": "warn",
+    "prefer-const": "warn",
+    "no-debugger": "warn",
+    "eqeqeq": "error",
+    "typescript/no-explicit-any": "warn",
+    "react/no-array-index-key": "warn",
+    "no-async-promise-executor": "error",
+    "no-ex-assign": "error",
+    "react/jsx-no-comment-textnodes": "warn",
+    "no-compare-neg-zero": "error",
+    "no-control-regex": "error",
+    "no-misleading-character-class": "error",
+    "no-prototype-builtins": "warn",
+    "no-sparse-arrays": "warn",
+    "vdk/validate-blueprints": [
+      "error",
+      {
+        "targets": [".vdk/rules"],
+        "expectedSchemaVersion": "3.0",
+        "requireKind": true,
+        "requireVersion": true,
+        "enforceKebabCaseId": true,
+        "fileExtensions": ["md"]
+      }
+    ]
+  },
+  "globals": {
+    "console": "readonly",
+    "process": "readonly",
+    "Buffer": "readonly",
+    "__dirname": "readonly",
+    "__filename": "readonly",
+    "global": "readonly",
+    "globalThis": "readonly",
+    "module": "readonly",
+    "require": "readonly",
+    "exports": "readonly"
+  },
+  "settings": {
+    "react": {
+      "version": null,
+      "linkComponents": [],
+      "formComponents": [],
+      "componentWrapperFunctions": []
+    }
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/bin/**",
+        "**/scripts/**",
+        "**/commands/**",
+        "**/cli/**",
+        "**/*.cli.{js,ts}",
+        "**/*.script.{js,ts}",
+        "**/index.{js,ts}"
+      ],
+      "rules": {
+        "no-unused-vars": "off"
+      }
+    },
+    {
+      "files": [
+        "**/*.test.{js,ts}",
+        "**/*.spec.{js,ts}",
+        "**/__tests__/**",
+        "**/test/**",
+        "**/tests/**"
+      ],
+      "rules": {
+        "typescript/no-explicit-any": "off",
+        "no-unused-vars": "off"
+      }
+    },
+    {
+      "files": [
+        "*.config.{js,ts}",
+        "**/config/**",
+        "**/configs/**",
+        "**/rollup.config.*",
+        "**/webpack.config.*",
+        "**/vite.config.*",
+        "**/tsup.config.*",
+        "**/esbuild.config.*"
+      ],
+      "rules": {
+        "no-undef": "off"
+      }
+    },
+    {
+      "files": ["**/*.{js,mjs,cjs}"],
+      "rules": {
+        "no-undef": "off"
+      }
+    },
+    {
+      "files": ["**/*.{ts,mts,cts}"],
+      "rules": {
+        "prefer-const": "off"
+      }
+    },
+    {
+      "files": ["**/*.md"]
+    }
+  ]
+}

@@ -1,594 +1,474 @@
 /**
- * UniversalFormatConverter - Rule Format Conversion System
+ * UniversalFormatConverter - Refactored as IR Facade
+ * ===================================================
  *
- * Converts various AI assistant rule formats to the universal VDK Blueprint format
- * for community sharing and cross-platform compatibility.
+ * Clean facade over the VDK IR system for format conversion.
+ * Delegates all conversion logic to IR system, eliminating duplication.
  *
- * Supported Input Formats:
- * - VDK Blueprint (MDC with YAML frontmatter)
- * - Claude Code CLI Memory (Markdown)
- * - Cursor Rules (Text/Markdown)
- * - GitHub Copilot (JSON)
- * - Windsurf Rules (XML/Text)
- * - Generic Markdown/Text
- *
- * Output: Universal VDK Blueprint Schema v2.1.0 format
+ * Supported Platforms (11 total):
+ * - Claude Code, Cursor, GitHub Copilot, Windsurf (base)
+ * - OpenAI AGENTS.md, Continue, Aider, Gemini, Zed, Tabnine, JetBrains (extended)
  */
 
-import matter from 'gray-matter'
-import path from 'path'
-import { generateBlueprintId } from '../utils/filename-generator.js'
-import { validateBlueprint } from '../utils/schema-validator.js'
+// Import complete IR system via unified API
+import IR from '../ir/index.js';
+import { validateIR } from '../ir/types.js';
+import { generateBlueprintId } from '../utils/filename-generator.js';
+import { validateBlueprint } from '../utils/schema-validator.js';
 
 export class UniversalFormatConverter {
   constructor() {
-    // Conversion strategies for different formats
-    this.converters = new Map([
-      ['vdk-blueprint', this.convertFromVDKBlueprint.bind(this)],
-      ['claude-memory', this.convertFromClaudeMemory.bind(this)],
-      ['cursor-rules', this.convertFromCursorRules.bind(this)],
-      ['copilot-config', this.convertFromCopilotConfig.bind(this)],
-      ['windsurf-rules', this.convertFromWindsurfRules.bind(this)],
-      ['markdown', this.convertFromMarkdown.bind(this)],
-      ['text', this.convertFromText.bind(this)],
-    ])
+    // Map format names to IR platform IDs
+    this.formatToPlatform = new Map([
+      ['vdk-blueprint', 'generic'],
+      ['claude-memory', 'claude-code'],
+      ['cursor-rules', 'cursor'],
+      ['copilot-config', 'github-copilot'],
+      ['windsurf-rules', 'windsurf'],
+      ['agents-md', 'openai-codex'],
+      ['continue-config', 'continue'],
+      ['aider-config', 'aider'],
+      ['gemini-context', 'gemini-cli'],
+      ['zed-settings', 'zed'],
+      ['tabnine-guideline', 'tabnine'],
+      ['jetbrains-aiignore', 'jetbrains'],
+      ['markdown', 'generic'],
+      ['text', 'generic'],
+    ]);
   }
 
   /**
    * Convert any supported format to universal VDK Blueprint format
+   * @param {Object} options
+   * @param {string} options.content - Source content
+   * @param {string} options.format - Format identifier
+   * @param {Object} [options.projectContext] - Project metadata
+   * @param {string} [options.originalFile] - Original file path
+   * @returns {Promise<Object>} Converted blueprint
    */
-  async convertToUniversal({ content, format, projectContext, originalFile }) {
-    const converter = this.converters.get(format)
-
-    if (!converter) {
-      throw new Error(`Unsupported format: ${format}`)
+  async convertToUniversal({ content, format, projectContext = {}, originalFile = '' }) {
+    // Get platform ID from format
+    const platformId = this.formatToPlatform.get(format);
+    if (!platformId) {
+      throw new Error(
+        `Unsupported format: ${format}. Supported: ${Array.from(this.formatToPlatform.keys()).join(', ')}`
+      );
     }
 
-    // Convert using format-specific converter
-    const converted = await converter(content, projectContext, originalFile)
+    // Convert to IR using auto-detection or specific parser
+    let ir;
+    if (originalFile) {
+      // Use file path for platform detection
+      ir = IR.parse.auto({ content, filePath: originalFile });
+    } else {
+      // Use format-based detection
+      const parser = IR.parse[platformId === 'openai-codex' ? 'agents' : platformId];
+      if (parser) {
+        ir = parser({ content, filePath: originalFile || 'unknown' });
+      } else {
+        ir = IR.parse.markdown(content);
+      }
+    }
 
-    // Enhance with project context
-    const enhanced = this.enhanceWithProjectContext(converted, projectContext)
+    // Handle array results (e.g., AGENTS.md returns multiple IRs)
+    const irs = Array.isArray(ir) ? ir : [ir];
+
+    // Convert IRs to blueprint format
+    const blueprints = irs.map(singleIR => this.irToBlueprint(singleIR, projectContext));
+
+    // For multiple IRs, return the first (or merge if needed)
+    const blueprint = blueprints[0];
 
     // Validate the result
-    const validation = await validateBlueprint(enhanced.frontmatter)
+    const validation = await validateBlueprint(blueprint.frontmatter);
     if (!validation.valid) {
-      console.warn('Generated blueprint has validation issues:', validation.errors)
-      // Continue anyway - we'll fix what we can
+      console.warn('Generated blueprint has validation issues:', validation.errors);
     }
 
     return {
-      frontmatter: enhanced.frontmatter,
-      content: enhanced.content,
+      frontmatter: blueprint.frontmatter,
+      content: blueprint.content,
       format: 'vdk-blueprint',
       originalFormat: format,
-      validation: validation,
-    }
+      validation,
+    };
   }
 
   /**
-   * Preview conversion without full processing
+   * Convert IR to VDK Blueprint format
+   * @param {IntermediateRepresentation} ir - IR object
+   * @param {Object} projectContext - Project metadata
+   * @returns {Object} Blueprint with frontmatter and content
    */
-  async previewConversion({ content, format, projectContext }) {
-    const converter = this.converters.get(format)
+  irToBlueprint(ir, projectContext = {}) {
+    // Build frontmatter from IR
+    const frontmatter = {
+      id: generateBlueprintId(ir.name),
+      title: ir.name,
+      description: ir.description || '',
+      version: ir.version || '1.0.0',
+      category: ir.category || this.inferCategory(ir),
+      platforms: this.buildPlatformsConfig(ir),
+    };
 
-    if (!converter) {
-      return {
-        supported: false,
-        error: `Unsupported format: ${format}`,
+    // Add optional fields
+    if (ir.tags?.length) frontmatter.tags = ir.tags;
+    if (ir.complexity) frontmatter.complexity = ir.complexity;
+    if (projectContext.author) frontmatter.author = projectContext.author;
+    if (projectContext.license) frontmatter.license = projectContext.license;
+
+    // Extract content
+    let content = '';
+    if (ir.content?.sections?.length) {
+      content = ir.content.sections
+        .map(s => {
+          const heading = s.title ? `${'#'.repeat(s.level || 1)} ${s.title}\n\n` : '';
+          return heading + s.content;
+        })
+        .join('\n\n');
+    } else if (ir.content?.raw) {
+      content = ir.content.raw;
+    }
+
+    return { frontmatter, content };
+  }
+
+  /**
+   * Build platforms configuration from IR
+   * @param {IntermediateRepresentation} ir - IR object
+   * @returns {Object} Platforms config
+   */
+  buildPlatformsConfig(ir) {
+    const platforms = {};
+    const sourcePlatform = ir.conversionMetadata?.sourcePlatform;
+
+    // Add source platform
+    if (sourcePlatform) {
+      platforms[sourcePlatform] = {
+        compatible: true,
+        ...(ir.platformSpecific?.[sourcePlatform] || {}),
+      };
+    }
+
+    // Add compatible platforms based on IR type
+    const compatiblePlatforms = this.getCompatiblePlatforms(ir.type);
+    for (const platform of compatiblePlatforms) {
+      if (!platforms[platform]) {
+        platforms[platform] = { compatible: true };
       }
     }
 
-    try {
-      const converted = await converter(content, projectContext, 'preview.mdc')
+    return platforms;
+  }
 
-      return {
-        supported: true,
-        title: converted.frontmatter.title,
-        description: converted.frontmatter.description,
-        category: converted.frontmatter.category,
-        tags: converted.frontmatter.tags,
-        platforms: Object.keys(converted.frontmatter.platforms || {}),
-        contentLength: converted.content.length,
+  /**
+   * Get compatible platforms for component type
+   * @param {string} type - Component type
+   * @returns {string[]} Compatible platform IDs
+   */
+  getCompatiblePlatforms(type) {
+    const compatibility = {
+      agent: ['claude-code', 'openai-codex'],
+      rule: ['claude-code', 'cursor', 'windsurf', 'github-copilot', 'gemini-cli', 'tabnine'],
+      command: ['claude-code', 'continue'],
+      skill: ['claude-code'],
+      workflow: ['windsurf'],
+      settings: ['claude-code', 'continue', 'aider', 'gemini-cli', 'zed', 'jetbrains'],
+      main: ['claude-code', 'cursor', 'github-copilot', 'windsurf', 'gemini-cli'],
+    };
+
+    return compatibility[type] || ['claude-code', 'cursor', 'github-copilot'];
+  }
+
+  /**
+   * Convert between platforms using IR as intermediate representation
+   * @param {Object} options
+   * @param {string} options.content - Source content
+   * @param {string} options.filePath - Source file path
+   * @param {string} options.targetPlatform - Target platform ID
+   * @param {Object} [options.targetOptions] - Platform-specific options
+   * @returns {Promise<Object>} Conversion result
+   */
+  async convertViaIR({ content, filePath, targetPlatform, targetOptions = {} }) {
+    // Use IR system's convert helper
+    const result = IR.convert.fromTo({
+      from: IR.utils.detectPlatform(filePath),
+      to: targetPlatform,
+      content,
+      filePath,
+      generateOptions: targetOptions,
+    });
+
+    return {
+      ...result.result,
+      ir: result.ir,
+      semanticScore: result.ir.conversionMetadata?.semanticScore || 100,
+      sourcePlatform: result.ir.conversionMetadata?.sourcePlatform || 'unknown',
+      targetPlatform,
+    };
+  }
+
+  /**
+   * Import content to IR (parsing step only)
+   * @param {Object} options
+   * @param {string} options.content - Content to parse
+   * @param {string} options.filePath - File path for detection
+   * @returns {IntermediateRepresentation|IntermediateRepresentation[]}
+   */
+  async importToIR({ content, filePath }) {
+    return IR.parse.auto({ content, filePath });
+  }
+
+  /**
+   * Export IR to specific platform
+   * @param {IntermediateRepresentation} ir - IR to export
+   * @param {string} targetPlatform - Target platform ID
+   * @param {Object} options - Platform-specific options
+   * @returns {Object} Generated content
+   */
+  async exportFromIR(ir, targetPlatform, options = {}) {
+    const generator = IR.generate[targetPlatform];
+    if (!generator) {
+      throw new Error(`Unknown target platform: ${targetPlatform}`);
+    }
+
+    return generator(ir, options);
+  }
+
+  /**
+   * Convert to multiple platforms via IR (single parse, multi-generate)
+   * @param {Object} options
+   * @param {string} options.content - Source content
+   * @param {string} options.filePath - Source file path
+   * @param {string[]} options.targetPlatforms - Target platform IDs
+   * @param {Object} options.platformOptions - Platform-specific options
+   * @returns {Promise<Object>} Map of platform -> {content, filePath, lossInfo, ir}
+   */
+  async convertToMultiplePlatformsViaIR({
+    content,
+    filePath,
+    targetPlatforms,
+    platformOptions = {},
+  }) {
+    // Parse once to IR
+    const ir = IR.parse.auto({ content, filePath });
+
+    // Validate IR
+    const validation = validateIR(ir);
+    if (!validation.valid) {
+      console.warn('IR validation warnings:', validation.errors);
+    }
+
+    // Generate for all target platforms
+    const results = IR.generate.multi(ir, targetPlatforms, platformOptions);
+
+    // Add metadata to each result
+    for (const platform of Object.keys(results)) {
+      results[platform].ir = ir;
+      results[platform].sourcePlatform = ir.conversionMetadata?.sourcePlatform || 'unknown';
+      results[platform].targetPlatform = platform;
+    }
+
+    return results;
+  }
+
+  /**
+   * Batch convert multiple files
+   * @param {Array<Object>} files - Array of {content, filePath}
+   * @param {string} targetPlatform - Target platform
+   * @param {Object} options - Conversion options
+   * @returns {Promise<Array>} Conversion results
+   */
+  async batchConvert(files, targetPlatform, options = {}) {
+    return IR.performance.batch(
+      files,
+      async ({ content, filePath }) => {
+        return this.convertViaIR({ content, filePath, targetPlatform, targetOptions: options });
+      },
+      { concurrency: options.concurrency || 5 }
+    );
+  }
+
+  // ============================================================================
+  // Utility Methods
+  // ============================================================================
+
+  /**
+   * Infer category from IR content
+   * @param {IntermediateRepresentation} ir
+   * @returns {string}
+   */
+  inferCategory(ir) {
+    const content = ir.content?.raw?.toLowerCase() || '';
+    const name = ir.name?.toLowerCase() || '';
+
+    if (content.includes('typescript') || name.includes('typescript')) return 'languages';
+    if (content.includes('react') || content.includes('next.js')) return 'technologies';
+    if (content.includes('security') || content.includes('audit')) return 'tasks';
+    if (ir.type === 'agent') return 'assistants';
+    if (ir.type === 'workflow') return 'tasks';
+
+    return 'core';
+  }
+
+  /**
+   * Extract tags from content
+   * @param {string} content
+   * @returns {string[]}
+   */
+  extractTags(content) {
+    const tags = new Set();
+    const keywords = [
+      'typescript',
+      'javascript',
+      'python',
+      'react',
+      'nextjs',
+      'vue',
+      'security',
+      'testing',
+      'performance',
+      'accessibility',
+      'ai',
+      'backend',
+      'frontend',
+      'fullstack',
+      'database',
+      'api',
+    ];
+
+    const contentLower = content.toLowerCase();
+    for (const keyword of keywords) {
+      if (contentLower.includes(keyword)) {
+        tags.add(keyword);
       }
-    } catch (error) {
-      return {
-        supported: false,
-        error: error.message,
-      }
     }
+
+    return Array.from(tags);
   }
 
   /**
-   * Convert from VDK Blueprint format (already in target format)
+   * Infer complexity from content
+   * @param {string} content
+   * @returns {string}
    */
-  async convertFromVDKBlueprint(content, projectContext, originalFile) {
-    try {
-      const parsed = matter(content)
+  inferComplexity(content) {
+    const lines = content.split('\n').length;
+    const sections = (content.match(/^#{1,3}\s/gm) || []).length;
 
-      // Already in correct format, just ensure required fields
-      const frontmatter = {
-        ...parsed.data,
-        // Ensure required fields exist
-        id: parsed.data.id || this.generateId(parsed.data.title || 'untitled'),
-        version: parsed.data.version || '1.0.0',
-        created: parsed.data.created || this.getCurrentDate(),
-        lastUpdated: this.getCurrentDate(),
-      }
-
-      return {
-        frontmatter,
-        content: parsed.content,
-      }
-    } catch (error) {
-      throw new Error(`Invalid VDK Blueprint format: ${error.message}`)
-    }
-  }
-
-  /**
-   * Convert from Claude memory format
-   */
-  async convertFromClaudeMemory(content, projectContext, originalFile) {
-    const title = this.extractTitleFromContent(content) || `${projectContext.name} Claude Memory`
-
-    const frontmatter = {
-      id: this.generateId(title),
-      title: title,
-      description: `Claude Code CLI memory rules for ${projectContext.name} project`,
-      version: '1.0.0',
-      category: this.inferCategory(content, projectContext),
-      created: this.getCurrentDate(),
-      lastUpdated: this.getCurrentDate(),
-      author: 'Community Contributor',
-      tags: this.extractTags(content, projectContext),
-      complexity: this.inferComplexity(content),
-      scope: 'project',
-      audience: 'developer',
-      maturity: 'stable',
-      platforms: this.generatePlatformConfig('claude-code-cli-optimized'),
-      originalFormat: 'claude-memory',
-    }
-
-    // Clean and enhance content
-    const processedContent = this.processClaudeMemoryContent(content, projectContext)
-
-    return { frontmatter, content: processedContent }
-  }
-
-  /**
-   * Convert from Cursor rules format
-   */
-  async convertFromCursorRules(content, projectContext, originalFile) {
-    const title = this.extractTitleFromContent(content) || `${projectContext.name} Cursor Rules`
-
-    const frontmatter = {
-      id: this.generateId(title),
-      title: title,
-      description: `Cursor IDE rules for ${projectContext.name} project`,
-      version: '1.0.0',
-      category: this.inferCategory(content, projectContext),
-      created: this.getCurrentDate(),
-      lastUpdated: this.getCurrentDate(),
-      author: 'Community Contributor',
-      tags: this.extractTags(content, projectContext),
-      complexity: this.inferComplexity(content),
-      scope: 'project',
-      audience: 'developer',
-      maturity: 'stable',
-      platforms: this.generatePlatformConfig('cursor-optimized'),
-      originalFormat: 'cursor-rules',
-    }
-
-    // Process content for universal format
-    const processedContent = this.processCursorRulesContent(content, projectContext)
-
-    return { frontmatter, content: processedContent }
-  }
-
-  /**
-   * Convert from GitHub Copilot configuration
-   */
-  async convertFromCopilotConfig(content, projectContext, originalFile) {
-    let config
-    try {
-      config = JSON.parse(content)
-    } catch (error) {
-      throw new Error(`Invalid JSON in Copilot configuration: ${error.message}`)
-    }
-
-    const title = config.title || `${projectContext.name} Copilot Guidelines`
-
-    const frontmatter = {
-      id: this.generateId(title),
-      title: title,
-      description: config.description || `GitHub Copilot guidelines for ${projectContext.name} project`,
-      version: '1.0.0',
-      category: this.inferCategory(JSON.stringify(config), projectContext),
-      created: this.getCurrentDate(),
-      lastUpdated: this.getCurrentDate(),
-      author: 'Community Contributor',
-      tags: this.extractTags(JSON.stringify(config), projectContext),
-      complexity: this.inferComplexity(content),
-      scope: 'project',
-      audience: 'developer',
-      maturity: 'stable',
-      platforms: this.generatePlatformConfig('copilot-optimized'),
-      originalFormat: 'copilot-config',
-    }
-
-    // Convert JSON to markdown content
-    const processedContent = this.processCopilotConfigContent(config, projectContext)
-
-    return { frontmatter, content: processedContent }
-  }
-
-  /**
-   * Convert from Windsurf rules format
-   */
-  async convertFromWindsurfRules(content, projectContext, originalFile) {
-    const title = this.extractTitleFromContent(content) || `${projectContext.name} Windsurf Rules`
-
-    const frontmatter = {
-      id: this.generateId(title),
-      title: title,
-      description: `Windsurf IDE rules for ${projectContext.name} project`,
-      version: '1.0.0',
-      category: this.inferCategory(content, projectContext),
-      created: this.getCurrentDate(),
-      lastUpdated: this.getCurrentDate(),
-      author: 'Community Contributor',
-      tags: this.extractTags(content, projectContext),
-      complexity: this.inferComplexity(content),
-      scope: 'project',
-      audience: 'developer',
-      maturity: 'stable',
-      platforms: this.generatePlatformConfig('windsurf-optimized'),
-      originalFormat: 'windsurf-rules',
-    }
-
-    // Process XML/text content to markdown
-    const processedContent = this.processWindsurfRulesContent(content, projectContext)
-
-    return { frontmatter, content: processedContent }
-  }
-
-  /**
-   * Convert from generic markdown
-   */
-  async convertFromMarkdown(content, projectContext, originalFile) {
-    const title = this.extractTitleFromContent(content) || `${projectContext.name} AI Rules`
-
-    const frontmatter = {
-      id: this.generateId(title),
-      title: title,
-      description: `AI assistant rules for ${projectContext.name} project`,
-      version: '1.0.0',
-      category: this.inferCategory(content, projectContext),
-      created: this.getCurrentDate(),
-      lastUpdated: this.getCurrentDate(),
-      author: 'Community Contributor',
-      tags: this.extractTags(content, projectContext),
-      complexity: this.inferComplexity(content),
-      scope: 'project',
-      audience: 'developer',
-      maturity: 'stable',
-      platforms: this.generatePlatformConfig('universal'),
-      originalFormat: 'markdown',
-    }
-
-    // Clean markdown content
-    const processedContent = this.processMarkdownContent(content, projectContext)
-
-    return { frontmatter, content: processedContent }
-  }
-
-  /**
-   * Convert from plain text
-   */
-  async convertFromText(content, projectContext, originalFile) {
-    const title = this.extractTitleFromContent(content) || `${projectContext.name} AI Rules`
-
-    const frontmatter = {
-      id: this.generateId(title),
-      title: title,
-      description: `AI assistant rules for ${projectContext.name} project`,
-      version: '1.0.0',
-      category: this.inferCategory(content, projectContext),
-      created: this.getCurrentDate(),
-      lastUpdated: this.getCurrentDate(),
-      author: 'Community Contributor',
-      tags: this.extractTags(content, projectContext),
-      complexity: this.inferComplexity(content),
-      scope: 'project',
-      audience: 'developer',
-      maturity: 'stable',
-      platforms: this.generatePlatformConfig('universal'),
-      originalFormat: 'text',
-    }
-
-    // Convert text to markdown format
-    const processedContent = this.processTextContent(content, projectContext)
-
-    return { frontmatter, content: processedContent }
+    if (lines > 200 || sections > 10) return 'advanced';
+    if (lines > 100 || sections > 5) return 'intermediate';
+    return 'basic';
   }
 
   /**
    * Enhance blueprint with project context
+   * @param {Object} converted - Converted blueprint
+   * @param {Object} projectContext - Project metadata
+   * @returns {Object} Enhanced blueprint
    */
-  enhanceWithProjectContext(blueprint, projectContext) {
-    const enhanced = { ...blueprint }
+  enhanceWithProjectContext(converted, projectContext) {
+    const frontmatter = { ...converted.frontmatter };
 
-    // Add project-specific tags
-    const contextTags = [projectContext.framework, projectContext.language, ...projectContext.technologies].filter(
-      Boolean
-    )
+    if (projectContext.author) frontmatter.author = projectContext.author;
+    if (projectContext.license) frontmatter.license = projectContext.license;
+    if (projectContext.repository) frontmatter.repository = projectContext.repository;
 
-    enhanced.frontmatter.tags = [...new Set([...(enhanced.frontmatter.tags || []), ...contextTags])]
-
-    // Update description with project context
-    if (!enhanced.frontmatter.description.includes(projectContext.name)) {
-      enhanced.frontmatter.description = `${enhanced.frontmatter.description} - Adapted for ${projectContext.name} (${projectContext.framework})`
-    }
-
-    // Add project metadata
-    enhanced.frontmatter.projectContext = {
-      name: projectContext.name,
-      framework: projectContext.framework,
-      language: projectContext.language,
-      technologies: projectContext.technologies,
-    }
-
-    return enhanced
+    return {
+      frontmatter,
+      content: converted.content,
+    };
   }
 
-  // Content Processing Methods
-
-  processClaudeMemoryContent(content, projectContext) {
-    let processed = content
-
-    // Add project context section if not present
-    if (!processed.includes('## Project Context')) {
-      const contextSection = `\n## Project Context\n\n- **Project**: ${projectContext.name}\n- **Framework**: ${projectContext.framework}\n- **Language**: ${projectContext.language}\n- **Technologies**: ${projectContext.technologies.join(', ')}\n\n`
-      processed = contextSection + processed
-    }
-
-    return processed.trim()
+  /**
+   * Detect source platform from format
+   * @param {string} format - Format identifier
+   * @returns {string} Platform name
+   */
+  detectSourcePlatform(format) {
+    return this.formatToPlatform.get(format) || 'unknown';
   }
 
-  processCursorRulesContent(content, projectContext) {
-    let processed = `# ${projectContext.name} Development Rules\n\n`
-
-    // Add project-specific header
-    processed += `## Project: ${projectContext.name}\n**Framework**: ${projectContext.framework} | **Language**: ${projectContext.language}\n\n`
-
-    // Process original content
-    processed += this.convertToMarkdown(content)
-
-    return processed.trim()
+  /**
+   * Get supported formats
+   * @returns {string[]}
+   */
+  getSupportedFormats() {
+    return Array.from(this.formatToPlatform.keys());
   }
 
-  processCopilotConfigContent(config, projectContext) {
-    let processed = `# ${projectContext.name} - GitHub Copilot Guidelines\n\n`
-
-    // Add project context
-    processed += `## Project Information\n- **Name**: ${projectContext.name}\n- **Framework**: ${projectContext.framework}\n- **Language**: ${projectContext.language}\n\n`
-
-    // Convert guidelines
-    if (config.guidelines && Array.isArray(config.guidelines)) {
-      processed += `## Guidelines\n\n`
-      config.guidelines.forEach((guideline, index) => {
-        processed += `### ${guideline.title || `Guideline ${index + 1}`}\n\n${guideline.content || guideline.description || ''}\n\n`
-      })
-    }
-
-    // Add preferences if present
-    if (config.preferences) {
-      processed += `## Preferences\n\n`
-      for (const [key, value] of Object.entries(config.preferences)) {
-        processed += `- **${key}**: ${value}\n`
-      }
-      processed += '\n'
-    }
-
-    return processed.trim()
+  /**
+   * Get supported platforms
+   * @returns {string[]}
+   */
+  getSupportedPlatforms() {
+    return Array.from(new Set(this.formatToPlatform.values()));
   }
 
-  processWindsurfRulesContent(content, projectContext) {
-    let processed = `# ${projectContext.name} - Windsurf IDE Rules\n\n`
-
-    // Add project context
-    processed += `## Project Information\n- **Name**: ${projectContext.name}\n- **Framework**: ${projectContext.framework}\n- **Language**: ${projectContext.language}\n\n`
-
-    // Clean XML tags and convert to markdown
-    let cleaned = content
-      .replace(/<windsurf[^>]*>/g, '')
-      .replace(/<\/windsurf[^>]*>/g, '')
-      .replace(/<([^>]+)>/g, (match, tag) => {
-        // Convert simple XML tags to markdown headers
-        if (tag.startsWith('/')) return ''
-        return `\n### ${tag}\n`
-      })
-
-    processed += this.convertToMarkdown(cleaned)
-
-    return processed.trim()
-  }
-
-  processMarkdownContent(content, projectContext) {
-    let processed = content
-
-    // Add project context header if not present
-    if (!processed.includes(projectContext.name)) {
-      const header = `# ${projectContext.name} - AI Assistant Rules\n\n**Framework**: ${projectContext.framework} | **Language**: ${projectContext.language}\n\n`
-      processed = header + processed
-    }
-
-    return processed.trim()
-  }
-
-  processTextContent(content, projectContext) {
-    // Convert plain text to markdown structure
-    let processed = `# ${projectContext.name} - AI Assistant Rules\n\n`
-    processed += `**Framework**: ${projectContext.framework} | **Language**: ${projectContext.language}\n\n`
-
-    // Convert text to markdown
-    processed += this.convertToMarkdown(content)
-
-    return processed.trim()
-  }
-
-  // Utility Methods
-
-  convertToMarkdown(text) {
-    let markdown = text
-
-    // Convert simple patterns to markdown
-    markdown = markdown
-      .replace(/^([A-Z][A-Z\s]+)$/gm, '## $1') // ALL CAPS lines to headers
-      .replace(/^(\d+\.\s)/gm, '$1') // Keep numbered lists
-      .replace(/^([-*]\s)/gm, '$1') // Keep bullet lists
-      .replace(/^([A-Za-z][^:\n]*):(?!\w)/gm, '### $1') // "Title:" to headers
-
-    return markdown
-  }
-
-  extractTitleFromContent(content) {
-    // Try to extract title from various formats
-    const patterns = [
-      /^#\s+(.+)$/m, // Markdown H1
-      /^([A-Z][A-Za-z\s]+)\s*$/m, // First capitalized line
-      /title:\s*(.+)$/im, // YAML title
-      /"title"\s*:\s*"([^"]+)"/i, // JSON title
-    ]
-
-    for (const pattern of patterns) {
-      const match = content.match(pattern)
-      if (match) {
-        return match[1].trim()
-      }
-    }
-
-    return null
-  }
-
-  extractTags(content, projectContext) {
-    const tags = new Set()
-
-    // Add project context tags
-    if (projectContext.framework) tags.add(projectContext.framework.toLowerCase())
-    if (projectContext.language) tags.add(projectContext.language.toLowerCase())
-    projectContext.technologies.forEach((tech) => tags.add(tech.toLowerCase()))
-
-    // Extract tags from content
-    const lowerContent = content.toLowerCase()
-    const techKeywords = [
-      'react',
-      'vue',
-      'angular',
-      'nodejs',
-      'python',
-      'typescript',
-      'javascript',
-      'docker',
-      'kubernetes',
-      'aws',
-      'testing',
-      'api',
-      'database',
-      'frontend',
-      'backend',
-      'fullstack',
-      'mobile',
-      'web',
-      'cli',
-      'framework',
-    ]
-
-    techKeywords.forEach((keyword) => {
-      if (lowerContent.includes(keyword)) {
-        tags.add(keyword)
-      }
-    })
-
-    return Array.from(tags).slice(0, 10) // Limit to 10 tags
-  }
-
-  inferCategory(content, projectContext) {
-    const lowerContent = content.toLowerCase()
-
-    // Category inference based on content and context
-    if (projectContext.framework && projectContext.framework !== 'generic') {
-      return 'technology'
-    }
-
-    if (lowerContent.includes('test') || lowerContent.includes('spec')) {
-      return 'task'
-    }
-
-    if (lowerContent.includes('react') || lowerContent.includes('vue') || lowerContent.includes('angular')) {
-      return 'technology'
-    }
-
-    if (lowerContent.includes('full stack') || lowerContent.includes('fullstack')) {
-      return 'stack'
-    }
-
-    return 'core'
-  }
-
-  inferComplexity(content) {
-    const length = content.length
-    const codeBlocks = (content.match(/```/g) || []).length / 2
-    const headings = (content.match(/^#+\s/gm) || []).length
-
-    let score = 0
-    if (length > 1000) score += 1
-    if (length > 3000) score += 1
-    if (codeBlocks > 3) score += 1
-    if (headings > 5) score += 1
-
-    if (score >= 3) return 'complex'
-    if (score >= 1) return 'medium'
-    return 'simple'
-  }
-
-  generatePlatformConfig(optimization = 'universal') {
-    const baseConfig = {
-      'claude-code-cli': { compatible: true, memory: true, priority: 5 },
-      cursor: { compatible: true, activation: 'auto-attached', priority: 'medium' },
-      windsurf: { compatible: true, mode: 'workspace', priority: 7 },
-      'github-copilot': { compatible: true, priority: 8 },
-    }
-
-    // Optimize for specific platforms
-    switch (optimization) {
-      case 'claude-code-cli-optimized':
-        baseConfig['claude-code-cli'].priority = 9
-        baseConfig['claude-code-cli'].command = true
-        break
-      case 'cursor-optimized':
-        baseConfig.cursor.priority = 'high'
-        baseConfig.cursor.globs = ['**/*.js', '**/*.ts', '**/*.jsx', '**/*.tsx']
-        break
-      case 'windsurf-optimized':
-        baseConfig.windsurf.priority = 9
-        baseConfig.windsurf.characterLimit = 6000
-        break
-      case 'copilot-optimized':
-        baseConfig['github-copilot'].priority = 9
-        baseConfig['github-copilot'].maxGuidelines = 10
-        break
-    }
-
-    return baseConfig
-  }
-
-  generateId(title) {
-    const baseId = generateBlueprintId(title)
-    return `${baseId}-${Date.now().toString(36)}`
-  }
-
-  getCurrentDate() {
-    return new Date().toISOString().split('T')[0]
+  /**
+   * Get supported conversions matrix showing capabilities and limits
+   * @returns {Object} Platform conversion capabilities
+   */
+  getSupportedConversions() {
+    return {
+      'claude-code': {
+        supportsAgents: true,
+        supportsRules: true,
+        supportsCommands: true,
+        supportsSkills: true,
+        supportsSettings: true,
+        supportsWorkflows: false,
+        characterLimit: null,
+        format: 'markdown',
+      },
+      cursor: {
+        supportsAgents: false,
+        supportsRules: true,
+        supportsCommands: false,
+        supportsSkills: false,
+        supportsSettings: false,
+        supportsWorkflows: false,
+        characterLimit: null,
+        format: 'mdc',
+        conversionsFromClaude: {
+          agent: 'rule (with agent-requested activation)',
+          command: 'rule (triggers lost)',
+          skill: 'rule',
+        },
+      },
+      'github-copilot': {
+        supportsAgents: false,
+        supportsRules: true,
+        supportsCommands: false,
+        supportsSkills: false,
+        supportsSettings: false,
+        supportsWorkflows: false,
+        characterLimit: 3000,
+        format: 'markdown',
+        conversionsFromClaude: {
+          agent: 'content only (truncated if over limit)',
+          command: 'content only (triggers lost)',
+          skill: 'content only',
+        },
+      },
+      windsurf: {
+        supportsAgents: false,
+        supportsRules: true,
+        supportsCommands: false,
+        supportsSkills: false,
+        supportsSettings: false,
+        supportsWorkflows: true,
+        characterLimit: null,
+        format: 'markdown',
+        conversionsFromClaude: {
+          agent: 'rule',
+          command: 'rule (triggers lost)',
+          skill: 'rule',
+          workflow: 'workflow',
+        },
+      },
+    };
   }
 }
+
+export default UniversalFormatConverter;

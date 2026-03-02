@@ -5,9 +5,9 @@
  * and logging to reduce duplication across the codebase.
  */
 
-import fs from 'fs/promises'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /**
  *  file operations with error handling
@@ -18,9 +18,9 @@ export const fileSystem = {
    */
   async readFile(filePath, encoding = 'utf8') {
     try {
-      return await fs.readFile(filePath, encoding)
+      return await fs.readFile(filePath, encoding);
     } catch (error) {
-      throw new Error(`Failed to read file ${filePath}: ${error.message}`)
+      throw new Error(`Failed to read file ${filePath}: ${error.message}`);
     }
   },
 
@@ -30,12 +30,12 @@ export const fileSystem = {
   async writeFile(filePath, data, options = {}) {
     try {
       // Ensure directory exists
-      const dir = path.dirname(filePath)
-      await this.ensureDir(dir)
+      const dir = path.dirname(filePath);
+      await this.ensureDir(dir);
 
-      return await fs.writeFile(filePath, data, options)
+      return await fs.writeFile(filePath, data, options);
     } catch (error) {
-      throw new Error(`Failed to write file ${filePath}: ${error.message}`)
+      throw new Error(`Failed to write file ${filePath}: ${error.message}`);
     }
   },
 
@@ -44,12 +44,12 @@ export const fileSystem = {
    */
   async appendFile(filePath, data, options = {}) {
     try {
-      const dir = path.dirname(filePath)
-      await this.ensureDir(dir)
+      const dir = path.dirname(filePath);
+      await this.ensureDir(dir);
 
-      return await fs.appendFile(filePath, data, options)
+      return await fs.appendFile(filePath, data, options);
     } catch (error) {
-      throw new Error(`Failed to append to file ${filePath}: ${error.message}`)
+      throw new Error(`Failed to append to file ${filePath}: ${error.message}`);
     }
   },
 
@@ -58,10 +58,10 @@ export const fileSystem = {
    */
   async exists(filePath) {
     try {
-      await fs.access(filePath)
-      return true
+      await fs.access(filePath);
+      return true;
     } catch {
-      return false
+      return false;
     }
   },
 
@@ -70,9 +70,9 @@ export const fileSystem = {
    */
   async stat(filePath) {
     try {
-      return await fs.stat(filePath)
+      return await fs.stat(filePath);
     } catch (error) {
-      throw new Error(`Failed to get stats for ${filePath}: ${error.message}`)
+      throw new Error(`Failed to get stats for ${filePath}: ${error.message}`);
     }
   },
 
@@ -81,10 +81,10 @@ export const fileSystem = {
    */
   async isDirectory(filePath) {
     try {
-      const stats = await fs.stat(filePath)
-      return stats.isDirectory()
+      const stats = await fs.stat(filePath);
+      return stats.isDirectory();
     } catch {
-      return false
+      return false;
     }
   },
 
@@ -93,10 +93,10 @@ export const fileSystem = {
    */
   async isFile(filePath) {
     try {
-      const stats = await fs.stat(filePath)
-      return stats.isFile()
+      const stats = await fs.stat(filePath);
+      return stats.isFile();
     } catch {
-      return false
+      return false;
     }
   },
 
@@ -105,9 +105,9 @@ export const fileSystem = {
    */
   async ensureDir(dirPath) {
     try {
-      await fs.mkdir(dirPath, { recursive: true })
+      await fs.mkdir(dirPath, { recursive: true });
     } catch (error) {
-      throw new Error(`Failed to create directory ${dirPath}: ${error.message}`)
+      throw new Error(`Failed to create directory ${dirPath}: ${error.message}`);
     }
   },
 
@@ -116,10 +116,10 @@ export const fileSystem = {
    */
   async removeFile(filePath) {
     try {
-      await fs.unlink(filePath)
+      await fs.unlink(filePath);
     } catch (error) {
       if (error.code !== 'ENOENT') {
-        throw new Error(`Failed to remove file ${filePath}: ${error.message}`)
+        throw new Error(`Failed to remove file ${filePath}: ${error.message}`);
       }
     }
   },
@@ -129,9 +129,9 @@ export const fileSystem = {
    */
   async removeDir(dirPath) {
     try {
-      await fs.rm(dirPath, { recursive: true, force: true })
+      await fs.rm(dirPath, { recursive: true, force: true });
     } catch (error) {
-      throw new Error(`Failed to remove directory ${dirPath}: ${error.message}`)
+      throw new Error(`Failed to remove directory ${dirPath}: ${error.message}`);
     }
   },
 
@@ -140,9 +140,9 @@ export const fileSystem = {
    */
   async readDir(dirPath) {
     try {
-      return await fs.readdir(dirPath)
+      return await fs.readdir(dirPath);
     } catch (error) {
-      throw new Error(`Failed to read directory ${dirPath}: ${error.message}`)
+      throw new Error(`Failed to read directory ${dirPath}: ${error.message}`);
     }
   },
 
@@ -151,12 +151,12 @@ export const fileSystem = {
    */
   async copyFile(src, dest) {
     try {
-      const destDir = path.dirname(dest)
-      await this.ensureDir(destDir)
+      const destDir = path.dirname(dest);
+      await this.ensureDir(destDir);
 
-      await fs.copyFile(src, dest)
+      await fs.copyFile(src, dest);
     } catch (error) {
-      throw new Error(`Failed to copy ${src} to ${dest}: ${error.message}`)
+      throw new Error(`Failed to copy ${src} to ${dest}: ${error.message}`);
     }
   },
 
@@ -165,12 +165,12 @@ export const fileSystem = {
    */
   async moveFile(src, dest) {
     try {
-      const destDir = path.dirname(dest)
-      await this.ensureDir(destDir)
+      const destDir = path.dirname(dest);
+      await this.ensureDir(destDir);
 
-      await fs.rename(src, dest)
+      await fs.rename(src, dest);
     } catch (error) {
-      throw new Error(`Failed to move ${src} to ${dest}: ${error.message}`)
+      throw new Error(`Failed to move ${src} to ${dest}: ${error.message}`);
     }
   },
 
@@ -179,10 +179,10 @@ export const fileSystem = {
    */
   async readJSON(filePath) {
     try {
-      const content = await this.readFile(filePath)
-      return JSON.parse(content)
+      const content = await this.readFile(filePath);
+      return JSON.parse(content);
     } catch (error) {
-      throw new Error(`Failed to read JSON from ${filePath}: ${error.message}`)
+      throw new Error(`Failed to read JSON from ${filePath}: ${error.message}`);
     }
   },
 
@@ -191,10 +191,10 @@ export const fileSystem = {
    */
   async writeJSON(filePath, data, indent = 2) {
     try {
-      const content = JSON.stringify(data, null, indent)
-      await this.writeFile(filePath, content)
+      const content = JSON.stringify(data, null, indent);
+      await this.writeFile(filePath, content);
     } catch (error) {
-      throw new Error(`Failed to write JSON to ${filePath}: ${error.message}`)
+      throw new Error(`Failed to write JSON to ${filePath}: ${error.message}`);
     }
   },
 
@@ -202,36 +202,36 @@ export const fileSystem = {
    * Find files recursively with pattern matching
    */
   async findFiles(dirPath, pattern = null, options = {}) {
-    const { maxDepth = Infinity, includeDirectories = false } = options
-    const files = []
+    const { maxDepth = Infinity, includeDirectories = false } = options;
+    const files = [];
 
     async function traverse(currentPath, depth = 0) {
-      if (depth > maxDepth) return
+      if (depth > maxDepth) return;
 
       try {
-        const entries = await fs.readdir(currentPath, { withFileTypes: true })
+        const entries = await fs.readdir(currentPath, { withFileTypes: true });
 
         for (const entry of entries) {
-          const fullPath = path.join(currentPath, entry.name)
+          const fullPath = path.join(currentPath, entry.name);
 
           if (entry.isDirectory()) {
             if (includeDirectories && (!pattern || pattern.test(entry.name))) {
-              files.push(fullPath)
+              files.push(fullPath);
             }
-            await traverse(fullPath, depth + 1)
+            await traverse(fullPath, depth + 1);
           } else if (entry.isFile()) {
             if (!pattern || pattern.test(entry.name)) {
-              files.push(fullPath)
+              files.push(fullPath);
             }
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // Skip directories we can't read
       }
     }
 
-    await traverse(dirPath)
-    return files
+    await traverse(dirPath);
+    return files;
   },
 
   /**
@@ -239,10 +239,10 @@ export const fileSystem = {
    */
   async getFileSize(filePath) {
     try {
-      const stats = await fs.stat(filePath)
-      return stats.size
+      const stats = await fs.stat(filePath);
+      return stats.size;
     } catch (error) {
-      throw new Error(`Failed to get size of ${filePath}: ${error.message}`)
+      throw new Error(`Failed to get size of ${filePath}: ${error.message}`);
     }
   },
 
@@ -251,10 +251,10 @@ export const fileSystem = {
    */
   async getModificationTime(filePath) {
     try {
-      const stats = await fs.stat(filePath)
-      return stats.mtime
+      const stats = await fs.stat(filePath);
+      return stats.mtime;
     } catch (error) {
-      throw new Error(`Failed to get modification time of ${filePath}: ${error.message}`)
+      throw new Error(`Failed to get modification time of ${filePath}: ${error.message}`);
     }
   },
 
@@ -262,11 +262,11 @@ export const fileSystem = {
    * Create temporary file
    */
   async createTempFile(prefix = 'vdk-', suffix = '.tmp') {
-    const tmpDir = await fs.realpath('/tmp')
-    const fileName = `${prefix}${Date.now()}-${Math.random().toString(36).substring(2)}${suffix}`
-    return path.join(tmpDir, fileName)
+    const tmpDir = await fs.realpath('/tmp');
+    const fileName = `${prefix}${Date.now()}-${Math.random().toString(36).substring(2)}${suffix}`;
+    return path.join(tmpDir, fileName);
   },
-}
+};
 
 /**
  * Path utilities
@@ -276,7 +276,7 @@ export const pathUtils = {
    * Get current file's directory (for ES modules)
    */
   getCurrentDir(importMetaUrl) {
-    return path.dirname(fileURLToPath(importMetaUrl))
+    return path.dirname(fileURLToPath(importMetaUrl));
   },
 
   /**
@@ -284,54 +284,52 @@ export const pathUtils = {
    */
   resolveFromRoot(...pathSegments) {
     // Assuming project root is 2 levels up from src/utils
-    const currentDir = path.dirname(fileURLToPath(import.meta.url))
-    const projectRoot = path.resolve(currentDir, '..', '..')
-    return path.resolve(projectRoot, ...pathSegments)
+    const currentDir = path.dirname(fileURLToPath(import.meta.url));
+    const projectRoot = path.resolve(currentDir, '..', '..');
+    return path.resolve(projectRoot, ...pathSegments);
   },
 
   /**
    * Normalize path separators
    */
   normalize(filePath) {
-    return path.normalize(filePath)
+    return path.normalize(filePath);
   },
 
   /**
    * Get relative path between two paths
    */
   relative(from, to) {
-    return path.relative(from, to)
+    return path.relative(from, to);
   },
 
   /**
    * Join path segments safely
    */
   join(...segments) {
-    return path.join(...segments)
+    return path.join(...segments);
   },
 
   /**
    * Get file extension
    */
   getExtension(filePath) {
-    return path.extname(filePath)
+    return path.extname(filePath);
   },
 
   /**
    * Get filename without extension
    */
   getBasename(filePath, ext = null) {
-    return path.basename(filePath, ext)
+    return path.basename(filePath, ext);
   },
 
   /**
    * Get directory name
    */
   getDirname(filePath) {
-    return path.dirname(filePath)
+    return path.dirname(filePath);
   },
-}
+};
 
-// Re-export fs and path for backward compatibility during migration
-export { fs as fsPromises, path }
-export default { fileSystem, pathUtils }
+export default { fileSystem, pathUtils };

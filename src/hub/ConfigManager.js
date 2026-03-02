@@ -12,10 +12,10 @@
  * - Default value management
  */
 
-import chalk from 'chalk'
-import fs from 'fs/promises'
-import os from 'os'
-import path from 'path'
+import chalk from 'chalk';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 
 /**
  * Default VDK Hub configuration
@@ -53,13 +53,13 @@ const DEFAULT_CONFIG = {
     logLevel: process.env.VDK_LOG_LEVEL || 'info',
     debugMode: process.env.VDK_DEBUG === 'true',
   },
-}
+};
 
 export class ConfigManager {
   constructor() {
-    this.configDir = path.join(os.homedir(), '.vdk')
-    this.configPath = path.join(this.configDir, 'config.json')
-    this.config = null
+    this.configDir = path.join(os.homedir(), '.vdk');
+    this.configPath = path.join(this.configDir, 'config.json');
+    this.config = null;
   }
 
   /**
@@ -68,26 +68,26 @@ export class ConfigManager {
   async loadConfig() {
     try {
       // Start with defaults
-      this.config = JSON.parse(JSON.stringify(DEFAULT_CONFIG))
+      this.config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 
       // Try to load user config file
       if (await this.configFileExists()) {
-        const userConfig = await this.loadConfigFile()
-        this.config = this.mergeConfigs(this.config, userConfig)
+        const userConfig = await this.loadConfigFile();
+        this.config = this.mergeConfigs(this.config, userConfig);
       }
 
       // Override with environment variables
-      this.applyEnvironmentOverrides()
+      this.applyEnvironmentOverrides();
 
       // Validate configuration
-      this.validateConfig()
+      this.validateConfig();
 
-      return this.config
+      return this.config;
     } catch (error) {
-      console.warn(chalk.yellow(`Failed to load VDK config, using defaults: ${error.message}`))
-      this.config = JSON.parse(JSON.stringify(DEFAULT_CONFIG))
-      this.applyEnvironmentOverrides()
-      return this.config
+      console.warn(chalk.yellow(`Failed to load VDK config, using defaults: ${error.message}`));
+      this.config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+      this.applyEnvironmentOverrides();
+      return this.config;
     }
   }
 
@@ -96,25 +96,25 @@ export class ConfigManager {
    */
   async saveConfig(config = null) {
     try {
-      const configToSave = config || this.config
+      const configToSave = config || this.config;
 
       if (!configToSave) {
-        throw new Error('No configuration to save')
+        throw new Error('No configuration to save');
       }
 
       // Ensure config directory exists
-      await this.ensureConfigDir()
+      await this.ensureConfigDir();
 
       // Remove sensitive data from saved config
-      const safeConfig = this.removeSensitiveData(configToSave)
+      const safeConfig = this.removeSensitiveData(configToSave);
 
       // Write config file
-      await fs.writeFile(this.configPath, JSON.stringify(safeConfig, null, 2), { mode: 0o600 })
+      await fs.writeFile(this.configPath, JSON.stringify(safeConfig, null, 2), { mode: 0o600 });
 
-      return true
+      return true;
     } catch (error) {
-      console.error(chalk.red(`Failed to save VDK config: ${error.message}`))
-      return false
+      console.error(chalk.red(`Failed to save VDK config: ${error.message}`));
+      return false;
     }
   }
 
@@ -123,9 +123,9 @@ export class ConfigManager {
    */
   getConfig() {
     if (!this.config) {
-      throw new Error('Configuration not loaded. Call loadConfig() first.')
+      throw new Error('Configuration not loaded. Call loadConfig() first.');
     }
-    return this.config
+    return this.config;
   }
 
   /**
@@ -133,22 +133,22 @@ export class ConfigManager {
    */
   updateConfig(path, value) {
     if (!this.config) {
-      throw new Error('Configuration not loaded. Call loadConfig() first.')
+      throw new Error('Configuration not loaded. Call loadConfig() first.');
     }
 
-    const keys = path.split('.')
-    let current = this.config
+    const keys = path.split('.');
+    let current = this.config;
 
     // Navigate to parent object
     for (let i = 0; i < keys.length - 1; i++) {
       if (!current[keys[i]]) {
-        current[keys[i]] = {}
+        current[keys[i]] = {};
       }
-      current = current[keys[i]]
+      current = current[keys[i]];
     }
 
     // Set value
-    current[keys[keys.length - 1]] = value
+    current[keys[keys.length - 1]] = value;
   }
 
   /**
@@ -156,56 +156,56 @@ export class ConfigManager {
    */
   getValue(path, defaultValue = undefined) {
     if (!this.config) {
-      return defaultValue
+      return defaultValue;
     }
 
-    const keys = path.split('.')
-    let current = this.config
+    const keys = path.split('.');
+    let current = this.config;
 
     for (const key of keys) {
       if (current === null || current === undefined || !Object.hasOwn(current, key)) {
-        return defaultValue
+        return defaultValue;
       }
-      current = current[key]
+      current = current[key];
     }
 
-    return current
+    return current;
   }
 
   /**
    * Get Hub client configuration
    */
   getHubConfig() {
-    return this.getValue('hub', DEFAULT_CONFIG.hub)
+    return this.getValue('hub', DEFAULT_CONFIG.hub);
   }
 
   /**
    * Get telemetry configuration
    */
   getTelemetryConfig() {
-    return this.getValue('telemetry', DEFAULT_CONFIG.telemetry)
+    return this.getValue('telemetry', DEFAULT_CONFIG.telemetry);
   }
 
   /**
    * Get sync configuration
    */
   getSyncConfig() {
-    return this.getValue('sync', DEFAULT_CONFIG.sync)
+    return this.getValue('sync', DEFAULT_CONFIG.sync);
   }
 
   /**
    * Get generation configuration
    */
   getGenerationConfig() {
-    return this.getValue('generation', DEFAULT_CONFIG.generation)
+    return this.getValue('generation', DEFAULT_CONFIG.generation);
   }
 
   /**
    * Update last sync time
    */
   async updateLastSyncTime(timestamp) {
-    this.updateConfig('sync.lastSyncTime', timestamp)
-    await this.saveConfig()
+    this.updateConfig('sync.lastSyncTime', timestamp);
+    await this.saveConfig();
   }
 
   /**
@@ -213,10 +213,10 @@ export class ConfigManager {
    */
   async configFileExists() {
     try {
-      await fs.access(this.configPath)
-      return true
+      await fs.access(this.configPath);
+      return true;
     } catch {
-      return false
+      return false;
     }
   }
 
@@ -225,10 +225,10 @@ export class ConfigManager {
    */
   async loadConfigFile() {
     try {
-      const configContent = await fs.readFile(this.configPath, 'utf8')
-      return JSON.parse(configContent)
+      const configContent = await fs.readFile(this.configPath, 'utf8');
+      return JSON.parse(configContent);
     } catch (error) {
-      throw new Error(`Failed to parse config file: ${error.message}`)
+      throw new Error(`Failed to parse config file: ${error.message}`);
     }
   }
 
@@ -237,9 +237,9 @@ export class ConfigManager {
    */
   async ensureConfigDir() {
     try {
-      await fs.mkdir(this.configDir, { recursive: true, mode: 0o700 })
+      await fs.mkdir(this.configDir, { recursive: true, mode: 0o700 });
     } catch (error) {
-      throw new Error(`Failed to create config directory: ${error.message}`)
+      throw new Error(`Failed to create config directory: ${error.message}`);
     }
   }
 
@@ -247,17 +247,21 @@ export class ConfigManager {
    * Merge two configuration objects
    */
   mergeConfigs(base, override) {
-    const result = JSON.parse(JSON.stringify(base))
+    const result = JSON.parse(JSON.stringify(base));
 
     for (const key in override) {
-      if (override[key] !== null && typeof override[key] === 'object' && !Array.isArray(override[key])) {
-        result[key] = this.mergeConfigs(result[key] || {}, override[key])
+      if (
+        override[key] !== null &&
+        typeof override[key] === 'object' &&
+        !Array.isArray(override[key])
+      ) {
+        result[key] = this.mergeConfigs(result[key] || {}, override[key]);
       } else {
-        result[key] = override[key]
+        result[key] = override[key];
       }
     }
 
-    return result
+    return result;
   }
 
   /**
@@ -266,40 +270,40 @@ export class ConfigManager {
   applyEnvironmentOverrides() {
     // Hub configuration
     if (process.env.VDK_HUB_URL) {
-      this.config.hub.url = process.env.VDK_HUB_URL
+      this.config.hub.url = process.env.VDK_HUB_URL;
     }
     if (process.env.VDK_HUB_API_KEY) {
-      this.config.hub.apiKey = process.env.VDK_HUB_API_KEY
+      this.config.hub.apiKey = process.env.VDK_HUB_API_KEY;
     }
     if (process.env.VDK_HUB_TIMEOUT) {
-      this.config.hub.timeout = parseInt(process.env.VDK_HUB_TIMEOUT, 10)
+      this.config.hub.timeout = parseInt(process.env.VDK_HUB_TIMEOUT, 10);
     }
     if (process.env.VDK_HUB_RETRY_ATTEMPTS) {
-      this.config.hub.retryAttempts = parseInt(process.env.VDK_HUB_RETRY_ATTEMPTS, 10)
+      this.config.hub.retryAttempts = parseInt(process.env.VDK_HUB_RETRY_ATTEMPTS, 10);
     }
 
     // Telemetry configuration
     if (process.env.VDK_TELEMETRY_ENABLED !== undefined) {
-      const enabled = process.env.VDK_TELEMETRY_ENABLED !== 'false'
-      this.config.hub.telemetryEnabled = enabled
-      this.config.telemetry.enabled = enabled
+      const enabled = process.env.VDK_TELEMETRY_ENABLED !== 'false';
+      this.config.hub.telemetryEnabled = enabled;
+      this.config.telemetry.enabled = enabled;
     }
     if (process.env.VDK_TELEMETRY_BATCH_SIZE) {
-      this.config.telemetry.batchSize = parseInt(process.env.VDK_TELEMETRY_BATCH_SIZE, 10)
+      this.config.telemetry.batchSize = parseInt(process.env.VDK_TELEMETRY_BATCH_SIZE, 10);
     }
     if (process.env.VDK_TELEMETRY_FLUSH_INTERVAL) {
-      this.config.telemetry.flushInterval = parseInt(process.env.VDK_TELEMETRY_FLUSH_INTERVAL, 10)
+      this.config.telemetry.flushInterval = parseInt(process.env.VDK_TELEMETRY_FLUSH_INTERVAL, 10);
     }
 
     // CLI configuration
     if (process.env.VDK_CLI_VERSION) {
-      this.config.cli.version = process.env.VDK_CLI_VERSION
+      this.config.cli.version = process.env.VDK_CLI_VERSION;
     }
     if (process.env.VDK_LOG_LEVEL) {
-      this.config.cli.logLevel = process.env.VDK_LOG_LEVEL
+      this.config.cli.logLevel = process.env.VDK_LOG_LEVEL;
     }
     if (process.env.VDK_DEBUG) {
-      this.config.cli.debugMode = process.env.VDK_DEBUG === 'true'
+      this.config.cli.debugMode = process.env.VDK_DEBUG === 'true';
     }
   }
 
@@ -307,62 +311,65 @@ export class ConfigManager {
    * Remove sensitive data before saving
    */
   removeSensitiveData(config) {
-    const safe = JSON.parse(JSON.stringify(config))
+    const safe = JSON.parse(JSON.stringify(config));
 
     // Remove API key from saved config (use environment variable instead)
     if (safe.hub?.apiKey) {
-      delete safe.hub.apiKey
+      delete safe.hub.apiKey;
     }
 
-    return safe
+    return safe;
   }
 
   /**
    * Validate configuration values
    */
   validateConfig() {
-    const errors = []
+    const errors = [];
 
     // Validate Hub URL
     if (!this.config.hub.url) {
-      errors.push('Hub URL is required')
+      errors.push('Hub URL is required');
     } else {
       try {
-        new URL(this.config.hub.url)
+        new URL(this.config.hub.url);
       } catch {
-        errors.push('Hub URL must be a valid URL')
+        errors.push('Hub URL must be a valid URL');
       }
     }
 
     // Validate timeout
     if (this.config.hub.timeout < 1000 || this.config.hub.timeout > 300000) {
-      errors.push('Hub timeout must be between 1000ms and 300000ms')
+      errors.push('Hub timeout must be between 1000ms and 300000ms');
     }
 
     // Validate retry attempts
     if (this.config.hub.retryAttempts < 0 || this.config.hub.retryAttempts > 10) {
-      errors.push('Retry attempts must be between 0 and 10')
+      errors.push('Retry attempts must be between 0 and 10');
     }
 
     // Validate batch size
     if (this.config.telemetry.batchSize < 1 || this.config.telemetry.batchSize > 100) {
-      errors.push('Telemetry batch size must be between 1 and 100')
+      errors.push('Telemetry batch size must be between 1 and 100');
     }
 
     // Validate flush interval
-    if (this.config.telemetry.flushInterval < 5000 || this.config.telemetry.flushInterval > 300000) {
-      errors.push('Telemetry flush interval must be between 5000ms and 300000ms')
+    if (
+      this.config.telemetry.flushInterval < 5000 ||
+      this.config.telemetry.flushInterval > 300000
+    ) {
+      errors.push('Telemetry flush interval must be between 5000ms and 300000ms');
     }
 
     // Validate output format
-    const validFormats = ['bash', 'zip', 'config']
+    const validFormats = ['bash', 'zip', 'config'];
     if (!validFormats.includes(this.config.generation.defaultOutputFormat)) {
-      errors.push(`Output format must be one of: ${validFormats.join(', ')}`)
+      errors.push(`Output format must be one of: ${validFormats.join(', ')}`);
     }
 
     if (errors.length > 0) {
-      console.warn(chalk.yellow('Configuration validation warnings:'))
-      errors.forEach((error) => console.warn(chalk.yellow(`  - ${error}`)))
+      console.warn(chalk.yellow('Configuration validation warnings:'));
+      errors.forEach(error => console.warn(chalk.yellow(`  - ${error}`)));
     }
   }
 
@@ -370,30 +377,30 @@ export class ConfigManager {
    * Reset configuration to defaults
    */
   async resetConfig() {
-    this.config = JSON.parse(JSON.stringify(DEFAULT_CONFIG))
-    this.applyEnvironmentOverrides()
-    await this.saveConfig()
-    return this.config
+    this.config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+    this.applyEnvironmentOverrides();
+    await this.saveConfig();
+    return this.config;
   }
 
   /**
    * Export configuration for debugging
    */
   exportConfig(includeSensitive = false) {
-    const config = JSON.parse(JSON.stringify(this.config))
+    const config = JSON.parse(JSON.stringify(this.config));
 
     if (!includeSensitive) {
-      return this.removeSensitiveData(config)
+      return this.removeSensitiveData(config);
     }
 
-    return config
+    return config;
   }
 
   /**
    * Get configuration summary for display
    */
   getConfigSummary() {
-    const config = this.getConfig()
+    const config = this.getConfig();
 
     return {
       hubUrl: config.hub.url,
@@ -403,50 +410,50 @@ export class ConfigManager {
       hasApiKey: !!config.hub.apiKey,
       debugMode: config.cli.debugMode,
       configFileExists: this.configFileExists(),
-    }
+    };
   }
 }
 
 /**
  * Singleton config manager
  */
-let globalConfigManager = null
+let globalConfigManager = null;
 
 export function getGlobalConfigManager() {
   if (!globalConfigManager) {
-    globalConfigManager = new ConfigManager()
+    globalConfigManager = new ConfigManager();
   }
-  return globalConfigManager
+  return globalConfigManager;
 }
 
 /**
  * Initialize global configuration
  */
 export async function initializeConfig() {
-  const manager = getGlobalConfigManager()
-  await manager.loadConfig()
-  return manager
+  const manager = getGlobalConfigManager();
+  await manager.loadConfig();
+  return manager;
 }
 
 /**
  * Get global configuration
  */
 export function getConfig() {
-  return getGlobalConfigManager().getConfig()
+  return getGlobalConfigManager().getConfig();
 }
 
 /**
  * Update global configuration
  */
 export async function updateConfig(path, value) {
-  const manager = getGlobalConfigManager()
-  manager.updateConfig(path, value)
-  await manager.saveConfig()
+  const manager = getGlobalConfigManager();
+  manager.updateConfig(path, value);
+  await manager.saveConfig();
 }
 
 /**
  * Get configuration value
  */
 export function getConfigValue(path, defaultValue = undefined) {
-  return getGlobalConfigManager().getValue(path, defaultValue)
+  return getGlobalConfigManager().getValue(path, defaultValue);
 }

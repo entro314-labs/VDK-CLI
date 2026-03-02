@@ -17,45 +17,45 @@ platforms:
     memory: true
     command: true
     priority: 5
-    allowedTools: ["Read", "Write", "Edit"]
+    allowedTools: ['Read', 'Write', 'Edit']
     mcpIntegration: true
   cursor:
     compatible: true
-    activation: "auto-attached"
-    globs: ["**/*.js", "**/*.ts"]
-    priority: "medium"
+    activation: 'auto-attached'
+    globs: ['**/*.js', '**/*.ts']
+    priority: 'medium'
   windsurf:
     compatible: true
-    mode: "workspace"
+    mode: 'workspace'
     characterLimit: 6000
     priority: 7
   zed:
     compatible: true
-    mode: "project"
+    mode: 'project'
     aiFeatures: true
 ```
 
-### 2.  Metadata
+### 2. Metadata
 
 Rich metadata support for better blueprint discovery and management:
 
 ```yaml
 # Identification and Classification
-author: "Your Name"
-contributors: ["Contributor 1", "Contributor 2"]
-tags: ["javascript", "react", "testing"]
-complexity: "medium"         # simple, medium, complex
-scope: "project"            # file, component, feature, project, system
-audience: "developer"       # developer, architect, team-lead, junior, senior, any
-maturity: "stable"          # experimental, beta, stable, deprecated
+author: 'Your Name'
+contributors: ['Contributor 1', 'Contributor 2']
+tags: ['javascript', 'react', 'testing']
+complexity: 'medium' # simple, medium, complex
+scope: 'project' # file, component, feature, project, system
+audience: 'developer' # developer, architect, team-lead, junior, senior, any
+maturity: 'stable' # experimental, beta, stable, deprecated
 
 # Links and Resources
-discussionUrl: "https://github.com/your-org/discussions/123"
-repositoryUrl: "https://github.com/your-org/blueprints"
-license: "MIT"
+discussionUrl: 'https://github.com/your-org/discussions/123'
+repositoryUrl: 'https://github.com/your-org/blueprints'
+license: 'MIT'
 
 # Content Organization
-contentSections: ["introduction", "implementation", "examples"]
+contentSections: ['introduction', 'implementation', 'examples']
 ```
 
 ### 3. Blueprint Relationships
@@ -64,12 +64,12 @@ Define dependencies and conflicts between blueprints:
 
 ```yaml
 # Dependencies
-requires: ["basic-typescript-setup", "jest-configuration"]
-suggests: ["eslint-config", "prettier-setup"]
+requires: ['basic-typescript-setup', 'jest-configuration']
+suggests: ['eslint-config', 'prettier-setup']
 
 # Conflicts and Replacements
-conflicts: ["old-test-setup"]
-supersedes: ["legacy-typescript-config"]
+conflicts: ['old-test-setup']
+supersedes: ['legacy-typescript-config']
 ```
 
 ### 4. Advanced Platform Features
@@ -89,8 +89,8 @@ Auto-activation based on file patterns:
 ```yaml
 platforms:
   cursor:
-    globs: ["**/*.test.js", "**/*.spec.ts"]
-    activation: "auto-attached"
+    globs: ['**/*.test.js', '**/*.spec.ts']
+    activation: 'auto-attached'
 ```
 
 #### Priority System
@@ -100,12 +100,12 @@ Control context priority across platforms:
 ```yaml
 platforms:
   claude:
-    priority: 5    # 1-10 scale
+    priority: 5 # 1-10 scale
   windsurf:
-    priority: 8    # Higher priority = more important context
+    priority: 8 # Higher priority = more important context
 ```
 
-## Using the  CLI Commands
+## Using the CLI Commands
 
 ### 1. Create Blueprints with New Schema
 
@@ -153,7 +153,7 @@ vdk validate --path ./.ai/rules --check-dependencies --check-platforms
 vdk validate --verbose
 ```
 
-### 3.  Project Initialization
+### 3. Project Initialization
 
 The `vdk init` command now leverages the new schema for better platform detection and configuration:
 
@@ -176,12 +176,12 @@ vdk init --deep --ide-integration
 platforms:
   claude:
     compatible: true
-    memory: true              # Include in CLAUDE.md memory files
-    command: true             # Generate slash commands
-    namespace: "project"      # Command namespace: project, user
-    priority: 5               # Memory priority 1-10
-    allowedTools: ["Read", "Write", "Edit", "Bash"]
-    mcpIntegration: true      # Enable MCP server configuration
+    memory: true # Include in CLAUDE.md memory files
+    command: true # Generate slash commands
+    namespace: 'project' # Command namespace: project, user
+    priority: 5 # Memory priority 1-10
+    allowedTools: ['Read', 'Write', 'Edit', 'Bash']
+    mcpIntegration: true # Enable MCP server configuration
 ```
 
 ### Cursor Integration
@@ -190,10 +190,10 @@ platforms:
 platforms:
   cursor:
     compatible: true
-    activation: "auto-attached"    # auto-attached, agent-requested, manual, always
-    globs: ["**/*.js", "**/*.ts"]  # File patterns for auto-activation
-    priority: "medium"             # high, medium, low
-    fileTypes: ["javascript", "typescript"]
+    activation: 'auto-attached' # auto-attached, agent-requested, manual, always
+    globs: ['**/*.js', '**/*.ts'] # File patterns for auto-activation
+    priority: 'medium' # high, medium, low
+    fileTypes: ['javascript', 'typescript']
 ```
 
 ### Windsurf Integration
@@ -202,10 +202,10 @@ platforms:
 platforms:
   windsurf:
     compatible: true
-    mode: "workspace"         # global, workspace
-    xmlTag: "react-setup"     # XML tag for formatting
-    characterLimit: 6000      # Character limit (0-10000)
-    priority: 7               # Context priority 1-10
+    mode: 'workspace' # global, workspace
+    xmlTag: 'react-setup' # XML tag for formatting
+    characterLimit: 6000 # Character limit (0-10000)
+    priority: 7 # Context priority 1-10
 ```
 
 ### GitHub Copilot Integration
@@ -214,9 +214,9 @@ platforms:
 platforms:
   githubCopilot:
     compatible: true
-    guidelineStyle: "concise"     # concise, detailed
-    priority: 8                   # Priority 1-10
-    maxGuidelines: 5              # Maximum number of guidelines
+    guidelineStyle: 'concise' # concise, detailed
+    priority: 8 # Priority 1-10
+    maxGuidelines: 5 # Maximum number of guidelines
 ```
 
 ## Migration from Legacy Format
@@ -236,10 +236,10 @@ For existing blueprints, add the new required fields:
 
 ```yaml
 # Add to existing blueprint frontmatter
-complexity: "medium"
-scope: "project"
-audience: "developer"
-maturity: "stable"
+complexity: 'medium'
+scope: 'project'
+audience: 'developer'
+maturity: 'stable'
 platforms:
   claude: { compatible: true }
   cursor: { compatible: true }
@@ -262,9 +262,9 @@ All blueprints are validated against the official AI Context Schema v2.1.0:
 1. **Use Descriptive Metadata**
 
    ```yaml
-   tags: ["specific", "searchable", "keywords"]
-   complexity: "medium"  # Be realistic about complexity
-   audience: "developer" # Target your audience
+   tags: ['specific', 'searchable', 'keywords']
+   complexity: 'medium' # Be realistic about complexity
+   audience: 'developer' # Target your audience
    ```
 
 2. **Configure Platform-Specific Settings**
@@ -272,22 +272,22 @@ All blueprints are validated against the official AI Context Schema v2.1.0:
    ```yaml
    platforms:
      cursor:
-       globs: ["**/*.{test,spec}.{js,ts}"]  # Specific file patterns
-       activation: "auto-attached"          # Appropriate activation mode
+       globs: ['**/*.{test,spec}.{js,ts}'] # Specific file patterns
+       activation: 'auto-attached' # Appropriate activation mode
    ```
 
 3. **Manage Dependencies**
 
    ```yaml
-   requires: ["typescript-config"]  # Essential dependencies only
-   suggests: ["eslint-prettier"]    # Nice-to-have enhancements
+   requires: ['typescript-config'] # Essential dependencies only
+   suggests: ['eslint-prettier'] # Nice-to-have enhancements
    ```
 
 4. **Version Management**
 
    ```yaml
-   version: "1.0.0"         # Semantic versioning
-   lastUpdated: "2025-01-15" # Keep dates current
+   version: '1.0.0' # Semantic versioning
+   lastUpdated: '2025-01-15' # Keep dates current
    ```
 
 ## Troubleshooting
@@ -341,8 +341,8 @@ The following features are planned for future releases:
 1. **Dependency Resolution**: Automatic blueprint dependency management
 2. **Platform Configuration Flow**: Extract platform configs from frontmatter during rule generation
 3. **Advanced Validation**: Cross-reference validation with VDK-Blueprints repository
-4. **Blueprint Marketplace**:  discovery and sharing capabilities
+4. **Blueprint Marketplace**: discovery and sharing capabilities
 
 ---
 
-*For more information, see the [VDK CLI Documentation](../README.md) and the [AI Context Schema Specification](https://ai-context-schema.org/)*
+_For more information, see the [VDK CLI Documentation](../README.md) and the [AI Context Schema Specification](https://ai-context-schema.org/)_

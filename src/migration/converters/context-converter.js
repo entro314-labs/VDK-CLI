@@ -5,10 +5,9 @@
  * Supports conversion from Claude Code CLI, Cursor, GitHub Copilot, Windsurf, and generic formats.
  */
 
-import path from 'node:path'
-import matter from 'gray-matter'
-import { v4 as uuidv4 } from 'uuid'
-import { generateBlueprintId } from '../../utils/filename-generator.js'
+import path from 'node:path';
+import { resolveCanonicalKind } from '../../shared/canonical-kind.js';
+import { generateBlueprintId } from '../../utils/filename-generator.js';
 
 export class ContextConverter {
   constructor() {
@@ -19,38 +18,7 @@ export class ContextConverter {
       'github-copilot': this.convertGitHubCopilot.bind(this),
       windsurf: this.convertWindsurf.bind(this),
       'generic-ai': this.convertGenericAI.bind(this),
-    }
-  }
-
-  /**
-   * Convert a detected context to VDK format
-   * @param {Object} context Detected context object
-   * @returns {Object|null} Converted VDK context
-   */
-  async convert(context) {
-    const strategy = this.conversionStrategies[context.type]
-    if (!strategy) {
-      throw new Error(`No conversion strategy for context type: ${context.type}`)
-    }
-
-    try {
-      const converted = await strategy(context)
-      if (!converted) {
-        return null
-      }
-
-      // Add common metadata
-      return {
-        ...converted,
-        id: converted.id || this.generateId(context),
-        originalSource: context.source,
-        originalPath: context.relativePath,
-        migrationDate: new Date().toISOString(),
-        vdkVersion: '2.5.0',
-      }
-    } catch (error) {
-      throw new Error(`Failed to convert ${context.filePath}: ${error.message}`)
-    }
+    };
   }
 
   /**
@@ -59,21 +27,21 @@ export class ContextConverter {
    * @returns {Object} VDK blueprint or command
    */
   async convertClaudeCode(context) {
-    const { fileName, bodyContent, metadata, claudeSpecific } = context
+    const { fileName, bodyContent, metadata, claudeSpecific } = context;
 
     // Determine if it's a command or blueprint
-    const isCommand = claudeSpecific?.hasSlashCommands || fileName.includes('command')
-    const isMemory = fileName === 'CLAUDE.md' || context.relativePath.includes('memory')
+    const isCommand = claudeSpecific?.hasSlashCommands || fileName.includes('command');
+    const isMemory = fileName === 'CLAUDE.md' || context.relativePath.includes('memory');
 
     if (isCommand) {
       return this.convertToCommand(context, {
         target: 'claude-code',
         commandType: claudeSpecific?.hasSlashCommands ? 'slash' : 'custom-slash',
-      })
+      });
     }
 
     if (isMemory) {
-      return this.convertToMemoryBlueprint(context)
+      return this.convertToMemoryBlueprint(context);
     }
 
     return this.convertToBlueprint(context, {
@@ -85,7 +53,7 @@ export class ContextConverter {
           mcpIntegration: claudeSpecific?.hasMCPReferences,
         },
       },
-    })
+    });
   }
 
   /**
@@ -94,7 +62,7 @@ export class ContextConverter {
    * @returns {Object} VDK blueprint
    */
   async convertCursor(context) {
-    const { fileName, bodyContent, cursorSpecific } = context
+    const { fileName, bodyContent, cursorSpecific } = context;
 
     // .cursorrules files are typically project-wide rules
     if (fileName === '.cursorrules' || fileName === 'cursorrules') {
@@ -113,7 +81,7 @@ export class ContextConverter {
             memory: true,
           },
         },
-      })
+      });
     }
 
     return this.convertToBlueprint(context, {
@@ -128,7 +96,7 @@ export class ContextConverter {
           memory: true,
         },
       },
-    })
+    });
   }
 
   /**
@@ -137,13 +105,13 @@ export class ContextConverter {
    * @returns {Object} VDK blueprint
    */
   async convertGitHubCopilot(context) {
-    const { bodyContent, copilotSpecific } = context
+    const { bodyContent, copilotSpecific } = context;
 
     const reviewType = copilotSpecific?.hasSecurityRules
       ? 'security'
       : copilotSpecific?.hasReviewRules
         ? 'code-quality'
-        : 'style'
+        : 'style';
 
     return this.convertToBlueprint(context, {
       category: copilotSpecific?.hasSecurityRules ? 'security' : 'task',
@@ -158,7 +126,7 @@ export class ContextConverter {
           memory: true,
         },
       },
-    })
+    });
   }
 
   /**
@@ -167,7 +135,7 @@ export class ContextConverter {
    * @returns {Object} VDK blueprint
    */
   async convertWindsurf(context) {
-    const { bodyContent, windsurfSpecific } = context
+    const { bodyContent, windsurfSpecific } = context;
 
     return this.convertToBlueprint(context, {
       category: windsurfSpecific?.hasAgentRules ? 'assistant' : this.inferCategory(bodyContent),
@@ -183,7 +151,7 @@ export class ContextConverter {
           memory: true,
         },
       },
-    })
+    });
   }
 
   /**
@@ -192,7 +160,7 @@ export class ContextConverter {
    * @returns {Object} VDK blueprint
    */
   async convertGenericAI(context) {
-    const { bodyContent } = context
+    const { bodyContent } = context;
 
     return this.convertToBlueprint(context, {
       category: this.inferCategory(bodyContent),
@@ -206,7 +174,7 @@ export class ContextConverter {
           activation: 'manual',
         },
       },
-    })
+    });
   }
 
   /**
@@ -216,12 +184,12 @@ export class ContextConverter {
    * @returns {Object} VDK blueprint
    */
   convertToBlueprint(context, options = {}) {
-    const { fileName, bodyContent, metadata, sections } = context
-    const id = this.generateId(context)
+    const { fileName, bodyContent, metadata, sections } = context;
+    const id = this.generateId(context);
 
     // Extract or generate blueprint metadata
-    const title = metadata.title || this.extractTitle(bodyContent, fileName)
-    const description = metadata.description || this.extractDescription(bodyContent)
+    const title = metadata.title || this.extractTitle(bodyContent, fileName);
+    const description = metadata.description || this.extractDescription(bodyContent);
 
     const blueprint = {
       type: 'blueprint',
@@ -242,18 +210,18 @@ export class ContextConverter {
 
       // Content organization
       content: this.organizeContent(bodyContent, sections),
-      contentSections: sections.map((s) => s.title),
+      contentSections: sections.map(s => s.title),
 
       // Output file information
       outputFile: this.generateOutputFileName(id, 'blueprint'),
-    }
+    };
 
     // Add optional fields if present
-    if (metadata.requires) blueprint.requires = metadata.requires
-    if (metadata.suggests) blueprint.suggests = metadata.suggests
-    if (metadata.conflicts) blueprint.conflicts = metadata.conflicts
+    if (metadata.requires) blueprint.requires = metadata.requires;
+    if (metadata.suggests) blueprint.suggests = metadata.suggests;
+    if (metadata.conflicts) blueprint.conflicts = metadata.conflicts;
 
-    return blueprint
+    return blueprint;
   }
 
   /**
@@ -263,11 +231,11 @@ export class ContextConverter {
    * @returns {Object} VDK command
    */
   convertToCommand(context, options = {}) {
-    const { fileName, bodyContent, metadata, claudeSpecific } = context
-    const id = this.generateId(context)
+    const { fileName, bodyContent, metadata, claudeSpecific } = context;
+    const id = this.generateId(context);
 
-    const name = metadata.name || this.extractCommandName(bodyContent, fileName)
-    const description = metadata.description || this.extractDescription(bodyContent)
+    const name = metadata.name || this.extractCommandName(bodyContent, fileName);
+    const description = metadata.description || this.extractDescription(bodyContent);
 
     const command = {
       type: 'command',
@@ -311,9 +279,9 @@ export class ContextConverter {
       // Content
       content: bodyContent,
       outputFile: this.generateOutputFileName(id, 'command'),
-    }
+    };
 
-    return command
+    return command;
   }
 
   /**
@@ -322,7 +290,7 @@ export class ContextConverter {
    * @returns {Object} Memory blueprint
    */
   convertToMemoryBlueprint(context) {
-    const { bodyContent, sections } = context
+    const { bodyContent, sections } = context;
 
     return this.convertToBlueprint(context, {
       category: 'core',
@@ -336,7 +304,7 @@ export class ContextConverter {
           namespace: 'project',
         },
       },
-    })
+    });
   }
 
   /**
@@ -345,8 +313,8 @@ export class ContextConverter {
    * @returns {string} Generated ID
    */
   generateId(context) {
-    const baseName = path.basename(context.fileName, path.extname(context.fileName))
-    return generateBlueprintId(baseName) || `migrated-${Date.now()}`
+    const baseName = path.basename(context.fileName, path.extname(context.fileName));
+    return generateBlueprintId(baseName) || `migrated-${Date.now()}`;
   }
 
   /**
@@ -357,20 +325,20 @@ export class ContextConverter {
    */
   extractTitle(content, fileName) {
     // Look for markdown H1
-    const h1Match = content.match(/^#\s+(.+)/m)
+    const h1Match = content.match(/^#\s+(.+)/m);
     if (h1Match) {
-      return h1Match[1].trim()
+      return h1Match[1].trim();
     }
 
     // Look for title-like patterns
-    const titleMatch = content.match(/(?:title|name):\s*(.+)/i)
+    const titleMatch = content.match(/(?:title|name):\s*(.+)/i);
     if (titleMatch) {
-      return titleMatch[1].trim()
+      return titleMatch[1].trim();
     }
 
     // Use filename as fallback
-    const baseName = path.basename(fileName, path.extname(fileName))
-    return baseName.replace(/[-_]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+    const baseName = path.basename(fileName, path.extname(fileName));
+    return baseName.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   }
 
   /**
@@ -380,21 +348,21 @@ export class ContextConverter {
    */
   extractDescription(content) {
     // Look for description field
-    const descMatch = content.match(/(?:description|desc):\s*(.+)/i)
+    const descMatch = content.match(/(?:description|desc):\s*(.+)/i);
     if (descMatch) {
-      return descMatch[1].trim()
+      return descMatch[1].trim();
     }
 
     // Use first paragraph after title
-    const lines = content.split('\n').filter((line) => line.trim())
+    const lines = content.split('\n').filter(line => line.trim());
     for (let i = 0; i < Math.min(lines.length, 5); i++) {
-      const line = lines[i].trim()
+      const line = lines[i].trim();
       if (line && !line.startsWith('#') && !line.includes(':') && line.length > 20) {
-        return line.length > 200 ? `${line.substring(0, 197)}...` : line
+        return line.length > 200 ? `${line.substring(0, 197)}...` : line;
       }
     }
 
-    return 'Migrated AI context rule or configuration'
+    return 'Migrated AI context rule or configuration';
   }
 
   /**
@@ -403,19 +371,20 @@ export class ContextConverter {
    * @returns {string} Inferred category
    */
   inferCategory(content) {
-    const lowerContent = content.toLowerCase()
+    const lowerContent = content.toLowerCase();
 
-    if (lowerContent.includes('test') || lowerContent.includes('spec')) return 'testing'
-    if (lowerContent.includes('security') || lowerContent.includes('auth')) return 'security'
-    if (lowerContent.includes('performance') || lowerContent.includes('optimize')) return 'performance'
-    if (lowerContent.includes('git') || lowerContent.includes('commit')) return 'git'
-    if (lowerContent.includes('debug') || lowerContent.includes('log')) return 'debugging'
-    if (lowerContent.includes('doc') || lowerContent.includes('readme')) return 'documentation'
-    if (lowerContent.includes('refactor') || lowerContent.includes('clean')) return 'refactoring'
-    if (lowerContent.includes('api') || lowerContent.includes('endpoint')) return 'development'
-    if (lowerContent.includes('ui') || lowerContent.includes('component')) return 'development'
+    if (lowerContent.includes('test') || lowerContent.includes('spec')) return 'testing';
+    if (lowerContent.includes('security') || lowerContent.includes('auth')) return 'security';
+    if (lowerContent.includes('performance') || lowerContent.includes('optimize'))
+      return 'performance';
+    if (lowerContent.includes('git') || lowerContent.includes('commit')) return 'git';
+    if (lowerContent.includes('debug') || lowerContent.includes('log')) return 'debugging';
+    if (lowerContent.includes('doc') || lowerContent.includes('readme')) return 'documentation';
+    if (lowerContent.includes('refactor') || lowerContent.includes('clean')) return 'refactoring';
+    if (lowerContent.includes('api') || lowerContent.includes('endpoint')) return 'development';
+    if (lowerContent.includes('ui') || lowerContent.includes('component')) return 'development';
 
-    return 'core'
+    return 'core';
   }
 
   /**
@@ -424,7 +393,7 @@ export class ContextConverter {
    * @returns {string} Command category
    */
   inferCommandCategory(content) {
-    const category = this.inferCategory(content)
+    const category = this.inferCategory(content);
 
     // Map blueprint categories to command categories
     const categoryMap = {
@@ -437,9 +406,9 @@ export class ContextConverter {
       documentation: 'documentation',
       refactoring: 'refactoring',
       development: 'development',
-    }
+    };
 
-    return categoryMap[category] || 'development'
+    return categoryMap[category] || 'development';
   }
 
   /**
@@ -448,13 +417,13 @@ export class ContextConverter {
    * @returns {string} Complexity level
    */
   inferComplexity(content) {
-    const wordCount = content.split(/\s+/).length
-    const lineCount = content.split('\n').length
-    const hasAdvancedPatterns = /\{\{|\$\{|<%|{{/.test(content)
+    const wordCount = content.split(/\s+/).length;
+    const lineCount = content.split('\n').length;
+    const hasAdvancedPatterns = /\{\{|\$\{|<%|{{/.test(content);
 
-    if (wordCount > 1000 || lineCount > 50 || hasAdvancedPatterns) return 'complex'
-    if (wordCount > 300 || lineCount > 20) return 'medium'
-    return 'simple'
+    if (wordCount > 1000 || lineCount > 50 || hasAdvancedPatterns) return 'complex';
+    if (wordCount > 300 || lineCount > 20) return 'medium';
+    return 'simple';
   }
 
   /**
@@ -463,14 +432,14 @@ export class ContextConverter {
    * @returns {string} Scope level
    */
   inferScope(content) {
-    const lowerContent = content.toLowerCase()
+    const lowerContent = content.toLowerCase();
 
-    if (lowerContent.includes('project') || lowerContent.includes('global')) return 'project'
-    if (lowerContent.includes('system') || lowerContent.includes('architecture')) return 'system'
-    if (lowerContent.includes('feature') || lowerContent.includes('module')) return 'feature'
-    if (lowerContent.includes('component') || lowerContent.includes('class')) return 'component'
+    if (lowerContent.includes('project') || lowerContent.includes('global')) return 'project';
+    if (lowerContent.includes('system') || lowerContent.includes('architecture')) return 'system';
+    if (lowerContent.includes('feature') || lowerContent.includes('module')) return 'feature';
+    if (lowerContent.includes('component') || lowerContent.includes('class')) return 'component';
 
-    return 'file'
+    return 'file';
   }
 
   /**
@@ -480,8 +449,8 @@ export class ContextConverter {
    * @returns {Array} Extracted tags
    */
   extractTags(content, existingTags = []) {
-    const tags = [...(existingTags || [])]
-    const lowerContent = content.toLowerCase()
+    const tags = [...(existingTags || [])];
+    const lowerContent = content.toLowerCase();
 
     // Common technology tags
     const techTags = [
@@ -504,22 +473,22 @@ export class ContextConverter {
       'azure',
       'gcp',
       'database',
-    ]
+    ];
 
     for (const tech of techTags) {
       if (lowerContent.includes(tech) && !tags.includes(tech)) {
-        tags.push(tech)
+        tags.push(tech);
       }
     }
 
     // Pattern-based tags
-    if (lowerContent.includes('api')) tags.push('api')
-    if (lowerContent.includes('frontend')) tags.push('frontend')
-    if (lowerContent.includes('backend')) tags.push('backend')
-    if (lowerContent.includes('mobile')) tags.push('mobile')
-    if (lowerContent.includes('web')) tags.push('web')
+    if (lowerContent.includes('api')) tags.push('api');
+    if (lowerContent.includes('frontend')) tags.push('frontend');
+    if (lowerContent.includes('backend')) tags.push('backend');
+    if (lowerContent.includes('mobile')) tags.push('mobile');
+    if (lowerContent.includes('web')) tags.push('web');
 
-    return [...new Set(tags)].slice(0, 10) // Limit to 10 unique tags
+    return [...new Set(tags)].slice(0, 10); // Limit to 10 unique tags
   }
 
   /**
@@ -530,18 +499,18 @@ export class ContextConverter {
    */
   organizeContent(content, sections) {
     if (!sections || sections.length === 0) {
-      return content
+      return content;
     }
 
     // Reconstruct content with clear section headers
-    let organized = ''
+    let organized = '';
     for (const section of sections) {
-      organized += `\n## ${section.title}\n\n`
-      organized += section.content.join('\n')
-      organized += '\n'
+      organized += `\n## ${section.title}\n\n`;
+      organized += section.content.join('\n');
+      organized += '\n';
     }
 
-    return organized.trim() || content
+    return organized.trim() || content;
   }
 
   /**
@@ -554,7 +523,7 @@ export class ContextConverter {
         compatible: true,
         memory: true,
       },
-    }
+    };
   }
 
   /**
@@ -564,103 +533,463 @@ export class ContextConverter {
    * @returns {string} Output filename
    */
   generateOutputFileName(id, type) {
-    return `${id}.${type}.md`
+    return `${id}.${type}.md`;
   }
 
   // Helper methods for specific extractions...
 
   extractGlobs(content) {
-    const globPatterns = content.match(/\*\*?\/[^\s\n]*/g) || []
-    return globPatterns.length > 0 ? globPatterns : ['**/*']
+    const globPatterns = content.match(/\*\*?\/[^\s\n]*/g) || [];
+    return globPatterns.length > 0 ? globPatterns : ['**/*'];
   }
 
   extractXMLTag(content) {
-    const xmlMatch = content.match(/<([a-zA-Z][a-zA-Z0-9-_]*)[^>]*>/)
-    return xmlMatch ? xmlMatch[1] : 'context'
+    const xmlMatch = content.match(/<([a-zA-Z][a-zA-Z0-9-_]*)[^>]*>/);
+    return xmlMatch ? xmlMatch[1] : 'context';
   }
 
   extractSlashCommand(content) {
-    const slashMatch = content.match(/\/[a-z][a-z0-9:-]*/i)
-    return slashMatch ? slashMatch[0] : '/migrate'
+    const slashMatch = content.match(/\/[a-z][a-z0-9:-]*/i);
+    return slashMatch ? slashMatch[0] : '/migrate';
   }
 
   extractCommandName(content, fileName) {
-    const nameMatch = content.match(/(?:name|command):\s*(.+)/i)
-    if (nameMatch) return nameMatch[1].trim()
+    const nameMatch = content.match(/(?:name|command):\s*(.+)/i);
+    if (nameMatch) return nameMatch[1].trim();
 
     return path
       .basename(fileName, path.extname(fileName))
       .replace(/[-_]/g, ' ')
-      .replace(/\b\w/g, (l) => l.toUpperCase())
+      .replace(/\b\w/g, l => l.toUpperCase());
   }
 
   hasArguments(content) {
-    return /\$\{?\w+\}?|\{[\w\s]+\}|\[[\w\s]+\]/.test(content)
+    return /\$\{?\w+\}?|\{[\w\s]+\}|\[[\w\s]+\]/.test(content);
   }
 
   extractArgumentExamples(content) {
     // Extract example arguments from content
-    const examples = []
-    const examplePatterns = [/example[s]?:\s*(.+)/gi, /e\.g\.?\s+(.+)/gi, /usage:\s*(.+)/gi]
+    const examples = [];
+    const examplePatterns = [/example[s]?:\s*(.+)/gi, /e\.g\.?\s+(.+)/gi, /usage:\s*(.+)/gi];
 
     for (const pattern of examplePatterns) {
-      let match
+      let match;
       while ((match = pattern.exec(content)) !== null) {
-        examples.push(match[1].trim())
+        examples.push(match[1].trim());
       }
     }
 
-    return examples.slice(0, 3) // Limit to 3 examples
+    return examples.slice(0, 3); // Limit to 3 examples
   }
 
   extractAutoIncludeFiles(content) {
-    const fileMatches = content.match(/@[\w/.,-]+/g) || []
-    return fileMatches.map((match) => match.substring(1))
+    const fileMatches = content.match(/@[\w/.,-]+/g) || [];
+    return fileMatches.map(match => match.substring(1));
   }
 
   hasBashCommands(content) {
-    return /!\s*[a-z]/i.test(content) || content.includes('bash') || content.includes('shell')
+    return /!\s*[a-z]/i.test(content) || content.includes('bash') || content.includes('shell');
   }
 
   extractBashCommands(content) {
-    const commands = []
-    const bashPattern = /!\s*([^\n]+)/g
-    let match
+    const commands = [];
+    const bashPattern = /!\s*([^\n]+)/g;
+    let match;
 
     while ((match = bashPattern.exec(content)) !== null) {
-      commands.push(match[1].trim())
+      commands.push(match[1].trim());
     }
 
-    return commands
+    return commands;
   }
 
   extractMCPServers(content) {
-    const servers = []
-    const mcpPattern = /mcp[:\s]+([a-z-]+)/gi
-    let match
+    const servers = [];
+    const mcpPattern = /mcp[:\s]+([a-z-]+)/gi;
+    let match;
 
     while ((match = mcpPattern.exec(content)) !== null) {
-      servers.push(match[1])
+      servers.push(match[1]);
     }
 
-    return [...new Set(servers)]
+    return [...new Set(servers)];
   }
 
   extractCommandExamples(content) {
-    const examples = []
+    const examples = [];
 
     // Look for usage examples
-    const usagePattern = /usage:\s*(.+?)(?:\n\n|\n[A-Z]|$)/gi
-    let match
+    const usagePattern = /usage:\s*(.+?)(?:\n\n|\n[A-Z]|$)/gi;
+    let match;
 
     while ((match = usagePattern.exec(content)) !== null) {
       examples.push({
         usage: match[1].trim(),
         description: 'Basic usage example',
         context: 'General usage',
-      })
+      });
     }
 
-    return examples.slice(0, 3)
+    return examples.slice(0, 3);
+  }
+
+  // ============================================================================
+  // COMPONENT CONVERSION METHODS
+  // ============================================================================
+
+  /**
+   * Convert context to schema format with component support
+   * @param {Object} context - Detected context object
+   * @returns {Object} Schema format with components
+   */
+  async convert(context) {
+    const strategy = this.conversionStrategies[context.type];
+    if (!strategy) {
+      throw new Error(`No conversion strategy for context type: ${context.type}`);
+    }
+
+    // Get base conversion
+    const converted = await strategy(context);
+    if (!converted) {
+      return null;
+    }
+
+    // Enhance with v3.0 structure
+    const componentType = this.detectComponentType(context);
+    const kindResolution = resolveCanonicalKind({ componentType });
+
+    return {
+      schemaVersion: '3.0',
+      id: converted.id || this.generateId(context),
+      title: converted.title || context.fileName,
+      description: converted.description || '',
+      version: '1.0.0',
+      kind: kindResolution?.canonicalKind || 'conditional-rule',
+      category: this.inferCategoryFromContext(context),
+      platforms: this.buildPlatformComponents(context, converted),
+      source: {
+        content: context.bodyContent || context.content,
+        format: this.detectFormat(context),
+        hasYAMLFrontmatter: !!context.metadata,
+        platform: context.type,
+      },
+      metadata: this.extractMetadata(context, converted),
+      originalSource: context.source,
+      originalPath: context.relativePath,
+      migrationDate: new Date().toISOString(),
+      vdkVersion: '3.0.0',
+    };
+  }
+
+  /**
+   * Build platform components structure for v3.0
+   * @param {Object} context - Original context
+   * @param {Object} converted - Converted data
+   * @returns {Object} Platform components
+   */
+  buildPlatformComponents(context, converted) {
+    const platforms = {};
+    const componentType = this.detectComponentType(context);
+
+    // Build for source platform
+    platforms[context.type] = {
+      components: this.buildComponentsForPlatform(context, componentType, converted),
+    };
+
+    // Add compatible platforms
+    const compatiblePlatforms = this.getCompatiblePlatforms(context.type);
+    for (const platform of compatiblePlatforms) {
+      platforms[platform] = {
+        components: this.adaptComponentsForPlatform(context, componentType, platform),
+      };
+    }
+
+    return platforms;
+  }
+
+  /**
+   * Build components for specific platform
+   * @param {Object} context - Context data
+   * @param {string} componentType - Type of component
+   * @param {Object} converted - Converted data
+   * @returns {Object} Components structure
+   */
+  buildComponentsForPlatform(context, componentType, converted) {
+    const components = {};
+
+    switch (componentType) {
+      case 'agent':
+        components.agents = {
+          type: `${context.type}-agent`,
+          location: this.getComponentLocation(context.type, 'agents'),
+          enabled: true,
+          manifests: [
+            {
+              name: converted.name || context.fileName,
+              file: `${converted.name || context.fileName}.md`,
+              enabled: true,
+              tools: converted.tools || [],
+              model: converted.model || 'default',
+              triggers: converted.triggers || [],
+            },
+          ],
+        };
+        break;
+
+      case 'rule':
+        components.rules = {
+          type: `${context.type}-rule`,
+          location: this.getComponentLocation(context.type, 'rules'),
+          enabled: true,
+          manifests: [
+            {
+              name: converted.name || context.fileName,
+              file: `${converted.name || context.fileName}.md`,
+              enabled: true,
+              paths: converted.paths || converted.globs || [],
+            },
+          ],
+        };
+        break;
+
+      case 'command':
+        components.commands = {
+          type: `${context.type}-command`,
+          location: this.getComponentLocation(context.type, 'commands'),
+          enabled: true,
+          manifests: [
+            {
+              name: converted.name || context.fileName,
+              file: `${converted.name || context.fileName}.md`,
+              enabled: true,
+              allowedTools: converted.allowedTools || [],
+              argumentHint: converted.argumentHint || '',
+            },
+          ],
+        };
+        break;
+
+      case 'main':
+        components.main = {
+          type: `${context.type}-main`,
+          location: this.getMainLocation(context.type),
+          enabled: true,
+        };
+        break;
+    }
+
+    return components;
+  }
+
+  /**
+   * Adapt components for target platform
+   * @param {Object} context - Context data
+   * @param {string} componentType - Type of component
+   * @param {string} targetPlatform - Target platform
+   * @returns {Object} Adapted components
+   */
+  adaptComponentsForPlatform(context, componentType, targetPlatform) {
+    const components = {};
+
+    // Platform-specific adaptations
+    switch (targetPlatform) {
+      case 'cursor':
+        if (componentType === 'agent' || componentType === 'rule') {
+          components.rules = {
+            type: 'cursor-rule',
+            location: '.cursor/rules/',
+            enabled: true,
+            format: 'mdc',
+            manifests: [
+              {
+                name: context.fileName,
+                file: `${context.fileName}.mdc`,
+                enabled: true,
+                globs: [],
+                activation: componentType === 'agent' ? 'agent-requested' : 'auto-attached',
+              },
+            ],
+          };
+        }
+        break;
+
+      case 'windsurf':
+        if (componentType === 'agent' || componentType === 'rule') {
+          components.rules = {
+            type: 'windsurf-rule',
+            location: '.windsurf/rules/',
+            enabled: true,
+            manifests: [
+              {
+                name: context.fileName,
+                file: `${context.fileName}.md`,
+                enabled: true,
+                globs: [],
+                mode: 'always',
+              },
+            ],
+          };
+        }
+        break;
+
+      case 'github-copilot':
+        if (componentType === 'main' || componentType === 'rule') {
+          components['repo-level'] = {
+            type: 'copilot-repo',
+            location: '.github/copilot-instructions.md',
+            enabled: true,
+            constraints: {
+              maxChars: 3000,
+            },
+          };
+        }
+        break;
+    }
+
+    return components;
+  }
+
+  /**
+   * Detect component type from context
+   * @param {Object} context - Context data
+   * @returns {string} Component type
+   */
+  detectComponentType(context) {
+    const fileName = context.fileName.toLowerCase();
+    const content = context.bodyContent || context.content || '';
+
+    if (fileName.includes('agent') || content.includes('PROACTIVELY')) {
+      return 'agent';
+    }
+    if (fileName.includes('command') || context.claudeSpecific?.hasSlashCommands) {
+      return 'command';
+    }
+    if (fileName.includes('rule') || fileName.includes('.cursorrules')) {
+      return 'rule';
+    }
+    if (fileName === 'claude.md' || fileName === 'gemini.md' || fileName === 'agents.md') {
+      return 'main';
+    }
+
+    return 'rule'; // Default to rule
+  }
+
+  /**
+   * Get component location for platform
+   * @param {string} platform - Platform name
+   * @param {string} componentType - Component type
+   * @returns {string} Location path
+   */
+  getComponentLocation(platform, componentType) {
+    const locations = {
+      'claude-code': {
+        agents: '.claude/agents/',
+        rules: '.claude/rules/',
+        commands: '.claude/commands/',
+        skills: '.claude/skills/',
+      },
+      cursor: {
+        rules: '.cursor/rules/',
+      },
+      windsurf: {
+        rules: '.windsurf/rules/',
+        workflows: '.windsurf/workflows/',
+      },
+    };
+
+    return locations[platform]?.[componentType] || `.${platform}/${componentType}/`;
+  }
+
+  /**
+   * Get main file location for platform
+   * @param {string} platform - Platform name
+   * @returns {string} Main file location
+   */
+  getMainLocation(platform) {
+    const locations = {
+      'claude-code': 'CLAUDE.md',
+      cursor: '.cursorrules',
+      'github-copilot': '.github/copilot-instructions.md',
+      'gemini-cli': 'GEMINI.md',
+      'openai-codex': 'AGENTS.md',
+    };
+
+    return locations[platform] || `${platform.toUpperCase()}.md`;
+  }
+
+  /**
+   * Get compatible platforms for conversion
+   * @param {string} sourcePlatform - Source platform
+   * @returns {Array<string>} Compatible platforms
+   */
+  getCompatiblePlatforms(sourcePlatform) {
+    // All platforms can convert to these
+    const universal = ['cursor', 'windsurf'];
+
+    // Platform-specific additions
+    const specific = {
+      'claude-code': ['github-copilot'],
+      cursor: ['claude-code', 'windsurf'],
+      windsurf: ['claude-code', 'cursor'],
+    };
+
+    return [...universal, ...(specific[sourcePlatform] || [])];
+  }
+
+  /**
+   * Extract metadata for v3.0
+   * @param {Object} context - Context data
+   * @param {Object} converted - Converted data
+   * @returns {Object} Metadata object
+   */
+  extractMetadata(context, converted) {
+    return {
+      componentType: this.detectComponentType(context),
+      triggers: converted.triggers || [],
+      tools: converted.tools || [],
+      expertise: converted.expertise || [],
+      model: converted.model || null,
+    };
+  }
+
+  /**
+   * Infer category from context
+   * @param {Object} context - Context data
+   * @returns {string} Category
+   */
+  inferCategoryFromContext(context) {
+    const fileName = context.fileName.toLowerCase();
+    const content = context.bodyContent || context.content || '';
+
+    if (fileName.includes('agent') || content.includes('PROACTIVELY')) {
+      return 'agent-system';
+    }
+    if (fileName.includes('command')) {
+      return 'command';
+    }
+    if (fileName.includes('skill')) {
+      return 'skill';
+    }
+    if (fileName.includes('workflow')) {
+      return 'workflow';
+    }
+    if (fileName.includes('rule')) {
+      return 'rule';
+    }
+
+    return 'core';
+  }
+
+  /**
+   * Detect format from context
+   * @param {Object} context - Context data
+   * @returns {string} Format
+   */
+  detectFormat(context) {
+    if (context.fileName.endsWith('.md')) return 'markdown';
+    if (context.fileName.endsWith('.yaml') || context.fileName.endsWith('.yml')) return 'yaml';
+    if (context.fileName.endsWith('.json')) return 'json';
+    if (context.fileName.endsWith('.toml')) return 'toml';
+    return 'markdown';
   }
 }

@@ -16,7 +16,7 @@ Thank you for considering contributing to VDK CLI! This document provides guidel
 Before you begin contributing, please:
 
 1. Familiarize yourself with the [VDK CLI Guide](./GUIDE.md)
-2. Check the [Issues](https://github.com/entro314-labs/VDK-CLI/issues) for open tasks or create a new issue to discuss your proposed changes.
+2. Check the [Issues](https://github.com/vdkit/VDK-CLI/issues) for open tasks or create a new issue to discuss your proposed changes.
 
 ## Development Setup
 
@@ -24,7 +24,7 @@ To set up a local development environment:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/entro314-labs/VDK-CLI.git
+git clone https://github.com/vdkit/VDK-CLI.git
 cd VDK-CLI
 
 # 2. Install dependencies

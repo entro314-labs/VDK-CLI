@@ -1,63 +1,63 @@
 ---
-id: "your-command-id"                    # Unique identifier (kebab-case, required)
-name: "Your Command Name"                # Display name (1-50 chars, required)
-description: "Brief description of what this command does for Claude Code"  # 10-200 chars, required
-target: "claude-code"                    # Target platform (required)
-commandType: "custom-slash"              # slash, custom-slash, mcp, workflow, hook (required)
-version: "1.0.0"                         # Semantic version (optional)
-scope: "project"                         # user, project, global (default: project)
+id: 'your-command-id' # Unique identifier (kebab-case, required)
+name: 'Your Command Name' # Display name (1-50 chars, required)
+description: 'Brief description of what this command does for Claude Code' # 10-200 chars, required
+target: 'claude-code' # Target platform (required)
+commandType: 'custom-slash' # slash, custom-slash, mcp, workflow, hook (required)
+version: '1.0.0' # Semantic version (optional)
+scope: 'project' # user, project, global (default: project)
 
 # === Claude Code Specific Configuration ===
 claudeCode:
-  slashCommand: "/project:your-command"  # Actual slash command to use
+  slashCommand: '/project:your-command' # Actual slash command to use
   arguments:
-    supports: true                       # Whether command accepts arguments
-    placeholder: "$ARGUMENTS"            # Placeholder in command content
-    examples: ["src/components", "api/users", "--verbose"]
+    supports: true # Whether command accepts arguments
+    placeholder: '$ARGUMENTS' # Placeholder in command content
+    examples: ['src/components', 'api/users', '--verbose']
   fileReferences:
-    supports: true                       # Whether command supports @file syntax
-    autoInclude: ["CLAUDE.md", "package.json"]  # Files to auto-include
+    supports: true # Whether command supports @file syntax
+    autoInclude: ['CLAUDE.md', 'package.json'] # Files to auto-include
   bashCommands:
-    supports: true                       # Whether command executes bash
-    commands: ["git status", "npm test"] # Commands to run with !prefix
+    supports: true # Whether command executes bash
+    commands: ['git status', 'npm test'] # Commands to run with !prefix
   mcpIntegration:
-    requiredServers: ["git", "postgres"] # Required MCP servers
-    optionalServers: ["github"]          # Optional enhancing servers
-  memoryFiles: ["CLAUDE.md", "docs/coding-standards.md"]
+    requiredServers: ['git', 'postgres'] # Required MCP servers
+    optionalServers: ['github'] # Optional enhancing servers
+  memoryFiles: ['CLAUDE.md', 'docs/coding-standards.md']
   hooks:
-    preExecution: ["validate-environment"]
-    postExecution: ["cleanup-temp-files"]
+    preExecution: ['validate-environment']
+    postExecution: ['cleanup-temp-files']
 
 # === Permissions ===
 permissions:
-  allowedTools: ["Read", "Write", "Bash(git:*)", "Bash(npm:*)", "mcp__git__*"]
-  requiredApproval: false               # Whether manual approval needed
+  allowedTools: ['Read', 'Write', 'Bash(git:*)', 'Bash(npm:*)', 'mcp__git__*']
+  requiredApproval: false # Whether manual approval needed
 
 # === Examples ===
 examples:
-  - usage: "/project:your-command src/components"
-    description: "Process all components in src/components directory"
-    context: "When refactoring component architecture"
-    expectedOutcome: "Updates component files with consistent patterns"
-  - usage: "/project:your-command api/users --verbose"
-    description: "Process API with detailed output"
-    context: "When debugging API issues"
-    expectedOutcome: "Detailed analysis and fixes for user API endpoints"
+  - usage: '/project:your-command src/components'
+    description: 'Process all components in src/components directory'
+    context: 'When refactoring component architecture'
+    expectedOutcome: 'Updates component files with consistent patterns'
+  - usage: '/project:your-command api/users --verbose'
+    description: 'Process API with detailed output'
+    context: 'When debugging API issues'
+    expectedOutcome: 'Detailed analysis and fixes for user API endpoints'
 
 # === Installation ===
 installation:
-  dependencies: ["git", "@modelcontextprotocol/server-git"]
+  dependencies: ['git', '@modelcontextprotocol/server-git']
   setupSteps:
-    - "Ensure git is installed and repository is initialized"
-    - "Configure MCP git server in ~/.claude.json"
-    - "Add command file to .claude/commands/ directory"
+    - 'Ensure git is installed and repository is initialized'
+    - 'Configure MCP git server in ~/.claude.json'
+    - 'Add command file to .claude/commands/ directory'
 
 # === Metadata ===
-category: "development"                  # development, testing, debugging, etc.
-tags: ["refactoring", "components", "architecture"]
-author: "Your Organization"
-lastUpdated: "2025-01-27"
-compatibilityNotes: "Requires Claude Code 1.0.38+"
+category: 'development' # development, testing, debugging, etc.
+tags: ['refactoring', 'components', 'architecture']
+author: 'Your Organization'
+lastUpdated: '2025-01-27'
+compatibilityNotes: 'Requires Claude Code 1.0.38+'
 ---
 
 # Your Command Name
@@ -115,7 +115,7 @@ Recent commits: !`git log --oneline -5`
 
 **Optional MCP Servers:**
 
-- `github` -  PR and issue integration
+- `github` - PR and issue integration
 
 Setup MCP servers:
 

@@ -12,19 +12,19 @@
  *    - Only used as fallback when no context platforms detected
  */
 
-import chalk from 'chalk'
+import chalk from 'chalk';
 
-import { BaseIntegration } from './base-integration.js'
+import { BaseIntegration } from './base-integration.js';
 
 /**
  * Central manager for all VDK integrations
  */
 export class IntegrationManager {
   constructor(projectPath = process.cwd()) {
-    this.projectPath = projectPath
-    this.integrations = new Map()
-    this.detectionResults = new Map()
-    this.lastScan = null
+    this.projectPath = projectPath;
+    this.integrations = new Map();
+    this.detectionResults = new Map();
+    this.lastScan = null;
   }
 
   /**
@@ -33,10 +33,10 @@ export class IntegrationManager {
    */
   register(integration) {
     if (!(integration instanceof BaseIntegration)) {
-      throw new Error('Integration must extend BaseIntegration')
+      throw new Error('Integration must extend BaseIntegration');
     }
 
-    this.integrations.set(integration.name, integration)
+    this.integrations.set(integration.name, integration);
   }
 
   /**
@@ -44,7 +44,7 @@ export class IntegrationManager {
    * @param {Array<BaseIntegration>} integrations - Array of integration instances
    */
   registerMultiple(integrations) {
-    integrations.forEach((integration) => this.register(integration))
+    integrations.forEach(integration => this.register(integration));
   }
 
   /**
@@ -53,7 +53,7 @@ export class IntegrationManager {
    * @returns {Object} Discovery results
    */
   async discoverIntegrations(options = {}) {
-    const { verbose = false } = options
+    const { verbose = false } = options;
 
     // Dynamically import and register all integrations
     const integrationModules = [
@@ -61,23 +61,36 @@ export class IntegrationManager {
       './cursor-integration.js',
       './windsurf-integration.js',
       './github-copilot-integration.js',
+      './openai-codex-integration.js',
+      './opencode-integration.js',
+      './gemini-cli-integration.js',
+      './continue-integration.js',
+      './aider-integration.js',
+      './cline-integration.js',
+      './roo-code-integration.js',
+      './goose-integration.js',
+      './junie-integration.js',
+      './antigravity-integration.js',
+      './kimi-cli-integration.js',
+      './mistral-vibe-integration.js',
+      './trae-integration.js',
       './jetbrains-integration.js',
       './zed-integration.js',
       './vscode-variants-integration.js',
       './generic-ai-integration.js',
       './generic-ide-integration.js',
-    ]
+    ];
 
     const results = {
       loaded: [],
       failed: [],
       registered: 0,
-    }
+    };
 
     for (const modulePath of integrationModules) {
       try {
-        const module = await import(modulePath)
-        let foundIntegration = false
+        const module = await import(modulePath);
+        let foundIntegration = false;
 
         // Look for integration class exports
         for (const [exportName, exportValue] of Object.entries(module)) {
@@ -87,21 +100,21 @@ export class IntegrationManager {
             exportValue.prototype instanceof BaseIntegration
           ) {
             try {
-              const integration = new exportValue(this.projectPath)
-              this.register(integration)
+              const integration = new exportValue(this.projectPath);
+              this.register(integration);
               results.loaded.push({
                 module: modulePath,
                 class: exportName,
                 name: integration.name,
-              })
-              results.registered++
-              foundIntegration = true
+              });
+              results.registered++;
+              foundIntegration = true;
             } catch (constructorError) {
               results.failed.push({
                 module: modulePath,
                 class: exportName,
                 error: `Constructor failed: ${constructorError.message}`,
-              })
+              });
             }
           }
         }
@@ -110,7 +123,7 @@ export class IntegrationManager {
           results.failed.push({
             module: modulePath,
             error: 'No valid Integration class found in module',
-          })
+          });
         }
       } catch (error) {
         // Integration module doesn't exist or failed to load - that's OK
@@ -118,22 +131,24 @@ export class IntegrationManager {
         results.failed.push({
           module: modulePath,
           error: error.message,
-        })
+        });
 
         if (process.env.VDK_DEBUG || verbose) {
-          console.warn(chalk.yellow(`Failed to load integration module ${modulePath}: ${error.message}`))
+          console.warn(
+            chalk.yellow(`Failed to load integration module ${modulePath}: ${error.message}`)
+          );
         }
       }
     }
 
     if (verbose) {
-      console.log(chalk.blue(`Discovery complete: ${results.registered} integrations registered`))
+      console.log(chalk.blue(`Discovery complete: ${results.registered} integrations registered`));
       if (results.failed.length > 0 && process.env.VDK_DEBUG) {
-        console.log(chalk.gray(`Failed modules: ${results.failed.length}`))
+        console.log(chalk.gray(`Failed modules: ${results.failed.length}`));
       }
     }
 
-    return results
+    return results;
   }
 
   /**
@@ -142,10 +157,10 @@ export class IntegrationManager {
    * @returns {Object} Scan results
    */
   async scanAll(options = {}) {
-    const { verbose = false, force = false } = options
+    const { verbose = false, force = false } = options;
 
     if (verbose) {
-      console.log(chalk.blue('🔍 Scanning for integration usage...'))
+      console.log(chalk.blue('🔍 Scanning for integration usage...'));
     }
 
     const results = {
@@ -154,26 +169,28 @@ export class IntegrationManager {
       recommendations: [],
       errors: [],
       summary: {},
-    }
+    };
 
     // Ensure we have integrations to scan
     if (this.integrations.size === 0) {
       if (verbose) {
-        console.log(chalk.yellow('⚠️ No integrations registered. Run discoverIntegrations() first.'))
+        console.log(
+          chalk.yellow('⚠️ No integrations registered. Run discoverIntegrations() first.')
+        );
       }
-      results.errors.push('No integrations registered')
-      return results
+      results.errors.push('No integrations registered');
+      return results;
     }
 
     for (const [name, integration] of this.integrations) {
       try {
         // Validate integration instance
         if (!integration || typeof integration.getCachedDetection !== 'function') {
-          throw new Error(`Invalid integration instance for ${name}`)
+          throw new Error(`Invalid integration instance for ${name}`);
         }
 
-        const detection = integration.getCachedDetection(force)
-        this.detectionResults.set(name, detection)
+        const detection = integration.getCachedDetection(force);
+        this.detectionResults.set(name, detection);
 
         const integrationResult = {
           name,
@@ -182,35 +199,35 @@ export class IntegrationManager {
           indicators: integration.getIndicators(),
           recommendations: integration.getRecommendations(),
           detection,
-        }
+        };
 
         if (integrationResult.isActive) {
-          results.active.push(integrationResult)
+          results.active.push(integrationResult);
         } else {
-          results.inactive.push(integrationResult)
+          results.inactive.push(integrationResult);
         }
 
         // Collect all recommendations
-        results.recommendations.push(...integrationResult.recommendations)
+        results.recommendations.push(...integrationResult.recommendations);
 
         if (verbose && integrationResult.indicators.length > 0) {
-          console.log(chalk.gray(`  • ${name}: ${integrationResult.confidence} confidence`))
-          integrationResult.indicators.forEach((indicator) => {
-            console.log(chalk.gray(`    - ${indicator}`))
-          })
+          console.log(chalk.gray(`  • ${name}: ${integrationResult.confidence} confidence`));
+          integrationResult.indicators.forEach(indicator => {
+            console.log(chalk.gray(`    - ${indicator}`));
+          });
         }
       } catch (error) {
         const errorInfo = {
           integration: name,
           error: error.message,
           timestamp: new Date().toISOString(),
-        }
-        results.errors.push(errorInfo)
+        };
+        results.errors.push(errorInfo);
 
         if (verbose) {
-          console.log(chalk.red(`❌ Failed to scan ${name}: ${error.message}`))
+          console.log(chalk.red(`❌ Failed to scan ${name}: ${error.message}`));
           if (process.env.VDK_DEBUG) {
-            console.log(chalk.gray(`Debug: ${error.stack}`))
+            console.log(chalk.gray(`Debug: ${error.stack}`));
           }
         }
 
@@ -222,7 +239,7 @@ export class IntegrationManager {
           indicators: [`Scan failed: ${error.message}`],
           recommendations: [`Fix ${name} integration configuration`],
           detection: { isUsed: false, confidence: 'error', indicators: [], recommendations: [] },
-        })
+        });
       }
     }
 
@@ -230,13 +247,13 @@ export class IntegrationManager {
     results.summary = {
       totalIntegrations: this.integrations.size,
       activeIntegrations: results.active.length,
-      highConfidenceIntegrations: results.active.filter((r) => r.confidence === 'high').length,
+      highConfidenceIntegrations: results.active.filter(r => r.confidence === 'high').length,
       recommendationCount: results.recommendations.length,
       scanTime: new Date().toISOString(),
-    }
+    };
 
-    this.lastScan = results
-    return results
+    this.lastScan = results;
+    return results;
   }
 
   /**
@@ -245,7 +262,7 @@ export class IntegrationManager {
    * @returns {BaseIntegration|null} Integration instance or null
    */
   getIntegration(name) {
-    return this.integrations.get(name) || null
+    return this.integrations.get(name) || null;
   }
 
   /**
@@ -253,7 +270,7 @@ export class IntegrationManager {
    * @returns {Array<string>} Array of integration names
    */
   getIntegrationNames() {
-    return Array.from(this.integrations.keys())
+    return Array.from(this.integrations.keys());
   }
 
   /**
@@ -261,7 +278,7 @@ export class IntegrationManager {
    * @returns {Array<BaseIntegration>} Array of integration instances
    */
   getAllIntegrations() {
-    return Array.from(this.integrations.values())
+    return Array.from(this.integrations.values());
   }
 
   /**
@@ -270,14 +287,14 @@ export class IntegrationManager {
    */
   getActiveIntegrations() {
     if (!this.lastScan) {
-      return []
+      return [];
     }
 
     const activeIntegrations = this.lastScan.active.filter(
-      (integration) => integration.confidence === 'high' || integration.confidence === 'medium'
-    )
+      integration => integration.confidence === 'high' || integration.confidence === 'medium'
+    );
 
-    return this.prioritizeContextPlatforms(activeIntegrations)
+    return this.prioritizeContextPlatforms(activeIntegrations);
   }
 
   /**
@@ -286,9 +303,9 @@ export class IntegrationManager {
    */
   getAllRecommendations() {
     if (!this.lastScan) {
-      return []
+      return [];
     }
-    return this.lastScan.recommendations
+    return this.lastScan.recommendations;
   }
 
   /**
@@ -297,71 +314,71 @@ export class IntegrationManager {
    * @returns {Object} Initialization results
    */
   async initializeActive(options = {}) {
-    const { verbose = false } = options
+    const { verbose = false } = options;
     const results = {
       successful: [],
       failed: [],
       skipped: [],
-    }
+    };
 
-    const activeIntegrations = this.getActiveIntegrations()
+    const activeIntegrations = this.getActiveIntegrations();
 
     if (activeIntegrations.length === 0) {
       if (verbose) {
-        console.log(chalk.yellow('No active integrations found to initialize'))
+        console.log(chalk.yellow('No active integrations found to initialize'));
       }
-      return results
+      return results;
     }
 
     for (const integrationResult of activeIntegrations) {
-      const integration = this.getIntegration(integrationResult.name)
+      const integration = this.getIntegration(integrationResult.name);
 
       if (!integration) {
         results.failed.push({
           name: integrationResult.name,
           error: 'Integration not found',
-        })
-        continue
+        });
+        continue;
       }
 
       try {
         if (verbose) {
-          console.log(chalk.blue(`Initializing ${integration.name} integration...`))
+          console.log(chalk.blue(`Initializing ${integration.name} integration...`));
         }
 
         const success = await integration.initialize({
           ...options,
           projectPath: this.projectPath,
-        })
+        });
 
         if (success) {
           results.successful.push({
             name: integration.name,
             confidence: integration.getConfidence(),
-          })
+          });
 
           if (verbose) {
-            console.log(chalk.green(`✅ ${integration.name} initialized successfully`))
+            console.log(chalk.green(`✅ ${integration.name} initialized successfully`));
           }
         } else {
           results.failed.push({
             name: integration.name,
             error: 'Initialization returned false',
-          })
+          });
         }
       } catch (error) {
         results.failed.push({
           name: integration.name,
           error: error.message,
-        })
+        });
 
         if (verbose) {
-          console.log(chalk.red(`❌ Failed to initialize ${integration.name}: ${error.message}`))
+          console.log(chalk.red(`❌ Failed to initialize ${integration.name}: ${error.message}`));
         }
       }
     }
 
-    return results
+    return results;
   }
 
   /**
@@ -373,33 +390,33 @@ export class IntegrationManager {
       return {
         message: 'No integrations scanned yet',
         integrations: [],
-      }
+      };
     }
 
-    const { summary, active, inactive } = this.lastScan
+    const { summary, active, inactive } = this.lastScan;
 
-    let message = ''
+    let message = '';
     if (summary.activeIntegrations === 0) {
-      message = 'No active integrations detected'
+      message = 'No active integrations detected';
     } else if (summary.highConfidenceIntegrations > 0) {
-      message = `${summary.highConfidenceIntegrations} high-confidence integration(s) detected`
+      message = `${summary.highConfidenceIntegrations} high-confidence integration(s) detected`;
     } else {
-      message = `${summary.activeIntegrations} integration(s) detected with varying confidence`
+      message = `${summary.activeIntegrations} integration(s) detected with varying confidence`;
     }
 
     return {
       message,
       summary,
-      active: active.map((i) => ({
+      active: active.map(i => ({
         name: i.name,
         confidence: i.confidence,
         indicatorCount: i.indicators.length,
       })),
-      inactive: inactive.map((i) => ({
+      inactive: inactive.map(i => ({
         name: i.name,
         confidence: i.confidence,
       })),
-    }
+    };
   }
 
   /**
@@ -407,11 +424,11 @@ export class IntegrationManager {
    */
   clearCache() {
     for (const integration of this.integrations.values()) {
-      integration._detectionCache = null
-      integration._detectionCacheTime = null
+      integration._detectionCache = null;
+      integration._detectionCacheTime = null;
     }
-    this.detectionResults.clear()
-    this.lastScan = null
+    this.detectionResults.clear();
+    this.lastScan = null;
   }
 
   /**
@@ -420,11 +437,11 @@ export class IntegrationManager {
    * @returns {Array<string>} Array of recommendations for this integration
    */
   getIntegrationRecommendations(integrationName) {
-    const integration = this.getIntegration(integrationName)
+    const integration = this.getIntegration(integrationName);
     if (!integration) {
-      return []
+      return [];
     }
-    return integration.getRecommendations()
+    return integration.getRecommendations();
   }
 
   /**
@@ -433,11 +450,11 @@ export class IntegrationManager {
    * @returns {boolean} True if integration is active
    */
   isIntegrationActive(integrationName) {
-    const integration = this.getIntegration(integrationName)
+    const integration = this.getIntegration(integrationName);
     if (!integration) {
-      return false
+      return false;
     }
-    return integration.isActive()
+    return integration.isActive();
   }
 
   /**
@@ -446,12 +463,12 @@ export class IntegrationManager {
    * @returns {Object|null} Detailed integration info or null
    */
   getIntegrationDetails(integrationName) {
-    const integration = this.getIntegration(integrationName)
+    const integration = this.getIntegration(integrationName);
     if (!integration) {
-      return null
+      return null;
     }
 
-    const detection = integration.getCachedDetection()
+    const detection = integration.getCachedDetection();
     return {
       name: integration.name,
       isActive: integration.isActive(),
@@ -461,7 +478,7 @@ export class IntegrationManager {
       configPaths: integration.getConfigPaths(),
       summary: integration.getSummary(),
       detection,
-    }
+    };
   }
 
   /**
@@ -469,39 +486,39 @@ export class IntegrationManager {
    * @returns {Object|null} Primary IDE detection or null
    */
   getPrimaryIDE() {
-    const activeIntegrations = this.getActiveIntegrations()
+    const activeIntegrations = this.getActiveIntegrations();
     if (activeIntegrations.length === 0) {
-      return null
+      return null;
     }
 
     // Sort by project-specific config first, then confidence level
-    const confidenceOrder = { high: 3, medium: 2, low: 1, none: 0 }
+    const confidenceOrder = { high: 3, medium: 2, low: 1, none: 0 };
     const sorted = [...activeIntegrations].sort((a, b) => {
       // First priority: Project-specific config beats global config, regardless of confidence
-      const aHasProjectConfig = a.detection?.hasProjectSpecificConfig
-      const bHasProjectConfig = b.detection?.hasProjectSpecificConfig
+      const aHasProjectConfig = a.detection?.hasProjectSpecificConfig;
+      const bHasProjectConfig = b.detection?.hasProjectSpecificConfig;
 
-      if (aHasProjectConfig && !bHasProjectConfig) return -1
-      if (bHasProjectConfig && !aHasProjectConfig) return 1
+      if (aHasProjectConfig && !bHasProjectConfig) return -1;
+      if (bHasProjectConfig && !aHasProjectConfig) return 1;
 
       // Second priority: Confidence level
-      const confidenceDiff = confidenceOrder[b.confidence] - confidenceOrder[a.confidence]
+      const confidenceDiff = confidenceOrder[b.confidence] - confidenceOrder[a.confidence];
       if (confidenceDiff !== 0) {
-        return confidenceDiff
+        return confidenceDiff;
       }
 
       // Third priority: Context platforms get priority over traditional IDEs
-      const aIsContextPlatform = this.isContextPlatform(a.name)
-      const bIsContextPlatform = this.isContextPlatform(b.name)
+      const aIsContextPlatform = this.isContextPlatform(a.name);
+      const bIsContextPlatform = this.isContextPlatform(b.name);
 
-      if (aIsContextPlatform && !bIsContextPlatform) return -1
-      if (bIsContextPlatform && !aIsContextPlatform) return 1
+      if (aIsContextPlatform && !bIsContextPlatform) return -1;
+      if (bIsContextPlatform && !aIsContextPlatform) return 1;
 
       // If all else is equal, keep original order
-      return 0
-    })
+      return 0;
+    });
 
-    return sorted[0]
+    return sorted[0];
   }
 
   /**
@@ -510,11 +527,15 @@ export class IntegrationManager {
    * @returns {Array} Prioritized integrations
    */
   prioritizeContextPlatforms(integrations) {
-    const contextPlatforms = integrations.filter((integration) => this.isContextPlatform(integration.name))
-    const traditionalIDEs = integrations.filter((integration) => !this.isContextPlatform(integration.name))
+    const contextPlatforms = integrations.filter(integration =>
+      this.isContextPlatform(integration.name)
+    );
+    const traditionalIDEs = integrations.filter(
+      integration => !this.isContextPlatform(integration.name)
+    );
 
     // Context platforms always come first, then traditional IDEs
-    return [...contextPlatforms, ...traditionalIDEs]
+    return [...contextPlatforms, ...traditionalIDEs];
   }
 
   /**
@@ -523,7 +544,20 @@ export class IntegrationManager {
    * @returns {boolean} True if context platform
    */
   isContextPlatform(name) {
-    const contextPlatforms = ['Cursor', 'Windsurf', 'Claude Code CLI']
-    return contextPlatforms.includes(name)
+    const contextPlatforms = [
+      'Cursor',
+      'Windsurf',
+      'Claude Code CLI',
+      'OpenCode',
+      'Cline',
+      'Roo Code',
+      'Goose',
+      'Junie',
+      'Google Antigravity',
+      'Kimi CLI',
+      'Mistral Vibe',
+      'Trae',
+    ];
+    return contextPlatforms.includes(name);
   }
 }

@@ -12,20 +12,20 @@
  * and provides a high-level API for CLI commands to use.
  */
 
-import chalk from 'chalk'
-import ora from 'ora'
-import { ConfigManager, initializeConfig } from './ConfigManager.js'
-import { initializeTelemetry, TelemetryManager } from './TelemetryManager.js'
-import { VDKHubClient, VDKHubError } from './VDKHubClient.js'
+import chalk from 'chalk';
+import ora from 'ora';
+import { initializeConfig } from './ConfigManager.js';
+import { initializeTelemetry } from './TelemetryManager.js';
+import { VDKHubClient, VDKHubError } from './VDKHubClient.js';
 
 export class HubIntegration {
-  constructor(config = {}) {
-    this.initialized = false
-    this.configManager = null
-    this.hubClient = null
-    this.telemetryManager = null
-    this.sessionId = this.generateSessionId()
-    this.startTime = Date.now()
+  constructor(_config = {}) {
+    this.initialized = false;
+    this.configManager = null;
+    this.hubClient = null;
+    this.telemetryManager = null;
+    this.sessionId = this.generateSessionId();
+    this.startTime = Date.now();
   }
 
   /**
@@ -33,32 +33,32 @@ export class HubIntegration {
    */
   async initialize() {
     if (this.initialized) {
-      return this
+      return this;
     }
 
     try {
       // Load configuration
-      this.configManager = await initializeConfig()
-      const config = this.configManager.getConfig()
+      this.configManager = await initializeConfig();
+      const config = this.configManager.getConfig();
 
       // Create Hub client
-      this.hubClient = new VDKHubClient(config.hub)
+      this.hubClient = new VDKHubClient(config.hub);
 
       // Initialize telemetry
-      this.telemetryManager = initializeTelemetry(this.hubClient, config.telemetry)
+      this.telemetryManager = initializeTelemetry(this.hubClient, config.telemetry);
 
       // Test connectivity (optional)
       if (config.hub.url && config.hub.url !== 'https://vdk.tools') {
-        await this.testConnectivity(false) // Don't throw on failure
+        await this.testConnectivity(false); // Don't throw on failure
       }
 
-      this.initialized = true
-      return this
+      this.initialized = true;
+      return this;
     } catch (error) {
-      console.warn(chalk.yellow(`Hub initialization failed: ${error.message}`))
+      console.warn(chalk.yellow(`Hub initialization failed: ${error.message}`));
       // Continue with limited functionality
-      this.initialized = true
-      return this
+      this.initialized = true;
+      return this;
     }
   }
 
@@ -68,32 +68,32 @@ export class HubIntegration {
   async testConnectivity(throwOnFailure = true) {
     if (!this.hubClient) {
       if (throwOnFailure) {
-        throw new Error('Hub client not initialized')
+        throw new Error('Hub client not initialized');
       }
-      return { success: false, error: 'Hub client not initialized' }
+      return { success: false, error: 'Hub client not initialized' };
     }
 
     try {
-      const result = await this.hubClient.ping()
+      const result = await this.hubClient.ping();
 
       if (result.success) {
-        console.log(chalk.green(`✅ Connected to VDK Hub (${result.latency}ms)`))
-        return result
+        console.log(chalk.green(`✅ Connected to VDK Hub (${result.latency}ms)`));
+        return result;
       } else {
-        const message = `Hub connectivity failed: ${result.error}`
+        const message = `Hub connectivity failed: ${result.error}`;
         if (throwOnFailure) {
-          throw new Error(message)
+          throw new Error(message);
         }
-        console.warn(chalk.yellow(`⚠️ ${message}`))
-        return result
+        console.warn(chalk.yellow(`⚠️ ${message}`));
+        return result;
       }
     } catch (error) {
-      const message = `Hub connectivity error: ${error.message}`
+      const message = `Hub connectivity error: ${error.message}`;
       if (throwOnFailure) {
-        throw new Error(message)
+        throw new Error(message);
       }
-      console.warn(chalk.yellow(`⚠️ ${message}`))
-      return { success: false, error: error.message }
+      console.warn(chalk.yellow(`⚠️ ${message}`));
+      return { success: false, error: error.message };
     }
   }
 
@@ -105,25 +105,25 @@ export class HubIntegration {
    * Sync blueprints from Hub
    */
   async syncBlueprints(options = {}) {
-    await this.ensureInitialized()
+    await this.ensureInitialized();
 
-    const spinner = ora('Syncing blueprints from Hub...').start()
-    const startTime = Date.now()
+    const spinner = ora('Syncing blueprints from Hub...').start();
+    const startTime = Date.now();
 
     try {
       // Get last sync time if incremental
-      const syncConfig = this.configManager.getSyncConfig()
-      const since = options.force ? null : syncConfig.lastSyncTime
+      const syncConfig = this.configManager.getSyncConfig();
+      const since = options.force ? null : syncConfig.lastSyncTime;
 
       // Perform sync
       const result = await this.hubClient.syncBlueprints(since, {
         limit: options.limit || syncConfig.maxBlueprints,
         category: options.category,
-      })
+      });
 
       // Update last sync time
       if (result.lastSyncTime) {
-        await this.configManager.updateLastSyncTime(result.lastSyncTime)
+        await this.configManager.updateLastSyncTime(result.lastSyncTime);
       }
 
       // Track telemetry
@@ -141,23 +141,23 @@ export class HubIntegration {
           total_blueprints: result.totalBlueprints,
           since: since ? 'incremental' : 'full',
         },
-      })
+      });
 
-      spinner.succeed(`Synced ${result.blueprints.length} blueprints`)
+      spinner.succeed(`Synced ${result.blueprints.length} blueprints`);
 
       if (result.changes.added.length > 0) {
-        console.log(chalk.green(`  + ${result.changes.added.length} new blueprints`))
+        console.log(chalk.green(`  + ${result.changes.added.length} new blueprints`));
       }
       if (result.changes.updated.length > 0) {
-        console.log(chalk.blue(`  ↻ ${result.changes.updated.length} updated blueprints`))
+        console.log(chalk.blue(`  ↻ ${result.changes.updated.length} updated blueprints`));
       }
       if (result.changes.removed.length > 0) {
-        console.log(chalk.red(`  - ${result.changes.removed.length} removed blueprints`))
+        console.log(chalk.red(`  - ${result.changes.removed.length} removed blueprints`));
       }
 
-      return result
+      return result;
     } catch (error) {
-      spinner.fail('Blueprint sync failed')
+      spinner.fail('Blueprint sync failed');
 
       // Track error
       this.telemetryManager.addErrorEvent({
@@ -167,21 +167,21 @@ export class HubIntegration {
         error_message: error.message,
         platform: process.platform,
         session_id: this.sessionId,
-      })
+      });
 
       if (error instanceof VDKHubError && !error.retryable) {
-        throw error
+        throw error;
       }
 
       // Return empty result for graceful degradation
-      console.warn(chalk.yellow('Falling back to local blueprints'))
+      console.warn(chalk.yellow('Falling back to local blueprints'));
       return {
         blueprints: [],
         lastSyncTime: new Date().toISOString(),
         totalBlueprints: 0,
         changes: { added: [], updated: [], removed: [] },
         metadata: { syncType: 'failed', error: error.message },
-      }
+      };
     }
   }
 
@@ -189,17 +189,17 @@ export class HubIntegration {
    * Generate package from Hub
    */
   async generatePackage(analysisData, options = {}) {
-    await this.ensureInitialized()
+    await this.ensureInitialized();
 
-    const spinner = ora('Generating blueprint package...').start()
-    const startTime = Date.now()
+    const spinner = ora('Generating blueprint package...').start();
+    const startTime = Date.now();
 
     try {
       // Build package request
-      const packageRequest = this.buildPackageRequest(analysisData, options)
+      const packageRequest = this.buildPackageRequest(analysisData, options);
 
       // Generate package
-      const result = await this.hubClient.generatePackage(packageRequest)
+      const result = await this.hubClient.generatePackage(packageRequest);
 
       // Track telemetry
       this.telemetryManager.addUsageEvent({
@@ -215,12 +215,12 @@ export class HubIntegration {
           file_size: result.fileSize,
           output_format: packageRequest.outputFormat,
         },
-      })
+      });
 
-      spinner.succeed(`Generated package with ${result.ruleCount} blueprints`)
-      return result
+      spinner.succeed(`Generated package with ${result.ruleCount} blueprints`);
+      return result;
     } catch (error) {
-      spinner.fail('Package generation failed')
+      spinner.fail('Package generation failed');
 
       this.telemetryManager.addErrorEvent({
         cli_version: this.getCliVersion(),
@@ -229,23 +229,23 @@ export class HubIntegration {
         error_message: error.message,
         platform: process.platform,
         session_id: this.sessionId,
-      })
+      });
 
-      throw error
+      throw error;
     }
   }
 
   /**
    * Download package from Hub
    */
-  async downloadPackage(packageId, outputPath = null) {
-    await this.ensureInitialized()
+  async downloadPackage(packageId, _outputPath = null) {
+    await this.ensureInitialized();
 
-    const spinner = ora('Downloading package...').start()
-    const startTime = Date.now()
+    const spinner = ora('Downloading package...').start();
+    const startTime = Date.now();
 
     try {
-      const result = await this.hubClient.downloadPackage(packageId)
+      const result = await this.hubClient.downloadPackage(packageId);
 
       // Track telemetry
       this.telemetryManager.addUsageEvent({
@@ -260,12 +260,12 @@ export class HubIntegration {
           package_type: result.packageType,
           rule_count: result.ruleCount,
         },
-      })
+      });
 
-      spinner.succeed('Package downloaded successfully')
-      return result
+      spinner.succeed('Package downloaded successfully');
+      return result;
     } catch (error) {
-      spinner.fail('Package download failed')
+      spinner.fail('Package download failed');
 
       this.telemetryManager.addErrorEvent({
         cli_version: this.getCliVersion(),
@@ -275,9 +275,9 @@ export class HubIntegration {
         platform: process.platform,
         session_id: this.sessionId,
         context: { package_id: packageId },
-      })
+      });
 
-      throw error
+      throw error;
     }
   }
 
@@ -285,10 +285,10 @@ export class HubIntegration {
    * Deploy blueprints to Hub
    */
   async deployBlueprints(projectData, blueprints, options = {}) {
-    await this.ensureInitialized()
+    await this.ensureInitialized();
 
-    const spinner = ora('Deploying blueprints to Hub...').start()
-    const startTime = Date.now()
+    const spinner = ora('Deploying blueprints to Hub...').start();
+    const startTime = Date.now();
 
     try {
       const deploymentData = {
@@ -301,9 +301,9 @@ export class HubIntegration {
           timestamp: new Date().toISOString(),
           cliVersion: this.getCliVersion(),
         },
-      }
+      };
 
-      const result = await this.hubClient.deployBlueprints(deploymentData)
+      const result = await this.hubClient.deployBlueprints(deploymentData);
 
       this.telemetryManager.addUsageEvent({
         cli_version: this.getCliVersion(),
@@ -317,14 +317,14 @@ export class HubIntegration {
           deployment_id: result.deploymentId,
           project_name: projectData.name,
         },
-      })
+      });
 
-      spinner.succeed(`Deployed ${result.blueprintsCount} blueprints`)
-      console.log(chalk.cyan(`Hub URL: ${result.hubUrl}`))
+      spinner.succeed(`Deployed ${result.blueprintsCount} blueprints`);
+      console.log(chalk.cyan(`Hub URL: ${result.hubUrl}`));
 
-      return result
+      return result;
     } catch (error) {
-      spinner.fail('Blueprint deployment failed')
+      spinner.fail('Blueprint deployment failed');
 
       this.telemetryManager.addErrorEvent({
         cli_version: this.getCliVersion(),
@@ -333,9 +333,9 @@ export class HubIntegration {
         error_message: error.message,
         platform: process.platform,
         session_id: this.sessionId,
-      })
+      });
 
-      throw error
+      throw error;
     }
   }
 
@@ -347,14 +347,14 @@ export class HubIntegration {
    * Get blueprint recommendations
    */
   async getBlueprintRecommendations(projectAnalysis) {
-    await this.ensureInitialized()
+    await this.ensureInitialized();
 
     try {
-      const result = await this.hubClient.getBlueprintRecommendations(projectAnalysis)
-      return result.recommendations || []
+      const result = await this.hubClient.getBlueprintRecommendations(projectAnalysis);
+      return result.recommendations || [];
     } catch (error) {
-      console.warn(chalk.yellow(`Recommendations failed: ${error.message}`))
-      return []
+      console.warn(chalk.yellow(`Recommendations failed: ${error.message}`));
+      return [];
     }
   }
 
@@ -362,7 +362,7 @@ export class HubIntegration {
    * Check version compatibility
    */
   async checkVersionCompatibility() {
-    await this.ensureInitialized()
+    await this.ensureInitialized();
 
     try {
       const versionInfo = {
@@ -375,17 +375,17 @@ export class HubIntegration {
           'windsurf-context-integration',
           'telemetry',
         ],
-      }
+      };
 
-      const result = await this.hubClient.checkVersionCompatibility(versionInfo)
-      return result
+      const result = await this.hubClient.checkVersionCompatibility(versionInfo);
+      return result;
     } catch (error) {
-      console.warn(chalk.yellow(`Version check failed: ${error.message}`))
+      console.warn(chalk.yellow(`Version check failed: ${error.message}`));
       return {
         success: false,
         compatibility: { compatible: true, upgradeRecommended: false },
         error: error.message,
-      }
+      };
     }
   }
 
@@ -398,7 +398,7 @@ export class HubIntegration {
    */
   trackIntegrationDetection(integrations) {
     if (!this.telemetryManager) {
-      return
+      return;
     }
 
     for (const integration of integrations) {
@@ -411,7 +411,7 @@ export class HubIntegration {
           has_memory_file: integration.hasMemoryFile,
           project_configured: integration.configured,
         },
-      })
+      });
     }
   }
 
@@ -420,14 +420,14 @@ export class HubIntegration {
    */
   trackCommand(command, options = {}) {
     if (!this.telemetryManager) {
-      return
+      return;
     }
 
     return this.telemetryManager.trackCommand(command, {
       sessionId: this.sessionId,
       cliVersion: this.getCliVersion(),
       ...options,
-    })
+    });
   }
 
   /**
@@ -435,14 +435,14 @@ export class HubIntegration {
    */
   trackError(command, error, context = {}) {
     if (!this.telemetryManager) {
-      return
+      return;
     }
 
     this.telemetryManager.trackError(command, error, {
       sessionId: this.sessionId,
       cliVersion: this.getCliVersion(),
       context,
-    })
+    });
   }
 
   // ============================================================================
@@ -453,7 +453,7 @@ export class HubIntegration {
    * Build package request from analysis data
    */
   buildPackageRequest(analysisData, options = {}) {
-    const generationConfig = this.configManager.getGenerationConfig()
+    const generationConfig = this.configManager.getGenerationConfig();
 
     return {
       userId: options.userId,
@@ -471,65 +471,65 @@ export class HubIntegration {
       },
       outputFormat: options.outputFormat || generationConfig.defaultOutputFormat,
       customRequirements: options.customRequirements || generationConfig.customRequirements,
-    }
+    };
   }
 
   /**
    * Extract stack choices from analysis data
    */
   extractStackChoices(analysisData) {
-    const stacks = {}
+    const stacks = {};
 
     if (analysisData.frameworks) {
       for (const framework of analysisData.frameworks) {
-        stacks[framework.toLowerCase()] = true
+        stacks[framework.toLowerCase()] = true;
       }
     }
 
-    return stacks
+    return stacks;
   }
 
   /**
    * Extract language choices from analysis data
    */
   extractLanguageChoices(analysisData) {
-    const languages = {}
+    const languages = {};
 
     if (analysisData.languages) {
       for (const language of analysisData.languages) {
-        languages[language.toLowerCase()] = true
+        languages[language.toLowerCase()] = true;
       }
     }
 
-    return languages
+    return languages;
   }
 
   /**
    * Extract tool preferences from analysis data
    */
   extractToolPreferences(analysisData) {
-    const tools = {}
+    const tools = {};
 
     if (analysisData.tools) {
       for (const tool of analysisData.tools) {
-        tools[tool.toLowerCase()] = true
+        tools[tool.toLowerCase()] = true;
       }
     }
 
-    return tools
+    return tools;
   }
 
   /**
    * Extract AI assistant choices from integrations
    */
   extractAIAssistantChoices(integrations) {
-    const choices = {}
+    const choices = {};
 
     for (const integration of integrations) {
-      choices[integration.type] = true
+      choices[integration.type] = true;
     }
 
-    return choices
+    return choices;
   }
 
   /**
@@ -537,7 +537,7 @@ export class HubIntegration {
    */
   async ensureInitialized() {
     if (!this.initialized) {
-      await this.initialize()
+      await this.initialize();
     }
   }
 
@@ -545,14 +545,14 @@ export class HubIntegration {
    * Get CLI version
    */
   getCliVersion() {
-    return this.configManager?.getValue('cli.version', '2.0.0') || '2.0.0'
+    return this.configManager?.getValue('cli.version', '2.0.0') || '2.0.0';
   }
 
   /**
    * Generate unique session ID
    */
   generateSessionId() {
-    return `cli_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    return `cli_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   /**
@@ -564,7 +564,7 @@ export class HubIntegration {
       startTime: this.startTime,
       uptime: Date.now() - this.startTime,
       cliVersion: this.getCliVersion(),
-    }
+    };
   }
 
   /**
@@ -577,7 +577,7 @@ export class HubIntegration {
       telemetryEnabled: this.telemetryManager?.isTelemetryEnabled(),
       configLoaded: !!this.configManager,
       sessionId: this.sessionId,
-    }
+    };
   }
 
   /**
@@ -585,7 +585,7 @@ export class HubIntegration {
    */
   async shutdown() {
     if (this.telemetryManager) {
-      await this.telemetryManager.shutdown()
+      await this.telemetryManager.shutdown();
     }
   }
 }
@@ -593,27 +593,27 @@ export class HubIntegration {
 /**
  * Singleton Hub integration instance
  */
-let globalHubIntegration = null
+let globalHubIntegration = null;
 
 export function getGlobalHubIntegration() {
   if (!globalHubIntegration) {
-    globalHubIntegration = new HubIntegration()
+    globalHubIntegration = new HubIntegration();
   }
-  return globalHubIntegration
+  return globalHubIntegration;
 }
 
 /**
  * Initialize global Hub integration
  */
-export async function initializeHubIntegration(config = {}) {
-  const integration = getGlobalHubIntegration()
-  await integration.initialize()
-  return integration
+export async function initializeHubIntegration(_config = {}) {
+  const integration = getGlobalHubIntegration();
+  await integration.initialize();
+  return integration;
 }
 
 /**
  * Factory function for creating Hub integration
  */
 export function createHubIntegration(config = {}) {
-  return new HubIntegration(config)
+  return new HubIntegration(config);
 }

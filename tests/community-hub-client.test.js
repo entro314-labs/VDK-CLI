@@ -9,14 +9,14 @@
  * - getCommunityCategories
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { VDKHubClient, VDKHubError } from '../src/hub/VDKHubClient.js'
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { VDKHubClient, VDKHubError } from '../src/hub/VDKHubClient.js';
 
 // Mock fetch globally
-global.fetch = vi.fn()
+global.fetch = vi.fn();
 
 describe('VDKHubClient Community Methods', () => {
-  let hubClient
+  let hubClient;
 
   beforeEach(() => {
     hubClient = new VDKHubClient({
@@ -25,15 +25,15 @@ describe('VDKHubClient Community Methods', () => {
       timeout: 5000,
       retryAttempts: 1,
       telemetryEnabled: false,
-    })
+    });
 
     // Reset fetch mock
-    fetch.mockClear()
-  })
+    fetch.mockClear();
+  });
 
   afterEach(() => {
-    vi.restoreAllMocks()
-  })
+    vi.restoreAllMocks();
+  });
 
   describe('getCommunityBlueprint', () => {
     it('should fetch a community blueprint successfully', async () => {
@@ -57,17 +57,17 @@ describe('VDKHubClient Community Methods', () => {
         },
         created: '2024-12-15T10:00:00Z',
         updated: '2025-01-10T15:30:00Z',
-      }
+      };
 
       fetch.mockResolvedValueOnce({
         ok: true,
         headers: {
-          get: (name) => (name === 'content-type' ? 'application/json' : null),
+          get: name => (name === 'content-type' ? 'application/json' : null),
         },
         json: () => Promise.resolve(mockBlueprint),
-      })
+      });
 
-      const result = await hubClient.getCommunityBlueprint('react-performance-patterns')
+      const result = await hubClient.getCommunityBlueprint('react-performance-patterns');
 
       expect(fetch).toHaveBeenCalledWith(
         'https://test-hub.example.com/api/community/blueprints/react-performance-patterns',
@@ -77,7 +77,7 @@ describe('VDKHubClient Community Methods', () => {
             Authorization: 'Bearer test-api-key',
           }),
         })
-      )
+      );
 
       expect(result).toEqual({
         id: 'react-performance-patterns',
@@ -90,45 +90,45 @@ describe('VDKHubClient Community Methods', () => {
         stats: mockBlueprint.stats,
         created: '2024-12-15T10:00:00Z',
         updated: '2025-01-10T15:30:00Z',
-      })
-    })
+      });
+    });
 
     it('should return null when blueprint not found', async () => {
       fetch.mockResolvedValueOnce({
         ok: false,
         status: 404,
         headers: {
-          get: (name) => (name === 'content-type' ? 'application/json' : null),
+          get: name => (name === 'content-type' ? 'application/json' : null),
         },
         json: () => Promise.resolve({ error: 'Blueprint not found' }),
-      })
+      });
 
-      const result = await hubClient.getCommunityBlueprint('non-existent-blueprint')
+      const result = await hubClient.getCommunityBlueprint('non-existent-blueprint');
 
-      expect(result).toBeNull()
-    })
+      expect(result).toBeNull();
+    });
 
     it('should throw VDKHubError for server errors', async () => {
       fetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
         headers: {
-          get: (name) => (name === 'content-type' ? 'application/json' : null),
+          get: name => (name === 'content-type' ? 'application/json' : null),
         },
         json: () => Promise.resolve({ error: 'Server error' }),
-      })
+      });
 
-      await expect(hubClient.getCommunityBlueprint('test-id')).rejects.toThrow(VDKHubError)
-    })
+      await expect(hubClient.getCommunityBlueprint('test-id')).rejects.toThrow(VDKHubError);
+    });
 
     it('should handle network errors gracefully', async () => {
-      fetch.mockRejectedValueOnce(new Error('Network error'))
+      fetch.mockRejectedValueOnce(new Error('Network error'));
 
-      const result = await hubClient.getCommunityBlueprint('test-id')
+      const result = await hubClient.getCommunityBlueprint('test-id');
 
-      expect(result).toBeNull()
-    })
-  })
+      expect(result).toBeNull();
+    });
+  });
 
   describe('searchCommunityBlueprints', () => {
     it('should search blueprints with all criteria', async () => {
@@ -145,15 +145,15 @@ describe('VDKHubClient Community Methods', () => {
         ],
         pagination: { total: 1, limit: 20, offset: 0 },
         filters: { categories: ['frontend'], frameworks: ['React'] },
-      }
+      };
 
       fetch.mockResolvedValueOnce({
         ok: true,
         headers: {
-          get: (name) => (name === 'content-type' ? 'application/json' : null),
+          get: name => (name === 'content-type' ? 'application/json' : null),
         },
         json: () => Promise.resolve(mockResponse),
-      })
+      });
 
       const criteria = {
         search: 'react patterns',
@@ -166,54 +166,54 @@ describe('VDKHubClient Community Methods', () => {
         sort: 'popular',
         limit: 10,
         offset: 0,
-      }
+      };
 
-      const result = await hubClient.searchCommunityBlueprints(criteria)
+      const result = await hubClient.searchCommunityBlueprints(criteria);
 
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/community/blueprints?'),
         expect.objectContaining({ method: 'GET' })
-      )
+      );
 
-      const calledUrl = fetch.mock.calls[0][0]
-      expect(calledUrl).toContain('search=react%20patterns')
-      expect(calledUrl).toContain('category=frontend')
-      expect(calledUrl).toContain('framework=React')
-      expect(calledUrl).toContain('platform=claude-code')
-      expect(calledUrl).toContain('language=TypeScript')
-      expect(calledUrl).toContain('tags=react%2Cpatterns')
-      expect(calledUrl).toContain('author=dev-expert')
-      expect(calledUrl).toContain('sort=popular')
-      expect(calledUrl).toContain('limit=10')
-      expect(calledUrl).toContain('offset=0')
+      const calledUrl = fetch.mock.calls[0][0];
+      expect(calledUrl).toContain('search=react%20patterns');
+      expect(calledUrl).toContain('category=frontend');
+      expect(calledUrl).toContain('framework=React');
+      expect(calledUrl).toContain('platform=claude-code');
+      expect(calledUrl).toContain('language=TypeScript');
+      expect(calledUrl).toContain('tags=react%2Cpatterns');
+      expect(calledUrl).toContain('author=dev-expert');
+      expect(calledUrl).toContain('sort=popular');
+      expect(calledUrl).toContain('limit=10');
+      expect(calledUrl).toContain('offset=0');
 
-      expect(result).toEqual(mockResponse)
-    })
+      expect(result).toEqual(mockResponse);
+    });
 
     it('should handle tags as array', async () => {
       fetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ blueprints: [], pagination: {}, filters: {} }),
-      })
+      });
 
-      await hubClient.searchCommunityBlueprints({ tags: ['react', 'typescript'] })
+      await hubClient.searchCommunityBlueprints({ tags: ['react', 'typescript'] });
 
-      const calledUrl = fetch.mock.calls[0][0]
-      expect(calledUrl).toContain('tags=react%2Ctypescript')
-    })
+      const calledUrl = fetch.mock.calls[0][0];
+      expect(calledUrl).toContain('tags=react%2Ctypescript');
+    });
 
     it('should return empty results on network error', async () => {
-      fetch.mockRejectedValueOnce(new Error('Network error'))
+      fetch.mockRejectedValueOnce(new Error('Network error'));
 
-      const result = await hubClient.searchCommunityBlueprints({})
+      const result = await hubClient.searchCommunityBlueprints({});
 
       expect(result).toEqual({
         blueprints: [],
         pagination: { total: 0, limit: 20, offset: 0 },
         filters: {},
-      })
-    })
-  })
+      });
+    });
+  });
 
   describe('getTrendingBlueprints', () => {
     it('should fetch trending blueprints successfully', async () => {
@@ -231,43 +231,45 @@ describe('VDKHubClient Community Methods', () => {
         timeframe: '7d',
         generatedAt: '2025-01-11T10:00:00Z',
         meta: { totalAnalyzed: 45 },
-      }
+      };
 
       fetch.mockResolvedValueOnce({
         ok: true,
         headers: {
-          get: (name) => (name === 'content-type' ? 'application/json' : null),
+          get: name => (name === 'content-type' ? 'application/json' : null),
         },
         json: () => Promise.resolve(mockResponse),
-      })
+      });
 
       const result = await hubClient.getTrendingBlueprints({
         timeframe: '7d',
         category: 'ai-tools',
         limit: 20,
-      })
+      });
 
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/community/blueprints/trending?timeframe=7d&category=ai-tools&limit=20'),
+        expect.stringContaining(
+          '/api/community/blueprints/trending?timeframe=7d&category=ai-tools&limit=20'
+        ),
         expect.objectContaining({ method: 'GET' })
-      )
+      );
 
-      expect(result).toEqual(mockResponse)
-    })
+      expect(result).toEqual(mockResponse);
+    });
 
     it('should return empty results on error', async () => {
-      fetch.mockRejectedValueOnce(new Error('Network error'))
+      fetch.mockRejectedValueOnce(new Error('Network error'));
 
-      const result = await hubClient.getTrendingBlueprints({ timeframe: '30d' })
+      const result = await hubClient.getTrendingBlueprints({ timeframe: '30d' });
 
       expect(result).toEqual({
         blueprints: [],
         timeframe: '30d',
         generatedAt: expect.any(String),
         meta: {},
-      })
-    })
-  })
+      });
+    });
+  });
 
   describe('trackCommunityBlueprintUsage', () => {
     it('should track usage successfully', async () => {
@@ -276,15 +278,15 @@ describe('VDKHubClient Community Methods', () => {
         usageId: 'usage_1641902400_xyz789',
         message: 'Usage tracked successfully',
         stats: { totalUsage: 1251, deploymentSuccessRate: 0.94 },
-      }
+      };
 
       fetch.mockResolvedValueOnce({
         ok: true,
         headers: {
-          get: (name) => (name === 'content-type' ? 'application/json' : null),
+          get: name => (name === 'content-type' ? 'application/json' : null),
         },
         json: () => Promise.resolve(mockResponse),
-      })
+      });
 
       const usageData = {
         sessionId: 'vdk_session_12345',
@@ -301,9 +303,9 @@ describe('VDKHubClient Community Methods', () => {
           compatibilityScore: 0.95,
         },
         timestamp: '2025-01-11T10:00:00Z',
-      }
+      };
 
-      const result = await hubClient.trackCommunityBlueprintUsage('test-blueprint', usageData)
+      const result = await hubClient.trackCommunityBlueprintUsage('test-blueprint', usageData);
 
       expect(fetch).toHaveBeenCalledWith(
         'https://test-hub.example.com/api/community/blueprints/test-blueprint/usage',
@@ -311,40 +313,40 @@ describe('VDKHubClient Community Methods', () => {
           method: 'POST',
           body: JSON.stringify(usageData),
         })
-      )
+      );
 
-      expect(result).toEqual(mockResponse)
-    })
+      expect(result).toEqual(mockResponse);
+    });
 
     it('should return success false when telemetry disabled', async () => {
-      const disabledClient = new VDKHubClient({ telemetryEnabled: false })
+      const disabledClient = new VDKHubClient({ telemetryEnabled: false });
 
-      const result = await disabledClient.trackCommunityBlueprintUsage('test', {})
+      const result = await disabledClient.trackCommunityBlueprintUsage('test', {});
 
       expect(result).toEqual({
         success: true,
         message: 'Telemetry disabled',
-      })
-      expect(fetch).not.toHaveBeenCalled()
-    })
+      });
+      expect(fetch).not.toHaveBeenCalled();
+    });
 
     it('should handle tracking errors gracefully', async () => {
       fetch.mockResolvedValueOnce({
         ok: false,
         status: 429,
         headers: {
-          get: (name) => (name === 'content-type' ? 'application/json' : null),
+          get: name => (name === 'content-type' ? 'application/json' : null),
         },
-      })
+      });
 
-      const result = await hubClient.trackCommunityBlueprintUsage('test', {})
+      const result = await hubClient.trackCommunityBlueprintUsage('test', {});
 
       expect(result).toEqual({
         success: false,
         error: 'HTTP 429',
-      })
-    })
-  })
+      });
+    });
+  });
 
   describe('getCommunityCategories', () => {
     it('should fetch categories successfully', async () => {
@@ -361,38 +363,38 @@ describe('VDKHubClient Community Methods', () => {
         ],
         stats: { totalBlueprints: 456, totalCategories: 10 },
         meta: { generatedAt: '2025-01-11T10:00:00Z' },
-      }
+      };
 
       fetch.mockResolvedValueOnce({
         ok: true,
         headers: {
-          get: (name) => (name === 'content-type' ? 'application/json' : null),
+          get: name => (name === 'content-type' ? 'application/json' : null),
         },
         json: () => Promise.resolve(mockResponse),
-      })
+      });
 
-      const result = await hubClient.getCommunityCategories()
+      const result = await hubClient.getCommunityCategories();
 
       expect(fetch).toHaveBeenCalledWith(
         'https://test-hub.example.com/api/community/categories',
         expect.objectContaining({ method: 'GET' })
-      )
+      );
 
-      expect(result).toEqual(mockResponse)
-    })
+      expect(result).toEqual(mockResponse);
+    });
 
     it('should return empty categories on error', async () => {
-      fetch.mockRejectedValueOnce(new Error('Network error'))
+      fetch.mockRejectedValueOnce(new Error('Network error'));
 
-      const result = await hubClient.getCommunityCategories()
+      const result = await hubClient.getCommunityCategories();
 
       expect(result).toEqual({
         categories: [],
         stats: {},
         meta: {},
-      })
-    })
-  })
+      });
+    });
+  });
 
   describe('Error handling', () => {
     it('should handle rate limiting properly', async () => {
@@ -400,13 +402,13 @@ describe('VDKHubClient Community Methods', () => {
         ok: false,
         status: 429,
         headers: {
-          get: (name) => (name === 'content-type' ? 'application/json' : null),
+          get: name => (name === 'content-type' ? 'application/json' : null),
         },
         json: () => Promise.resolve({ error: 'Rate limit exceeded' }),
-      })
+      });
 
-      await expect(hubClient.getCommunityBlueprint('test')).rejects.toThrow(VDKHubError)
-    })
+      await expect(hubClient.getCommunityBlueprint('test')).rejects.toThrow(VDKHubError);
+    });
 
     it('should retry on server errors', async () => {
       // First call fails with 503
@@ -414,35 +416,35 @@ describe('VDKHubClient Community Methods', () => {
         ok: false,
         status: 503,
         headers: {
-          get: (name) => (name === 'content-type' ? 'application/json' : null),
+          get: name => (name === 'content-type' ? 'application/json' : null),
         },
         json: () => Promise.resolve({ error: 'Service unavailable' }),
-      })
+      });
 
       // Second call (retry) succeeds
       fetch.mockResolvedValueOnce({
         ok: true,
         headers: {
-          get: (name) => (name === 'content-type' ? 'application/json' : null),
+          get: name => (name === 'content-type' ? 'application/json' : null),
         },
         json: () => Promise.resolve({ id: 'test', title: 'Test' }),
-      })
+      });
 
-      const result = await hubClient.getCommunityBlueprint('test')
+      const result = await hubClient.getCommunityBlueprint('test');
 
-      expect(fetch).toHaveBeenCalledTimes(2)
-      expect(result.id).toBe('test')
-    })
-  })
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(result.id).toBe('test');
+    });
+  });
 
   describe('Configuration', () => {
     it('should use correct base URL and headers', async () => {
       fetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ categories: [] }),
-      })
+      });
 
-      await hubClient.getCommunityCategories()
+      await hubClient.getCommunityCategories();
 
       expect(fetch).toHaveBeenCalledWith(
         'https://test-hub.example.com/api/community/categories',
@@ -453,21 +455,21 @@ describe('VDKHubClient Community Methods', () => {
             Authorization: 'Bearer test-api-key',
           }),
         })
-      )
-    })
+      );
+    });
 
     it('should work without authentication', async () => {
-      const noAuthClient = new VDKHubClient({ hubUrl: 'https://test.com' })
+      const noAuthClient = new VDKHubClient({ hubUrl: 'https://test.com' });
 
       fetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ categories: [] }),
-      })
+      });
 
-      await noAuthClient.getCommunityCategories()
+      await noAuthClient.getCommunityCategories();
 
-      const headers = fetch.mock.calls[0][1].headers
-      expect(headers).not.toHaveProperty('Authorization')
-    })
-  })
-})
+      const headers = fetch.mock.calls[0][1].headers;
+      expect(headers).not.toHaveProperty('Authorization');
+    });
+  });
+});

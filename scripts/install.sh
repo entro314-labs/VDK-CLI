@@ -1,7 +1,7 @@
 #!/bin/sh
 # VDK CLI Installer
 # Universal installer script for VDK CLI via NPM
-# Usage: curl -fsSL https://raw.githubusercontent.com/entro314-labs/VDK-CLI/main/install.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/vdkit/VDK-CLI/main/install.sh | sh
 
 set -e
 
@@ -137,7 +137,7 @@ echo "   vdk init"
 echo ""
 echo "📖 Documentation:"
 echo "   vdk --help"
-echo "   https://github.com/entro314-labs/VDK-CLI"
+echo "   https://github.com/vdkit/VDK-CLI"
 echo ""
 echo "🎯 What's Next:"
 if [ "$INTERACTIVE" = true ]; then

@@ -12,20 +12,21 @@
  * Priority: HIGH (Context-creating platform)
  */
 
-import fs from 'node:fs'
-import os from 'node:os'
-import path from 'node:path'
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
-import { BaseIntegration } from './base-integration.js'
+import { BaseIntegration } from './base-integration.js';
 
 /**
  * Claude Code configuration and integration utilities
  */
 export class ClaudeCodeCLIIntegration extends BaseIntegration {
   constructor(projectPath = process.cwd()) {
-    super('Claude Code CLI', projectPath)
-    this.claudeConfigPath = path.join(projectPath, '.claude')
-    this.globalClaudeConfigPath = path.join(os.homedir(), '.claude')
+    super('Claude Code CLI', projectPath);
+    this.priority = 'high';
+    this.claudeConfigPath = path.join(projectPath, '.claude');
+    this.globalClaudeConfigPath = path.join(os.homedir(), '.claude');
   }
 
   /**
@@ -47,7 +48,7 @@ export class ClaudeCodeCLIIntegration extends BaseIntegration {
       // Custom slash commands
       projectCommands: path.join(this.claudeConfigPath, 'commands'),
       userCommands: path.join(os.homedir(), '.claude', 'commands'),
-    }
+    };
   }
 
   /**
@@ -60,45 +61,48 @@ export class ClaudeCodeCLIIntegration extends BaseIntegration {
       confidence: 'none', // none, low, medium, high
       indicators: [],
       recommendations: [],
-    }
+    };
 
     // 1. Check for .claude directory structure
     if (this.directoryExists(this.claudeConfigPath)) {
-      detection.indicators.push('Project has .claude directory')
-      detection.confidence = 'medium'
-      detection.isUsed = true
+      detection.indicators.push('Project has .claude directory');
+      detection.confidence = 'medium';
+      detection.isUsed = true;
 
       // Check for specific Claude Code files
-      const claudeFiles = ['settings.json', 'settings.local.json', 'commands/']
+      const claudeFiles = ['settings.json', 'settings.local.json', 'commands/'];
 
-      claudeFiles.forEach((file) => {
-        const filePath = path.join(this.claudeConfigPath, file)
+      claudeFiles.forEach(file => {
+        const filePath = path.join(this.claudeConfigPath, file);
         if (this.fileExists(filePath) || this.directoryExists(filePath)) {
-          detection.indicators.push(`Found .claude/${file}`)
+          detection.indicators.push(`Found .claude/${file}`);
           if (file === 'settings.json') {
-            detection.confidence = 'high'
+            detection.confidence = 'high';
           }
         }
-      })
+      });
     }
 
     // 2. Check for CLAUDE.md files (main indicator)
-    const memoryPaths = [path.join(this.projectPath, 'CLAUDE.md'), path.join(this.projectPath, 'CLAUDE.local.md')]
+    const memoryPaths = [
+      path.join(this.projectPath, 'CLAUDE.md'),
+      path.join(this.projectPath, 'CLAUDE.local.md'),
+    ];
 
-    memoryPaths.forEach((memoryPath) => {
+    memoryPaths.forEach(memoryPath => {
       if (this.fileExists(memoryPath)) {
-        detection.indicators.push(`Found ${path.basename(memoryPath)}`)
-        detection.confidence = 'high'
-        detection.isUsed = true
+        detection.indicators.push(`Found ${path.basename(memoryPath)}`);
+        detection.confidence = 'high';
+        detection.isUsed = true;
       }
-    })
+    });
 
     // Check for global Claude Code installation
-    const globalClaudePath = path.join(os.homedir(), '.claude')
+    const globalClaudePath = path.join(os.homedir(), '.claude');
     if (this.directoryExists(globalClaudePath)) {
-      detection.indicators.push('Global Claude Code config found')
+      detection.indicators.push('Global Claude Code config found');
       if (detection.confidence === 'none') {
-        detection.confidence = 'low'
+        detection.confidence = 'low';
       }
     }
 
@@ -109,8 +113,8 @@ export class ClaudeCodeCLIIntegration extends BaseIntegration {
       'CLAUDE_CODE_ENTRYPOINT',
       'CLAUDECODE',
       'ANTHROPIC_SMALL_FAST_MODEL',
-    ]
-    const hasClaudeEnv = claudeEnvVars.some((envVar) => process.env[envVar])
+    ];
+    const hasClaudeEnv = claudeEnvVars.some(envVar => process.env[envVar]);
 
     if (
       hasClaudeEnv ||
@@ -118,22 +122,22 @@ export class ClaudeCodeCLIIntegration extends BaseIntegration {
       process.env.USER_AGENT?.includes('claude') ||
       process.argv[0]?.includes('claude')
     ) {
-      detection.indicators.push('Currently running in Claude Code context')
-      detection.confidence = 'high'
-      detection.isUsed = true
+      detection.indicators.push('Currently running in Claude Code context');
+      detection.confidence = 'high';
+      detection.isUsed = true;
     }
 
     // 3. Check for Claude Code process indicators
     if (this.commandExists('claude')) {
-      detection.indicators.push('Claude Code CLI is installed')
+      detection.indicators.push('Claude Code CLI is installed');
       if (detection.confidence === 'none') {
-        detection.confidence = 'low'
+        detection.confidence = 'low';
       }
 
-      const version = this.getCommandVersion('claude')
+      const version = this.getCommandVersion('claude');
       if (version) {
-        detection.indicators.push(`Claude Code version: ${version}`)
-        detection.confidence = detection.confidence === 'none' ? 'medium' : detection.confidence
+        detection.indicators.push(`Claude Code version: ${version}`);
+        detection.confidence = detection.confidence === 'none' ? 'medium' : detection.confidence;
       }
     }
 
@@ -143,59 +147,67 @@ export class ClaudeCodeCLIIntegration extends BaseIntegration {
       '.claude/settings.json',
       'CLAUDE.md',
       '.gitignore', // Check if .claude is gitignored
-    ]
+    ];
 
     // Check workspace structure
-    const workspaceChecks = ['.claude/commands/', '.claude/settings.json', 'CLAUDE.md']
-    workspaceChecks.forEach((indicator) => {
-      const indicatorPath = path.join(this.projectPath, indicator)
+    const workspaceChecks = ['.claude/commands/', '.claude/settings.json', 'CLAUDE.md'];
+    workspaceChecks.forEach(indicator => {
+      const indicatorPath = path.join(this.projectPath, indicator);
       if (this.directoryExists(indicatorPath)) {
-        detection.indicators.push(`Workspace has ${indicator}`)
-        detection.isUsed = true
+        detection.indicators.push(`Workspace has ${indicator}`);
+        detection.isUsed = true;
         if (detection.confidence === 'none' || detection.confidence === 'low') {
-          detection.confidence = 'medium'
+          detection.confidence = 'medium';
         }
       }
-    })
+    });
 
     // Check .gitignore for Claude Code patterns
-    const gitignorePatterns = this.checkGitignore(['.claude', 'claude-code'])
+    const gitignorePatterns = this.checkGitignore(['.claude', 'claude-code']);
     if (gitignorePatterns.length > 0) {
-      detection.indicators.push(`Claude Code paths found in .gitignore: ${gitignorePatterns.join(', ')}`)
+      detection.indicators.push(
+        `Claude Code paths found in .gitignore: ${gitignorePatterns.join(', ')}`
+      );
     }
 
     // 5. Check for recent Claude Code activity
-    const platformPaths = this.getPlatformPaths()
+    const platformPaths = this.getPlatformPaths();
     const claudeLogPaths = [
       path.join(platformPaths.home, '.claude', 'logs'),
       path.join(platformPaths.logs, 'claude-code'),
       path.join(this.claudeConfigPath, 'logs'),
-    ]
+    ];
 
-    claudeLogPaths.forEach((logPath) => {
-      const recentLogs = this.getRecentActivity(logPath, 7)
+    claudeLogPaths.forEach(logPath => {
+      const recentLogs = this.getRecentActivity(logPath, 7);
       if (recentLogs.length > 0) {
-        detection.indicators.push(`Recent Claude Code activity (${recentLogs.length} log files)`)
-        detection.isUsed = true
-        detection.confidence = 'high'
+        detection.indicators.push(`Recent Claude Code activity (${recentLogs.length} log files)`);
+        detection.isUsed = true;
+        detection.confidence = 'high';
       }
-    })
+    });
 
     // 6. Generate recommendations based on detection
     if (detection.confidence === 'none') {
-      detection.recommendations.push('Claude Code not detected. Install with: npm install -g @anthropic-ai/claude-code')
+      detection.recommendations.push(
+        'Claude Code not detected. Install with: npm install -g @anthropic-ai/claude-code'
+      );
     } else if (detection.confidence === 'low') {
-      detection.recommendations.push('Claude Code may be installed but not configured for this project')
-      detection.recommendations.push('Run: vdk claude-code --setup to configure integration')
+      detection.recommendations.push(
+        'Claude Code may be installed but not configured for this project'
+      );
+      detection.recommendations.push('Run: vdk claude-code --setup to configure integration');
     } else if (detection.confidence === 'medium') {
-      detection.recommendations.push('Claude Code appears to be configured')
-      detection.recommendations.push('Run: vdk claude-code --check to verify integration')
+      detection.recommendations.push('Claude Code appears to be configured');
+      detection.recommendations.push('Run: vdk claude-code --check to verify integration');
     } else if (detection.confidence === 'high') {
-      detection.recommendations.push('Claude Code is actively configured and being used')
-      detection.recommendations.push('Consider running: vdk claude-code --update-memory to sync latest project context')
+      detection.recommendations.push('Claude Code is actively configured and being used');
+      detection.recommendations.push(
+        'Consider running: vdk claude-code --update-memory to sync latest project context'
+      );
     }
 
-    return detection
+    return detection;
   }
 
   /**
@@ -203,7 +215,7 @@ export class ClaudeCodeCLIIntegration extends BaseIntegration {
    * @returns {boolean} True if Claude Code is globally installed
    */
   isClaudeCodeInstalled() {
-    return this.commandExists('claude')
+    return this.commandExists('claude');
   }
 
   /**
@@ -212,19 +224,30 @@ export class ClaudeCodeCLIIntegration extends BaseIntegration {
    * @returns {boolean} Success status
    */
   async initialize(options = {}) {
-    const paths = this.getConfigPaths()
+    const paths = this.getConfigPaths();
 
     try {
       // Create .claude directory structure
-      await this.ensureDirectory(this.claudeConfigPath)
-      await this.ensureDirectory(paths.projectCommands)
+      await this.ensureDirectory(this.claudeConfigPath);
+      await this.ensureDirectory(paths.projectCommands);
 
       // Create project-specific Claude Code settings following official format
       const claudeSettings = {
-        allowedTools: ['Bash', 'Edit', 'MultiEdit', 'Read', 'Write', 'Glob', 'Grep', 'LS', 'WebFetch', 'WebSearch'],
+        allowedTools: [
+          'Bash',
+          'Edit',
+          'MultiEdit',
+          'Read',
+          'Write',
+          'Glob',
+          'Grep',
+          'LS',
+          'WebFetch',
+          'WebSearch',
+        ],
         disallowedTools: ['Bash(rm:*)', 'Bash(sudo:*)'],
         hooks: {},
-      }
+      };
 
       // Create separate VDK configuration file for our custom settings
       const vdkConfig = {
@@ -247,38 +270,40 @@ export class ClaudeCodeCLIIntegration extends BaseIntegration {
           codeAnalysis: true,
           projectScanning: true,
         },
-      }
+      };
 
-      const settingsPath = paths.projectSettings
+      const settingsPath = paths.projectSettings;
       if (!this.fileExists(settingsPath)) {
-        await this.writeJsonFile(settingsPath, claudeSettings)
+        await this.writeJsonFile(settingsPath, claudeSettings);
       }
 
       // Write VDK configuration to separate file
-      const vdkConfigPath = path.join(this.claudeConfigPath, 'vdk.config.json')
-      await this.writeJsonFile(vdkConfigPath, vdkConfig)
+      const vdkConfigPath = path.join(this.claudeConfigPath, 'vdk.config.json');
+      await this.writeJsonFile(vdkConfigPath, vdkConfig);
 
       // Create CLAUDE.md memory file with project context (only if it doesn't exist)
       // Note: ClaudeCodeAdapter may have already created a rich CLAUDE.md with technology-specific content
-      const claudeMemoryPath = paths.projectMemory
+      const claudeMemoryPath = paths.projectMemory;
       if (!this.fileExists(claudeMemoryPath)) {
-        await this.createProjectMemoryFile(options)
+        await this.createProjectMemoryFile(options);
       } else if (this.verbose) {
-        console.log('CLAUDE.md already exists, skipping basic template creation (likely created by ClaudeCodeAdapter)')
+        console.log(
+          'CLAUDE.md already exists, skipping basic template creation (likely created by ClaudeCodeAdapter)'
+        );
       }
 
       // Ensure .claude/settings.local.json is in .gitignore
-      await this.ensureGitignoreEntry('.claude/settings.local.json')
-      await this.ensureGitignoreEntry('CLAUDE.local.md')
-      await this.ensureGitignoreEntry('.claude/vdk.config.json')
+      await this.ensureGitignoreEntry('.claude/settings.local.json');
+      await this.ensureGitignoreEntry('CLAUDE.local.md');
+      await this.ensureGitignoreEntry('.claude/vdk.config.json');
 
       // Note: VDK slash commands are now fetched from remote repository
       // No longer generating hardcoded VDK commands here
 
-      return true
+      return true;
     } catch (error) {
-      console.error('Failed to initialize Claude Code configuration:', error.message)
-      return false
+      console.error('Failed to initialize Claude Code configuration:', error.message);
+      return false;
     }
   }
 
@@ -292,39 +317,38 @@ export class ClaudeCodeCLIIntegration extends BaseIntegration {
     try {
       // Ensure all required directories exist
       for (const dir of adaptationResults.directories || []) {
-        await this.ensureDirectory(dir)
+        await this.ensureDirectory(dir);
       }
 
       // Write all files generated by the adapter
-      const filesWritten = []
+      const filesWritten = [];
       for (const fileObj of adaptationResults.files || []) {
         if (typeof fileObj === 'object' && fileObj.path && fileObj.content) {
           // This is the new format with type information
-          await this.ensureDirectory(path.dirname(fileObj.path))
+          await this.ensureDirectory(path.dirname(fileObj.path));
 
           if (fileObj.type === 'settings') {
             // For settings files, use JSON formatting
-            await this.writeJsonFile(fileObj.path, JSON.parse(fileObj.content))
+            await this.writeJsonFile(fileObj.path, JSON.parse(fileObj.content));
           } else {
             // For content files, write directly
-            await fs.promises.writeFile(fileObj.path, fileObj.content, 'utf8')
+            await fs.promises.writeFile(fileObj.path, fileObj.content, 'utf8');
           }
-          filesWritten.push(fileObj.path)
+          filesWritten.push(fileObj.path);
 
           if (this.verbose) {
-            console.log(`📝 Wrote ${fileObj.type}: ${path.basename(fileObj.path)}`)
+            console.log(`📝 Wrote ${fileObj.type}: ${path.basename(fileObj.path)}`);
           }
-        } else if (typeof fileObj === 'string') {
-          // Legacy format support - just file path
-          filesWritten.push(fileObj)
+        } else {
+          throw new Error('Invalid adaptation file entry: expected object with path and content');
         }
       }
 
-      console.log(`✅ Deployed ${filesWritten.length} Claude Code files`)
-      return true
+      console.log(`✅ Deployed ${filesWritten.length} Claude Code files`);
+      return true;
     } catch (error) {
-      console.error('Failed to deploy Claude Code adaptation results:', error.message)
-      return false
+      console.error('Failed to deploy Claude Code adaptation results:', error.message);
+      return false;
     }
   }
 
@@ -333,8 +357,8 @@ export class ClaudeCodeCLIIntegration extends BaseIntegration {
    * @param {Object} options - Memory configuration options
    */
   async createProjectMemoryFile(options = {}) {
-    const paths = this.getConfigPaths()
-    const memoryFilePath = paths.projectMemory
+    const paths = this.getConfigPaths();
+    const memoryFilePath = paths.projectMemory;
 
     const memoryContent = `# ${options.projectName || path.basename(this.projectPath)} - Claude Code Memory
 
@@ -369,9 +393,9 @@ This project uses VDK CLI for AI assistant integration and follows specific patt
 
 ---
 *This memory file is automatically managed by VDK CLI. Last updated: ${new Date().toISOString()}*
-`
+`;
 
-    await fs.promises.writeFile(memoryFilePath, memoryContent, 'utf8')
+    await fs.promises.writeFile(memoryFilePath, memoryContent, 'utf8');
   }
 
   /**
@@ -379,8 +403,8 @@ This project uses VDK CLI for AI assistant integration and follows specific patt
    * Following the new Claude Code command schema
    */
   async createVDKSlashCommands() {
-    const paths = this.getConfigPaths()
-    const commandsDir = paths.projectCommands
+    const paths = this.getConfigPaths();
+    const commandsDir = paths.projectCommands;
 
     // VDK analysis command following schema
     const vdkAnalyzeCommand = `---
@@ -468,9 +492,13 @@ Auto-included files:
 
 ---
 *Generated by VDK CLI - Claude Code Integration*
-`
+`;
 
-    await fs.promises.writeFile(path.join(commandsDir, 'vdk-analyze.md'), vdkAnalyzeCommand, 'utf8')
+    await fs.promises.writeFile(
+      path.join(commandsDir, 'vdk-analyze.md'),
+      vdkAnalyzeCommand,
+      'utf8'
+    );
 
     // VDK rules refresh command following schema
     const vdkRefreshCommand = `---
@@ -552,9 +580,13 @@ Refresh and update VDK blueprints for the current project after changes.
 
 ---
 *Generated by VDK CLI - Claude Code Integration*
-`
+`;
 
-    await fs.promises.writeFile(path.join(commandsDir, 'vdk-refresh.md'), vdkRefreshCommand, 'utf8')
+    await fs.promises.writeFile(
+      path.join(commandsDir, 'vdk-refresh.md'),
+      vdkRefreshCommand,
+      'utf8'
+    );
 
     // VDK memory handoff command following schema
     const vdkHandoffCommand = `---
@@ -642,9 +674,13 @@ Includes recent changes: !\`git status\` and !\`git log --oneline -10\`
 
 ---
 *Generated by VDK CLI - Claude Code Integration*
-`
+`;
 
-    await fs.promises.writeFile(path.join(commandsDir, 'vdk-handoff.md'), vdkHandoffCommand, 'utf8')
+    await fs.promises.writeFile(
+      path.join(commandsDir, 'vdk-handoff.md'),
+      vdkHandoffCommand,
+      'utf8'
+    );
   }
 
   /**
@@ -652,8 +688,8 @@ Includes recent changes: !\`git status\` and !\`git log --oneline -10\`
    * @param {Object} projectContext - Project analysis results
    */
   async updateMemoryWithVDKContext(projectContext) {
-    const paths = this.getConfigPaths()
-    const memoryPath = paths.projectLocalMemory
+    const paths = this.getConfigPaths();
+    const memoryPath = paths.projectLocalMemory;
 
     const vdkContext = `# VDK Project Context Update
 
@@ -670,7 +706,10 @@ ${
 ${
   projectContext.patterns
     ? Object.entries(projectContext.patterns)
-        .map(([key, value]) => `- **${key}**: ${Array.isArray(value) ? value.join(', ') : JSON.stringify(value)}`)
+        .map(
+          ([key, value]) =>
+            `- **${key}**: ${Array.isArray(value) ? value.join(', ') : JSON.stringify(value)}`
+        )
         .join('\n')
     : 'Not analyzed'
 }
@@ -689,9 +728,9 @@ ${
 
 ---
 *Updated: ${new Date().toISOString()}*
-`
+`;
 
-    await fs.promises.writeFile(memoryPath, vdkContext, 'utf8')
+    await fs.promises.writeFile(memoryPath, vdkContext, 'utf8');
   }
 
   /**
@@ -699,25 +738,563 @@ ${
    * @returns {Object} Version information and compatibility status
    */
   async getClaudeCodeVersion() {
-    const version = this.getCommandVersion('claude')
-
-    if (version) {
+    if (this.commandExists('claude')) {
+      const version = this.getCommandVersion('claude');
       return {
         version,
-        compatible: true, // All current versions are compatible
+        compatible: true,
         features: {
           memory: true,
-          slashCommands: true,
+          commands: true,
           projectConfig: true,
           hooks: true,
         },
-      }
+      };
     }
     return {
       version: null,
       compatible: false,
       error: 'Claude Code not found or not accessible',
+    };
+  }
+
+  // ============================================================================
+  // V3.0 COMPONENT METHODS
+  // ============================================================================
+
+  /**
+   * Get all component paths for Claude Code platform
+   * @returns {Object} Component paths by type
+   */
+  getComponentPaths() {
+    return {
+      main: path.join(this.projectPath, 'CLAUDE.md'),
+      agents: path.join(this.claudeConfigPath, 'agents'),
+      rules: path.join(this.claudeConfigPath, 'rules'),
+      commands: path.join(this.claudeConfigPath, 'commands'),
+      skills: path.join(this.claudeConfigPath, 'skills'),
+      workflows: null, // Claude Code doesn't have workflows
+      settings: path.join(this.claudeConfigPath, 'settings.json'),
+      mcpConfig: path.join(this.projectPath, '.mcp.json'),
+    };
+  }
+
+  /**
+   * Get platform constraints for Claude Code
+   * @returns {Object} Platform constraints
+   */
+  getPlatformConstraints() {
+    return {
+      maxCharacters: null, // No hard limit
+      maxFiles: null,
+      maxDepth: 5, // File reference depth
+      supportsFileReferences: true,
+      supportsYAMLFrontmatter: true,
+      supportsAgents: true,
+      supportsRules: true,
+      supportsCommands: true,
+      supportsSkills: true,
+      supportsWorkflows: false,
+      supportsMCP: true,
+      globPatternSyntax: 'minimatch',
+    };
+  }
+
+  /**
+   * Parse agent component with Claude-specific metadata
+   * @param {string} filePath - Path to agent file
+   * @returns {Promise<Object>} Parsed agent component
+   */
+  async parseAgentComponent(filePath) {
+    try {
+      const content = await fs.promises.readFile(filePath, 'utf8');
+      const frontmatter = this.extractFrontmatter(content);
+
+      const agent = {
+        type: 'agent',
+        name: path.basename(filePath, '.md'),
+        file: filePath,
+        content,
+        format: 'markdown',
+      };
+
+      if (frontmatter) {
+        agent.frontmatter = frontmatter;
+        agent.tools = frontmatter.tools || [];
+        agent.model = frontmatter.model || 'sonnet';
+        agent.triggers = frontmatter.triggers || [];
+
+        // Check for PROACTIVELY trigger
+        if (content.includes('PROACTIVELY') || frontmatter.triggers?.includes('PROACTIVELY')) {
+          agent.proactive = true;
+        }
+      }
+
+      return agent;
+    } catch (error) {
+      console.error(`Error parsing agent ${filePath}:`, error);
+      return null;
     }
+  }
+
+  /**
+   * Parse rule component with path patterns
+   * @param {string} filePath - Path to rule file
+   * @returns {Promise<Object>} Parsed rule component
+   */
+  async parseRuleComponent(filePath) {
+    try {
+      const content = await fs.promises.readFile(filePath, 'utf8');
+      const frontmatter = this.extractFrontmatter(content);
+
+      const rule = {
+        type: 'rule',
+        name: path.basename(filePath, '.md'),
+        file: filePath,
+        content,
+        format: 'markdown',
+      };
+
+      if (frontmatter) {
+        rule.frontmatter = frontmatter;
+        rule.paths = frontmatter.paths || [];
+      }
+
+      return rule;
+    } catch (error) {
+      console.error(`Error parsing rule ${filePath}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Parse command component with tool permissions
+   * @param {string} filePath - Path to command file
+   * @returns {Promise<Object>} Parsed command component
+   */
+  async parseCommandComponent(filePath) {
+    try {
+      const content = await fs.promises.readFile(filePath, 'utf8');
+      const frontmatter = this.extractFrontmatter(content);
+
+      const command = {
+        type: 'command',
+        name: path.basename(filePath, '.md'),
+        file: filePath,
+        content,
+        format: 'markdown',
+      };
+
+      if (frontmatter) {
+        command.frontmatter = frontmatter;
+        command.allowedTools = frontmatter.allowedTools || [];
+        command.argumentHint = frontmatter.argumentHint || '';
+      }
+
+      return command;
+    } catch (error) {
+      console.error(`Error parsing command ${filePath}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Parse agents directory with Claude-specific handling
+   * @param {string} dirPath - Path to agents directory
+   * @returns {Promise<Array>} Array of parsed agent components
+   */
+  async parseAgentComponents(dirPath) {
+    const agents = [];
+
+    try {
+      if (!(await this.directoryExistsAsync(dirPath))) {
+        return agents;
+      }
+
+      const files = await fs.promises.readdir(dirPath);
+
+      for (const file of files) {
+        if (!file.endsWith('.md')) continue;
+
+        const filePath = path.join(dirPath, file);
+        const agent = await this.parseAgentComponent(filePath);
+
+        if (agent) {
+          agents.push(agent);
+        }
+      }
+    } catch (error) {
+      console.error(`Error parsing agents directory ${dirPath}:`, error);
+    }
+
+    return agents;
+  }
+
+  /**
+   * Parse rules directory with Claude-specific handling
+   * @param {string} dirPath - Path to rules directory
+   * @returns {Promise<Array>} Array of parsed rule components
+   */
+  async parseRuleComponents(dirPath) {
+    const rules = [];
+
+    try {
+      if (!(await this.directoryExistsAsync(dirPath))) {
+        return rules;
+      }
+
+      const files = await fs.promises.readdir(dirPath);
+
+      for (const file of files) {
+        if (!file.endsWith('.md')) continue;
+
+        const filePath = path.join(dirPath, file);
+        const rule = await this.parseRuleComponent(filePath);
+
+        if (rule) {
+          rules.push(rule);
+        }
+      }
+    } catch (error) {
+      console.error(`Error parsing rules directory ${dirPath}:`, error);
+    }
+
+    return rules;
+  }
+
+  /**
+   * Parse commands directory with Claude-specific handling
+   * @param {string} dirPath - Path to commands directory
+   * @returns {Promise<Array>} Array of parsed command components
+   */
+  async parseCommandComponents(dirPath) {
+    const commands = [];
+
+    try {
+      if (!(await this.directoryExistsAsync(dirPath))) {
+        return commands;
+      }
+
+      const files = await fs.promises.readdir(dirPath);
+
+      for (const file of files) {
+        if (!file.endsWith('.md')) continue;
+
+        const filePath = path.join(dirPath, file);
+        const command = await this.parseCommandComponent(filePath);
+
+        if (command) {
+          commands.push(command);
+        }
+      }
+    } catch (error) {
+      console.error(`Error parsing commands directory ${dirPath}:`, error);
+    }
+
+    return commands;
+  }
+
+  /**
+   * Parse skill component
+   * @param {string} filePath - Path to skill file
+   * @returns {Promise<Object>} Parsed skill component
+   */
+  async parseSkillComponent(filePath) {
+    try {
+      const content = await fs.promises.readFile(filePath, 'utf8');
+      const frontmatter = this.extractFrontmatter(content);
+
+      const skill = {
+        type: 'skill',
+        name: path.basename(filePath, '.md'),
+        file: filePath,
+        content,
+        format: 'markdown',
+      };
+
+      if (frontmatter) {
+        skill.frontmatter = frontmatter;
+        skill.template = frontmatter.template || '';
+        skill.usage = frontmatter.usage || '';
+      }
+
+      return skill;
+    } catch (error) {
+      console.error(`Error parsing skill ${filePath}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Parse skills directory
+   * @param {string} dirPath - Path to skills directory
+   * @returns {Promise<Array>} Array of parsed skill components
+   */
+  async parseSkillComponents(dirPath) {
+    const skills = [];
+
+    try {
+      if (!(await this.directoryExistsAsync(dirPath))) {
+        return skills;
+      }
+
+      const files = await fs.promises.readdir(dirPath);
+
+      for (const file of files) {
+        if (!file.endsWith('.md')) continue;
+
+        const filePath = path.join(dirPath, file);
+        const skill = await this.parseSkillComponent(filePath);
+
+        if (skill) {
+          skills.push(skill);
+        }
+      }
+    } catch (error) {
+      console.error(`Error parsing skills directory ${dirPath}:`, error);
+    }
+
+    return skills;
+  }
+
+  /**
+   * Generate agent component file
+   * @param {Object} agent - Agent data
+   * @param {Object} options - Generation options
+   * @returns {Promise<string>} Path to generated file
+   */
+  async generateAgentComponent(agent, _options = {}) {
+    const agentsDir = path.join(this.claudeConfigPath, 'agents');
+    await this.ensureDirectory(agentsDir);
+
+    const fileName = `${agent.name}.md`;
+    const filePath = path.join(agentsDir, fileName);
+
+    // Build frontmatter
+    const frontmatter = {
+      name: agent.name,
+      description: agent.description || '',
+      tools: agent.tools || ['Read', 'Grep', 'Glob'],
+      model: agent.model || 'sonnet',
+      triggers: agent.triggers || [],
+    };
+
+    // Build content
+    let content = '---\n';
+    for (const [key, value] of Object.entries(frontmatter)) {
+      if (Array.isArray(value)) {
+        content += `${key}: [${value.join(', ')}]\n`;
+      } else {
+        content += `${key}: ${value}\n`;
+      }
+    }
+    content += '---\n\n';
+    content += agent.content || '';
+
+    await fs.promises.writeFile(filePath, content, 'utf8');
+    return filePath;
+  }
+
+  /**
+   * Generate rule component file
+   * @param {Object} rule - Rule data
+   * @param {Object} options - Generation options
+   * @returns {Promise<string>} Path to generated file
+   */
+  async generateRuleComponent(rule, _options = {}) {
+    const rulesDir = path.join(this.claudeConfigPath, 'rules');
+    await this.ensureDirectory(rulesDir);
+
+    const fileName = `${rule.name}.md`;
+    const filePath = path.join(rulesDir, fileName);
+
+    // Build frontmatter
+    const frontmatter = {
+      name: rule.name,
+      description: rule.description || '',
+      paths: rule.paths || [],
+    };
+
+    // Build content
+    let content = '---\n';
+    for (const [key, value] of Object.entries(frontmatter)) {
+      if (Array.isArray(value)) {
+        content += `${key}:\n`;
+        value.forEach(item => {
+          content += `  - ${item}\n`;
+        });
+      } else {
+        content += `${key}: ${value}\n`;
+      }
+    }
+    content += '---\n\n';
+    content += rule.content || '';
+
+    await fs.promises.writeFile(filePath, content, 'utf8');
+    return filePath;
+  }
+
+  /**
+   * Generate command component file
+   * @param {Object} command - Command data
+   * @param {Object} options - Generation options
+   * @returns {Promise<string>} Path to generated file
+   */
+  async generateCommandComponent(command, _options = {}) {
+    const commandsDir = path.join(this.claudeConfigPath, 'commands');
+    await this.ensureDirectory(commandsDir);
+
+    const fileName = `${command.name}.md`;
+    const filePath = path.join(commandsDir, fileName);
+
+    // Build frontmatter
+    const frontmatter = {
+      name: command.name,
+      description: command.description || '',
+      allowedTools: command.allowedTools || ['Read'],
+      argumentHint: command.argumentHint || '',
+    };
+
+    // Build content
+    let content = '---\n';
+    for (const [key, value] of Object.entries(frontmatter)) {
+      if (Array.isArray(value)) {
+        content += `${key}: [${value.join(', ')}]\n`;
+      } else {
+        content += `${key}: ${value}\n`;
+      }
+    }
+    content += '---\n\n';
+    content += command.content || '';
+
+    await fs.promises.writeFile(filePath, content, 'utf8');
+    return filePath;
+  }
+
+  /**
+   * Generate skill component file
+   * @param {Object} skill - Skill data
+   * @param {Object} options - Generation options
+   * @returns {Promise<string>} Path to generated file
+   */
+  async generateSkillComponent(skill, _options = {}) {
+    const skillsDir = path.join(this.claudeConfigPath, 'skills');
+    await this.ensureDirectory(skillsDir);
+
+    const fileName = `${skill.name}.md`;
+    const filePath = path.join(skillsDir, fileName);
+
+    // Build frontmatter
+    const frontmatter = {
+      name: skill.name,
+      description: skill.description || '',
+      template: skill.template || '',
+      usage: skill.usage || '',
+    };
+
+    // Build content
+    let content = '---\n';
+    for (const [key, value] of Object.entries(frontmatter)) {
+      content += `${key}: ${value}\n`;
+    }
+    content += '---\n\n';
+    content += skill.content || '';
+
+    await fs.promises.writeFile(filePath, content, 'utf8');
+    return filePath;
+  }
+
+  /**
+   * Generate all components for Claude Code
+   * @param {Object} components - Components to generate
+   * @param {Object} options - Generation options
+   * @returns {Promise<Object>} Generation result
+   */
+  async generateComponents(components, options = {}) {
+    const result = {
+      success: true,
+      files: [],
+      errors: [],
+    };
+
+    try {
+      // Generate agents
+      if (components.agents && components.agents.length > 0) {
+        for (const agent of components.agents) {
+          try {
+            const filePath = await this.generateAgentComponent(agent, options);
+            result.files.push({ type: 'agent', path: filePath });
+          } catch (error) {
+            result.errors.push(`Failed to generate agent ${agent.name}: ${error.message}`);
+          }
+        }
+      }
+
+      // Generate rules
+      if (components.rules && components.rules.length > 0) {
+        for (const rule of components.rules) {
+          try {
+            const filePath = await this.generateRuleComponent(rule, options);
+            result.files.push({ type: 'rule', path: filePath });
+          } catch (error) {
+            result.errors.push(`Failed to generate rule ${rule.name}: ${error.message}`);
+          }
+        }
+      }
+
+      // Generate commands
+      if (components.commands && components.commands.length > 0) {
+        for (const command of components.commands) {
+          try {
+            const filePath = await this.generateCommandComponent(command, options);
+            result.files.push({ type: 'command', path: filePath });
+          } catch (error) {
+            result.errors.push(`Failed to generate command ${command.name}: ${error.message}`);
+          }
+        }
+      }
+
+      // Generate skills
+      if (components.skills && components.skills.length > 0) {
+        for (const skill of components.skills) {
+          try {
+            const filePath = await this.generateSkillComponent(skill, options);
+            result.files.push({ type: 'skill', path: filePath });
+          } catch (error) {
+            result.errors.push(`Failed to generate skill ${skill.name}: ${error.message}`);
+          }
+        }
+      }
+
+      // Generate main file if provided
+      if (components.main) {
+        try {
+          const mainPath = path.join(this.projectPath, 'CLAUDE.md');
+          await fs.promises.writeFile(mainPath, components.main.content, 'utf8');
+          result.files.push({ type: 'main', path: mainPath });
+        } catch (error) {
+          result.errors.push(`Failed to generate main file: ${error.message}`);
+        }
+      }
+
+      // Generate settings if provided
+      if (components.settings) {
+        try {
+          const settingsPath = path.join(this.claudeConfigPath, 'settings.json');
+          await this.writeJsonFile(settingsPath, components.settings.content);
+          result.files.push({ type: 'settings', path: settingsPath });
+        } catch (error) {
+          result.errors.push(`Failed to generate settings: ${error.message}`);
+        }
+      }
+
+      result.success = result.errors.length === 0;
+    } catch (error) {
+      result.success = false;
+      result.errors.push(`Component generation failed: ${error.message}`);
+    }
+
+    return result;
   }
 }
 
@@ -728,13 +1305,13 @@ ${
  * @returns {boolean} Success status
  */
 export async function setupClaudeCodeIntegration(projectPath, projectContext = {}) {
-  const integration = new ClaudeCodeIntegration(projectPath)
+  const integration = new ClaudeCodeIntegration(projectPath);
 
   // Check if Claude Code is available
-  const versionInfo = await integration.getClaudeCodeVersion()
+  const versionInfo = await integration.getClaudeCodeVersion();
   if (!versionInfo.compatible) {
-    console.warn('Claude Code not found or incompatible version')
-    return false
+    console.warn('Claude Code not found or incompatible version');
+    return false;
   }
 
   // Initialize Claude Code configuration
@@ -743,12 +1320,12 @@ export async function setupClaudeCodeIntegration(projectPath, projectContext = {
     projectType: projectContext.projectType,
     primaryLanguage: projectContext.techStack?.primaryLanguages?.[0],
     framework: projectContext.techStack?.frameworks?.[0],
-  })
+  });
 
   if (initSuccess && projectContext) {
     // Update memory with project context
-    await integration.updateMemoryWithVDKContext(projectContext)
+    await integration.updateMemoryWithVDKContext(projectContext);
   }
 
-  return initSuccess
+  return initSuccess;
 }

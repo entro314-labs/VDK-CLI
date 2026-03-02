@@ -5,19 +5,18 @@
  * and gathering information about files, directories, and their relationships.
  */
 
-import fs from 'node:fs/promises'
-import os from 'node:os'
-import path from 'node:path'
-import { Worker } from 'node:worker_threads'
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 
-import chalk from 'chalk'
-import { glob } from 'glob'
+import chalk from 'chalk';
+import { glob } from 'glob';
 
-import { GitIgnoreParser } from '../utils/gitignore-parser.js'
+import { GitIgnoreParser } from '../utils/gitignore-parser.js';
 
 export class ProjectScanner {
   constructor(options = {}) {
-    this.projectPath = options.projectPath || process.cwd()
+    this.projectPath = options.projectPath || process.cwd();
     this.ignorePatterns = options.ignorePatterns || [
       '**/node_modules/**',
       '**/dist/**',
@@ -26,18 +25,18 @@ export class ProjectScanner {
       '**/.next/**',
       '**/coverage/**',
       '**/*.d.ts',
-    ]
-    this.useGitIgnore = options.useGitIgnore !== false // Default to true
-    this.deepScan = options.deepScan
-    this.verbose = options.verbose
-    this.concurrency = options.concurrency || Math.min(os.cpus().length, 8) // Max 8 workers
+    ];
+    this.useGitIgnore = options.useGitIgnore !== false; // Default to true
+    this.deepScan = options.deepScan;
+    this.verbose = options.verbose;
+    this.concurrency = options.concurrency || Math.min(os.cpus().length, 8); // Max 8 workers
 
     // Initialize data structures for project information
-    this.fileTypes = {}
-    this.fileExtensions = new Set()
-    this.directoryStructure = {}
-    this.files = []
-    this.directories = []
+    this.fileTypes = {};
+    this.fileExtensions = new Set();
+    this.directoryStructure = {};
+    this.files = [];
+    this.directories = [];
   }
 
   /**
@@ -47,67 +46,67 @@ export class ProjectScanner {
    * @returns {Object} Project analysis results
    */
   async scanProject(projectPath, options = {}) {
-    const startTime = Date.now()
+    const startTime = Date.now();
 
     try {
-      console.log(chalk.blue(`🔍 Scanning project at: ${projectPath}`))
+      console.log(chalk.blue(`🔍 Scanning project at: ${projectPath}`));
 
       // Validate project directory exists
       try {
-        await fs.access(projectPath)
+        await fs.access(projectPath);
       } catch {
-        throw new Error(`Project directory does not exist: ${projectPath}`)
+        throw new Error(`Project directory does not exist: ${projectPath}`);
       }
 
-      const stats = await fs.stat(projectPath)
+      const stats = await fs.stat(projectPath);
       if (!stats.isDirectory()) {
-        throw new Error(`Path is not a directory: ${projectPath}`)
+        throw new Error(`Path is not a directory: ${projectPath}`);
       }
 
       // Update project path if provided
       if (projectPath) {
-        this.projectPath = projectPath
+        this.projectPath = projectPath;
       }
 
       // Update options if provided
       if (options.ignorePatterns) {
-        this.ignorePatterns = options.ignorePatterns
+        this.ignorePatterns = options.ignorePatterns;
       }
 
       if (options.useGitIgnore !== undefined) {
-        this.useGitIgnore = options.useGitIgnore
+        this.useGitIgnore = options.useGitIgnore;
       }
 
       if (options.deep !== undefined) {
-        this.deepScan = options.deep
+        this.deepScan = options.deep;
       }
 
       if (this.verbose) {
-        console.log(chalk.gray(`Ignored patterns: ${this.ignorePatterns.join(', ')}`))
+        console.log(chalk.gray(`Ignored patterns: ${this.ignorePatterns.join(', ')}`));
       }
 
       // Reset data structures for a clean scan
-      this.fileTypes = {}
-      this.fileExtensions = new Set()
-      this.directoryStructure = {}
-      this.files = []
-      this.directories = []
+      this.fileTypes = {};
+      this.fileExtensions = new Set();
+      this.directoryStructure = {};
+      this.files = [];
+      this.directories = [];
 
       // If enabled, add gitignore patterns to our ignore list
-      let effectiveIgnorePatterns = [...this.ignorePatterns]
+      let effectiveIgnorePatterns = [...this.ignorePatterns];
 
       if (this.useGitIgnore) {
         try {
-          const gitIgnorePatterns = await GitIgnoreParser.parseGitIgnore(this.projectPath)
+          const gitIgnorePatterns = await GitIgnoreParser.parseGitIgnore(this.projectPath);
           if (gitIgnorePatterns.length > 0) {
-            effectiveIgnorePatterns = [...effectiveIgnorePatterns, ...gitIgnorePatterns]
+            effectiveIgnorePatterns = [...effectiveIgnorePatterns, ...gitIgnorePatterns];
             if (this.verbose) {
-              console.log(chalk.gray(`Added ${gitIgnorePatterns.length} patterns from .gitignore`))
+              console.log(chalk.gray(`Added ${gitIgnorePatterns.length} patterns from .gitignore`));
             }
           }
         } catch (error) {
           if (this.verbose) {
-            console.warn(chalk.yellow(`Warning: Error parsing .gitignore: ${error.message}`))
+            console.warn(chalk.yellow(`Warning: Error parsing .gitignore: ${error.message}`));
           }
         }
       }
@@ -119,29 +118,32 @@ export class ProjectScanner {
         dot: true,
         nodir: false,
         absolute: true,
-      })
+      });
 
       // Analyze files and directories concurrently for better performance
-      const processedItems = await this.processFilesConcurrently(allFiles)
+      const processedItems = await this.processFilesConcurrently(allFiles);
 
       // Aggregate results
       for (const item of processedItems) {
         if (item.type === 'file') {
-          this.files.push(item.data)
-          this.fileExtensions.add(item.data.extension)
-          this.fileTypes[item.data.type] = (this.fileTypes[item.data.type] || 0) + 1
+          this.files.push(item.data);
+          this.fileExtensions.add(item.data.extension);
+          this.fileTypes[item.data.type] = (this.fileTypes[item.data.type] || 0) + 1;
         } else if (item.type === 'directory') {
-          this.directories.push(item.data)
+          this.directories.push(item.data);
         }
       }
 
       // If doing a deep scan, analyze relationships between files
       if (this.deepScan) {
-        await this.analyzeRelationships()
+        await this.analyzeRelationships();
       }
 
+      // Detect existing VDK components (agents, rules, commands)
+      const components = await this.scanForComponents();
+
       // Build directory structure representation
-      this.buildDirectoryStructure()
+      this.buildDirectoryStructure();
 
       const result = {
         projectPath,
@@ -153,12 +155,13 @@ export class ProjectScanner {
         fileTypes: this.fileTypes,
         fileExtensions: Array.from(this.fileExtensions),
         directoryStructure: this.directoryStructure,
-      }
+        components, // Include detected components in result
+      };
 
-      console.log(chalk.green(`✅ Project scan completed in ${result.scanDuration}ms`))
-      return result
+      console.log(chalk.green(`✅ Project scan completed in ${result.scanDuration}ms`));
+      return result;
     } catch (error) {
-      console.log(chalk.red(`❌ Project scan failed: ${error.message}`))
+      console.log(chalk.red(`❌ Project scan failed: ${error.message}`));
       // Return a minimal structure instead of crashing
       return {
         projectPath,
@@ -171,7 +174,7 @@ export class ProjectScanner {
         fileTypes: {},
         fileExtensions: [],
         directoryStructure: {},
-      }
+      };
     }
   }
 
@@ -181,16 +184,69 @@ export class ProjectScanner {
    */
   async analyzeRelationships() {
     if (this.verbose) {
-      console.log(chalk.gray('Analyzing file relationships (deep scan)...'))
+      console.log(chalk.gray('Analyzing file relationships (deep scan)...'));
     }
 
     // Implementation would involve parsing files for import statements,
     // require() calls, etc., and creating a dependency graph
 
     for (const file of this.files) {
-      file.imports = []
-      file.importedBy = []
+      file.imports = [];
+      file.importedBy = [];
     }
+  }
+
+  /**
+   * Scans for existing VDK components (v3.0 structure)
+   * Check standard locations: .claude/agents, .cursor/rules, etc.
+   * @returns {Promise<Object>} Detected components by type
+   */
+  async scanForComponents() {
+    if (this.verbose) {
+      console.log(chalk.gray('Scanning for existing VDK components...'));
+    }
+
+    const components = {
+      agents: [],
+      rules: [],
+      commands: [],
+      skills: [],
+    };
+
+    // Define standard component paths
+    const componentPatterns = {
+      agents: ['**/.claude/agents/*.md', '**/.openai/agents/*.md', '**/AGENTS.md'],
+      rules: ['**/.cursor/rules/*.mdc', '**/.windsurf/rules/*.md', '**/.claude/rules/*.md'],
+      commands: ['**/.claude/commands/*.md', '**/.continue/prompts/*.txt'],
+      skills: ['**/.claude/skills/*.md'],
+    };
+
+    for (const [type, patterns] of Object.entries(componentPatterns)) {
+      for (const pattern of patterns) {
+        const matches = await glob(pattern, {
+          cwd: this.projectPath,
+          ignore: this.ignorePatterns,
+          absolute: true,
+        });
+
+        for (const filePath of matches) {
+          components[type].push({
+            path: filePath,
+            name: path.basename(filePath, path.extname(filePath)),
+            relativePath: path.relative(this.projectPath, filePath),
+          });
+        }
+      }
+    }
+
+    if (this.verbose) {
+      const total = Object.values(components).reduce((acc, curr) => acc + curr.length, 0);
+      if (total > 0) {
+        console.log(chalk.green(`✓ Found ${total} existing components`));
+      }
+    }
+
+    return components;
   }
 
   /**
@@ -198,7 +254,7 @@ export class ProjectScanner {
    */
   buildDirectoryStructure() {
     if (this.verbose) {
-      console.log(chalk.gray('Building directory structure representation...'))
+      console.log(chalk.gray('Building directory structure representation...'));
     }
 
     // Create the root node
@@ -207,35 +263,35 @@ export class ProjectScanner {
       path: this.projectPath,
       type: 'directory',
       children: {},
-    }
+    };
 
     // Group files by parent directory
-    const filesByDir = {}
+    const filesByDir = {};
     for (const file of this.files) {
-      const dirPath = path.dirname(file.relativePath)
+      const dirPath = path.dirname(file.relativePath);
       if (!filesByDir[dirPath]) {
-        filesByDir[dirPath] = []
+        filesByDir[dirPath] = [];
       }
-      filesByDir[dirPath].push(file)
+      filesByDir[dirPath].push(file);
     }
 
     // Helper function to add a path to the structure
     const addPathToStructure = (relativePath, isDirectory = false, fileInfo = null) => {
       if (relativePath === '.') {
-        return // Skip the root directory
+        return; // Skip the root directory
       }
 
-      const parts = relativePath.split(path.sep)
-      let current = this.directoryStructure.children
+      const parts = relativePath.split(path.sep);
+      let current = this.directoryStructure.children;
 
       // Build the path in the structure
       for (let i = 0; i < parts.length; i++) {
-        const part = parts[i]
+        const part = parts[i];
         if (!part) {
-          continue // Skip empty parts
+          continue; // Skip empty parts
         }
 
-        const isLastPart = i === parts.length - 1
+        const isLastPart = i === parts.length - 1;
 
         if (!current[part]) {
           if (isLastPart && !isDirectory) {
@@ -246,31 +302,31 @@ export class ProjectScanner {
               extension: fileInfo ? fileInfo.extension : '',
               fileType: fileInfo ? fileInfo.type : 'unknown',
               size: fileInfo ? fileInfo.size : 0,
-            }
+            };
           } else {
             // This is a directory
             current[part] = {
               name: part,
               type: 'directory',
               children: {},
-            }
+            };
           }
         }
 
         if (!isLastPart || isDirectory) {
-          current = current[part].children
+          current = current[part].children;
         }
       }
-    }
+    };
 
     // Add directories to the structure
     for (const dir of this.directories) {
-      addPathToStructure(dir.relativePath, true)
+      addPathToStructure(dir.relativePath, true);
     }
 
     // Add files to the structure
     for (const file of this.files) {
-      addPathToStructure(file.relativePath, false, file)
+      addPathToStructure(file.relativePath, false, file);
     }
   }
 
@@ -280,8 +336,8 @@ export class ProjectScanner {
    * @returns {string} Type of file
    */
   determineFileType(filePath) {
-    const ext = path.extname(filePath).toLowerCase()
-    const fileName = path.basename(filePath).toLowerCase()
+    const ext = path.extname(filePath).toLowerCase();
+    const fileName = path.basename(filePath).toLowerCase();
 
     // Configuration files
     if (
@@ -301,15 +357,22 @@ export class ProjectScanner {
         'rollup.config.js',
       ].includes(fileName)
     ) {
-      return 'config'
+      return 'config';
     }
 
     // Documentation files
     if (
-      ['readme.md', 'license', 'license.md', 'license.txt', 'contributing.md', 'changelog.md'].includes(fileName) ||
+      [
+        'readme.md',
+        'license',
+        'license.md',
+        'license.txt',
+        'contributing.md',
+        'changelog.md',
+      ].includes(fileName) ||
       ext === '.md'
     ) {
-      return 'documentation'
+      return 'documentation';
     }
 
     // Source code by language
@@ -332,43 +395,43 @@ export class ProjectScanner {
       '.cpp': 'cpp',
       '.h': 'c-header',
       '.hpp': 'cpp-header',
-    }
+    };
 
     if (codeExtensions[ext]) {
-      return codeExtensions[ext]
+      return codeExtensions[ext];
     }
 
     // Web assets
     if (['.html', '.htm'].includes(ext)) {
-      return 'html'
+      return 'html';
     }
     if (['.css', '.scss', '.sass', '.less'].includes(ext)) {
-      return 'stylesheet'
+      return 'stylesheet';
     }
     if (['.svg', '.png', '.jpg', '.jpeg', '.gif', '.webp'].includes(ext)) {
-      return 'image'
+      return 'image';
     }
     if (['.woff', '.woff2', '.ttf', '.eot', '.otf'].includes(ext)) {
-      return 'font'
+      return 'font';
     }
     if (['.json', '.jsonc'].includes(ext)) {
-      return 'json'
+      return 'json';
     }
     if (['.xml', '.xsl'].includes(ext)) {
-      return 'xml'
+      return 'xml';
     }
     if (['.yml', '.yaml'].includes(ext)) {
-      return 'yaml'
+      return 'yaml';
     }
     if (['.toml'].includes(ext)) {
-      return 'toml'
+      return 'toml';
     }
     if (['.csv', '.tsv'].includes(ext)) {
-      return 'tabular-data'
+      return 'tabular-data';
     }
 
     // Fallback to 'unknown' type
-    return 'unknown'
+    return 'unknown';
   }
 
   /**
@@ -378,35 +441,43 @@ export class ProjectScanner {
    */
   async processFilesConcurrently(filePaths) {
     if (filePaths.length === 0) {
-      return []
+      return [];
     }
 
     // For small file counts, use synchronous processing to avoid overhead
     if (filePaths.length < 20) {
-      return this.processFilesSync(filePaths)
+      return this.processFilesSync(filePaths);
     }
 
     if (this.verbose) {
-      console.log(chalk.gray(`Processing ${filePaths.length} files with ${this.concurrency} workers...`))
+      console.log(
+        chalk.gray(`Processing ${filePaths.length} files with ${this.concurrency} workers...`)
+      );
     }
 
     // Split files into chunks for parallel processing
-    const chunkSize = Math.ceil(filePaths.length / this.concurrency)
-    const chunks = []
+    const chunkSize = Math.ceil(filePaths.length / this.concurrency);
+    const chunks = [];
 
     for (let i = 0; i < filePaths.length; i += chunkSize) {
-      chunks.push(filePaths.slice(i, i + chunkSize))
+      chunks.push(filePaths.slice(i, i + chunkSize));
     }
 
     try {
       // Process chunks in parallel using Promise.all for concurrent execution
-      const chunkResults = await Promise.all(chunks.map((chunk, index) => this.processFileChunk(chunk, index)))
+      const chunkResults = await Promise.all(
+        chunks.map((chunk, index) => this.processFileChunk(chunk, index))
+      );
 
       // Flatten results
-      return chunkResults.flat()
+      return chunkResults.flat();
     } catch (error) {
-      console.warn(chalk.yellow(`Warning: Concurrent processing failed, falling back to sync: ${error.message}`))
-      return this.processFilesSync(filePaths)
+      console.warn(
+        chalk.yellow(
+          `Warning: Concurrent processing failed, falling back to sync: ${error.message}`
+        )
+      );
+      return this.processFilesSync(filePaths);
     }
   }
 
@@ -416,12 +487,12 @@ export class ProjectScanner {
    * @returns {Promise<Array>} Array of processed file information
    */
   async processFilesSync(filePaths) {
-    const results = []
+    const results = [];
 
     for (const filePath of filePaths) {
       try {
-        const stats = await fs.stat(filePath)
-        const relPath = path.relative(this.projectPath, filePath)
+        const stats = await fs.stat(filePath);
+        const relPath = path.relative(this.projectPath, filePath);
 
         if (stats.isDirectory()) {
           results.push({
@@ -433,10 +504,10 @@ export class ProjectScanner {
               depth: relPath.split(path.sep).length,
               parentPath: path.dirname(filePath),
             },
-          })
+          });
         } else {
           // File properties
-          const ext = path.extname(filePath).substring(1) // Remove the dot
+          const ext = path.extname(filePath).substring(1); // Remove the dot
           results.push({
             type: 'file',
             data: {
@@ -449,16 +520,16 @@ export class ProjectScanner {
               modifiedTime: stats.mtime,
               parentPath: path.dirname(filePath),
             },
-          })
+          });
         }
       } catch (error) {
         if (this.verbose) {
-          console.warn(chalk.yellow(`Warning: Error analyzing file ${filePath}: ${error.message}`))
+          console.warn(chalk.yellow(`Warning: Error analyzing file ${filePath}: ${error.message}`));
         }
       }
     }
 
-    return results
+    return results;
   }
 
   /**
@@ -469,20 +540,20 @@ export class ProjectScanner {
    */
   async processFileChunk(chunk, chunkIndex) {
     if (this.verbose && chunk.length > 50) {
-      console.log(chalk.gray(`Processing chunk ${chunkIndex + 1} with ${chunk.length} files...`))
+      console.log(chalk.gray(`Processing chunk ${chunkIndex + 1} with ${chunk.length} files...`));
     }
 
     // Process files in this chunk with limited concurrency to avoid overwhelming filesystem
-    const BATCH_SIZE = 10
-    const results = []
+    const BATCH_SIZE = 10;
+    const results = [];
 
     for (let i = 0; i < chunk.length; i += BATCH_SIZE) {
-      const batch = chunk.slice(i, i + BATCH_SIZE)
+      const batch = chunk.slice(i, i + BATCH_SIZE);
 
-      const batchPromises = batch.map(async (filePath) => {
+      const batchPromises = batch.map(async filePath => {
         try {
-          const stats = await fs.stat(filePath)
-          const relPath = path.relative(this.projectPath, filePath)
+          const stats = await fs.stat(filePath);
+          const relPath = path.relative(this.projectPath, filePath);
 
           if (stats.isDirectory()) {
             return {
@@ -494,10 +565,10 @@ export class ProjectScanner {
                 depth: relPath.split(path.sep).length,
                 parentPath: path.dirname(filePath),
               },
-            }
+            };
           } else {
             // File properties
-            const ext = path.extname(filePath).substring(1) // Remove the dot
+            const ext = path.extname(filePath).substring(1); // Remove the dot
             return {
               type: 'file',
               data: {
@@ -510,20 +581,22 @@ export class ProjectScanner {
                 modifiedTime: stats.mtime,
                 parentPath: path.dirname(filePath),
               },
-            }
+            };
           }
         } catch (error) {
           if (this.verbose) {
-            console.warn(chalk.yellow(`Warning: Error analyzing file ${filePath}: ${error.message}`))
+            console.warn(
+              chalk.yellow(`Warning: Error analyzing file ${filePath}: ${error.message}`)
+            );
           }
-          return null
+          return null;
         }
-      })
+      });
 
-      const batchResults = await Promise.all(batchPromises)
-      results.push(...batchResults.filter((result) => result !== null))
+      const batchResults = await Promise.all(batchPromises);
+      results.push(...batchResults.filter(result => result !== null));
     }
 
-    return results
+    return results;
   }
 }

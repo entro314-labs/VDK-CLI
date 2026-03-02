@@ -1,17 +1,17 @@
 /**
- * Team Sync Command
+ * Team Config Command
  * ----------------
- * Sync VDK configuration from team shared resources (Git or Hub)
+ * Sync VDK team configuration from shared resources (Git or Hub)
  */
 
-import fs from 'node:fs'
-import path from 'node:path'
-import { SyncOperations } from '../../shared/sync-operations.js'
-import { BaseCommand } from '../base/BaseCommand.js'
+import fs from 'node:fs';
+import path from 'node:path';
+import { SyncOperations } from '../../shared/sync-operations.js';
+import { BaseCommand } from '../base/BaseCommand.js';
 
-export class TeamSyncCommand extends BaseCommand {
+export class TeamConfigCommand extends BaseCommand {
   constructor() {
-    super('team:sync', 'Sync VDK configuration from team resources')
+    super('team:config', 'Sync VDK team configuration from shared resources');
   }
 
   configureOptions(command) {
@@ -20,56 +20,56 @@ export class TeamSyncCommand extends BaseCommand {
       .option('--team-id <teamId>', 'Team ID for Hub sync')
       .option('--force', 'Force overwrite local configuration', false)
       .option('--dry-run', 'Show what would be synced without applying', false)
-      .option('--backup', 'Backup existing configuration before sync', true)
+      .option('--backup', 'Backup existing configuration before sync', true);
   }
 
   async execute(options) {
-    this.showHeader()
+    this.showHeader();
 
-    const { source, teamId, force, dryRun, backup } = options
-    const syncOps = new SyncOperations(this)
-    const projectPath = process.cwd()
+    const { source, teamId, force, dryRun, backup } = options;
+    const syncOps = new SyncOperations(this);
+    const projectPath = process.cwd();
 
-    this.logInfo('🔄 VDK Team Sync')
-    this.logInfo('')
+    this.logInfo('🔄 VDK Team Config Sync');
+    this.logInfo('');
 
     try {
-      let actualSource = source
+      let actualSource = source;
 
       if (source === 'auto') {
-        actualSource = await this.detectSource(projectPath)
-        this.logInfo(`Auto-detected source: ${actualSource}`)
+        actualSource = await this.detectSource(projectPath);
+        this.logInfo(`Auto-detected source: ${actualSource}`);
       }
 
       // Create backup if requested
       if (backup && !dryRun) {
-        await syncOps.createBackup(path.join(projectPath, '.vdk'), 'team')
+        await syncOps.createBackup(path.join(projectPath, '.vdk'), 'team');
       }
 
-      let result
+      let result;
       if (actualSource === 'git') {
         result = await syncOps.syncFromRepository(projectPath, {
           force,
           dryRun,
           type: 'team-config',
-        })
+        });
       } else if (actualSource === 'hub') {
         result = await syncOps.syncFromHub(projectPath, {
           teamId,
           force,
           dryRun,
           type: 'team-config',
-        })
+        });
       } else {
-        this.logError(`Unknown sync source: ${actualSource}`)
-        return { success: false, error: 'Invalid sync source' }
+        this.logError(`Unknown sync source: ${actualSource}`);
+        return { success: false, error: 'Invalid sync source' };
       }
 
       if (result.synced > 0) {
-        this.logSuccess('✅ Team configuration synced successfully')
-        this.logInfo(`📁 ${result.synced} files updated`)
+        this.logSuccess('✅ Team configuration synced successfully');
+        this.logInfo(`📁 ${result.synced} files updated`);
       } else {
-        this.logWarning('⚠️  No changes applied')
+        this.logWarning('⚠️  No changes applied');
       }
 
       return {
@@ -77,41 +77,41 @@ export class TeamSyncCommand extends BaseCommand {
         source: actualSource,
         synced: result.synced,
         backupCreated: backup && !dryRun,
-      }
+      };
     } catch (error) {
-      this.logError(`Team sync failed: ${error.message}`)
-      return { success: false, error: error.message }
+      this.logError(`Team sync failed: ${error.message}`);
+      return { success: false, error: error.message };
     }
   }
 
   async detectSource(projectPath) {
     // Check if we're in a Git repository with VDK files
     try {
-      const { execSync } = await import('child_process')
-      execSync('git rev-parse --git-dir', { cwd: projectPath, stdio: 'ignore' })
+      const { execSync } = await import('node:child_process');
+      execSync('git rev-parse --git-dir', { cwd: projectPath, stdio: 'ignore' });
 
       // Check if there are VDK files in Git
-      const gitStatus = execSync('git ls-files .vdk/', { cwd: projectPath, encoding: 'utf8' })
+      const gitStatus = execSync('git ls-files .vdk/', { cwd: projectPath, encoding: 'utf8' });
       if (gitStatus.trim()) {
-        return 'git'
+        return 'git';
       }
     } catch {
       // Not a Git repo or no VDK files in Git
     }
 
     // Check for Hub team configuration
-    const configPath = path.join(projectPath, '.vdk', 'config.json')
+    const configPath = path.join(projectPath, '.vdk', 'config.json');
     if (fs.existsSync(configPath)) {
       try {
-        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
         if (config.team?.id || process.env.VDK_TEAM_ID) {
-          return 'hub'
+          return 'hub';
         }
       } catch {
         // Invalid config file
       }
     }
 
-    return 'git' // Default fallback
+    return 'git'; // Default fallback
   }
 }

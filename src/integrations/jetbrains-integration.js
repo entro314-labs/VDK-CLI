@@ -5,17 +5,17 @@
  * Handles MCP configuration, file templates, and AI assistant integration.
  */
 
-import fs from 'node:fs'
-import os from 'node:os'
-import path from 'node:path'
-import { BaseIntegration } from './base-integration.js'
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { BaseIntegration } from './base-integration.js';
 
 /**
  * JetBrains IDE integration for VDK
  */
 export class JetBrainsIntegration extends BaseIntegration {
   constructor(projectPath = process.cwd()) {
-    super('JetBrains IDEs', projectPath)
+    super('JetBrains IDEs', projectPath);
     this.supportedIDEs = [
       'IntelliJIdea',
       'WebStorm',
@@ -27,17 +27,17 @@ export class JetBrainsIntegration extends BaseIntegration {
       'GoLand',
       'Rider',
       'AndroidStudio',
-    ]
+    ];
   }
 
   /**
    * Detect JetBrains IDE usage in the project
    */
   detectUsage() {
-    const detection = this.createDetectionResult()
+    const detection = this.createDetectionResult();
 
     // Check for .idea folder (project-specific)
-    const ideaPath = path.join(this.projectPath, '.idea')
+    const ideaPath = path.join(this.projectPath, '.idea');
     this.checkPaths(
       detection,
       {
@@ -45,62 +45,64 @@ export class JetBrainsIntegration extends BaseIntegration {
       },
       'high',
       true
-    ) // isProjectSpecific = true
+    ); // isProjectSpecific = true
 
     if (detection.isUsed) {
       // Check for specific IDE indicators (only if .idea exists)
-      const detectedIDEs = this.detectSpecificIDEs()
+      const detectedIDEs = this.detectSpecificIDEs();
       if (detectedIDEs.length > 0) {
-        detection.indicators.push(`Detected IDEs: ${detectedIDEs.join(', ')}`)
+        detection.indicators.push(`Detected IDEs: ${detectedIDEs.join(', ')}`);
       }
 
       // Check for AI assistant configuration
-      const hasAIConfig = this.checkAIAssistantConfig()
+      const hasAIConfig = this.checkAIAssistantConfig();
       if (hasAIConfig) {
-        detection.indicators.push('AI Assistant configuration detected')
+        detection.indicators.push('AI Assistant configuration detected');
       } else {
-        detection.recommendations.push('Configure AI Assistant in Settings | Tools | AI Assistant')
+        detection.recommendations.push('Configure AI Assistant in Settings | Tools | AI Assistant');
       }
 
       // Check for MCP support
-      const mcpPath = this.getMCPConfigPath()
+      const mcpPath = this.getMCPConfigPath();
       if (mcpPath && fs.existsSync(mcpPath)) {
-        detection.indicators.push('MCP configuration found')
+        detection.indicators.push('MCP configuration found');
       } else {
-        detection.recommendations.push('Consider setting up Model Context Protocol (MCP) for  AI integration')
+        detection.recommendations.push(
+          'Consider setting up Model Context Protocol (MCP) for  AI integration'
+        );
       }
     }
 
     // Check for JetBrains process running
     try {
-      const runningProcesses = this.getRunningJetBrainsProcesses()
+      const runningProcesses = this.getRunningJetBrainsProcesses();
       if (runningProcesses.length > 0) {
-        detection.indicators.push(`Running JetBrains processes: ${runningProcesses.join(', ')}`)
+        detection.indicators.push(`Running JetBrains processes: ${runningProcesses.join(', ')}`);
         if (detection.confidence === 'none') {
-          detection.confidence = 'medium'
+          detection.confidence = 'medium';
         }
       }
-    } catch (error) {
+    } catch (_error) {
       // Process detection failed - not critical
     }
 
     // Additional recommendations
     if (detection.confidence !== 'none') {
-      detection.recommendations.push('Use .idea/ai-rules/ folder for VDK Blueprint rules')
-      detection.recommendations.push('Enable relevant code inspections for your project language')
+      detection.recommendations.push('Use .idea/ai-rules/ folder for VDK Blueprint rules');
+      detection.recommendations.push('Enable relevant code inspections for your project language');
     }
 
-    return detection
+    return detection;
   }
 
   /**
    * Detect specific JetBrains IDEs
    */
   detectSpecificIDEs() {
-    const detectedIDEs = []
-    const ideaPath = path.join(this.projectPath, '.idea')
+    const detectedIDEs = [];
+    const ideaPath = path.join(this.projectPath, '.idea');
 
-    if (!fs.existsSync(ideaPath)) return detectedIDEs
+    if (!fs.existsSync(ideaPath)) return detectedIDEs;
 
     // Check for IDE-specific configuration files
     const ideIndicators = {
@@ -114,20 +116,22 @@ export class JetBrainsIntegration extends BaseIntegration {
       GoLand: ['go.mod', '.idea/go.xml'],
       Rider: ['.idea/.idea.*.dir/', '*.sln'],
       'Android Studio': ['build.gradle', 'app/build.gradle', '.idea/gradle.xml'],
-    }
+    };
 
     for (const [ide, indicators] of Object.entries(ideIndicators)) {
-      const hasIndicators = indicators.some((indicator) => {
-        const fullPath = path.isAbsolute(indicator) ? indicator : path.join(this.projectPath, indicator)
-        return fs.existsSync(fullPath)
-      })
+      const hasIndicators = indicators.some(indicator => {
+        const fullPath = path.isAbsolute(indicator)
+          ? indicator
+          : path.join(this.projectPath, indicator);
+        return fs.existsSync(fullPath);
+      });
 
       if (hasIndicators) {
-        detectedIDEs.push(ide)
+        detectedIDEs.push(ide);
       }
     }
 
-    return detectedIDEs
+    return detectedIDEs;
   }
 
   /**
@@ -135,37 +139,37 @@ export class JetBrainsIntegration extends BaseIntegration {
    */
   checkAIAssistantConfig() {
     // Check for AI-related configuration in .idea folder
-    const ideaPath = path.join(this.projectPath, '.idea')
-    if (!fs.existsSync(ideaPath)) return false
+    const ideaPath = path.join(this.projectPath, '.idea');
+    if (!fs.existsSync(ideaPath)) return false;
 
     // Look for AI assistant or MCP related files
-    const aiConfigFiles = ['.idea/ai-assistant.xml', '.idea/mcp.xml', '.idea/ai-rules/']
+    const aiConfigFiles = ['.idea/ai-assistant.xml', '.idea/mcp.xml', '.idea/ai-rules/'];
 
-    return aiConfigFiles.some((file) => fs.existsSync(path.join(this.projectPath, file)))
+    return aiConfigFiles.some(file => fs.existsSync(path.join(this.projectPath, file)));
   }
 
   /**
    * Get MCP configuration path
    */
   getMCPConfigPath() {
-    const homeDir = os.homedir()
-    const cacheDir = path.join(homeDir, '.cache', 'JetBrains')
+    const homeDir = os.homedir();
+    const cacheDir = path.join(homeDir, '.cache', 'JetBrains');
 
     try {
       if (fs.existsSync(cacheDir)) {
         const jetbrainsVersions = fs
           .readdirSync(cacheDir)
-          .filter((dir) => this.supportedIDEs.some((ide) => dir.includes(ide)))
+          .filter(dir => this.supportedIDEs.some(ide => dir.includes(ide)));
 
         if (jetbrainsVersions.length > 0) {
-          return path.join(cacheDir, jetbrainsVersions[0], 'mcp')
+          return path.join(cacheDir, jetbrainsVersions[0], 'mcp');
         }
       }
-    } catch (error) {
+    } catch (_error) {
       // Ignore errors in path detection
     }
 
-    return null
+    return null;
   }
 
   /**
@@ -173,24 +177,24 @@ export class JetBrainsIntegration extends BaseIntegration {
    */
   getRunningJetBrainsProcesses() {
     try {
-      const { execSync } = require('node:child_process')
-      const processes = execSync('ps aux', { encoding: 'utf8' })
+      const { execSync } = require('node:child_process');
+      const processes = execSync('ps aux', { encoding: 'utf8' });
 
-      const jetbrainsProcesses = []
-      const lines = processes.split('\n')
+      const jetbrainsProcesses = [];
+      const lines = processes.split('\n');
 
       for (const line of lines) {
         for (const ide of this.supportedIDEs) {
           if (line.toLowerCase().includes(ide.toLowerCase())) {
-            jetbrainsProcesses.push(ide)
-            break
+            jetbrainsProcesses.push(ide);
+            break;
           }
         }
       }
 
-      return [...new Set(jetbrainsProcesses)] // Remove duplicates
-    } catch (error) {
-      return []
+      return [...new Set(jetbrainsProcesses)]; // Remove duplicates
+    } catch (_error) {
+      return [];
     }
   }
 
@@ -203,32 +207,32 @@ export class JetBrainsIntegration extends BaseIntegration {
       rulesPath: path.join(this.projectPath, '.idea', 'ai-rules'),
       mcpConfig: this.getMCPConfigPath(),
       workspaceConfig: path.join(this.projectPath, '.idea', 'workspace.xml'),
-    }
+    };
   }
 
   /**
    * Initialize JetBrains integration
    */
   async initialize(options = {}) {
-    const { verbose = false } = options
+    const { verbose = false } = options;
 
     try {
-      const configPaths = this.getConfigPaths()
+      const configPaths = this.getConfigPaths();
 
       // Create ai-rules directory if it doesn't exist
       if (!fs.existsSync(configPaths.rulesPath)) {
-        fs.mkdirSync(configPaths.rulesPath, { recursive: true })
+        fs.mkdirSync(configPaths.rulesPath, { recursive: true });
         if (verbose) {
-          console.log(`Created rules directory: ${configPaths.rulesPath}`)
+          console.log(`Created rules directory: ${configPaths.rulesPath}`);
         }
       }
 
-      return true
+      return true;
     } catch (error) {
       if (verbose) {
-        console.error(`Failed to initialize JetBrains integration: ${error.message}`)
+        console.error(`Failed to initialize JetBrains integration: ${error.message}`);
       }
-      return false
+      return false;
     }
   }
 
@@ -236,8 +240,8 @@ export class JetBrainsIntegration extends BaseIntegration {
    * Get integration summary
    */
   getSummary() {
-    const detection = this.getCachedDetection()
-    const detectedIDEs = this.detectSpecificIDEs()
+    const detection = this.getCachedDetection();
+    const detectedIDEs = this.detectSpecificIDEs();
 
     return {
       name: this.name,
@@ -247,8 +251,8 @@ export class JetBrainsIntegration extends BaseIntegration {
       configPath: path.join(this.projectPath, '.idea'),
       rulesPath: path.join(this.projectPath, '.idea', 'ai-rules'),
       mcpSupported: true,
-    }
+    };
   }
 }
 
-export default JetBrainsIntegration
+export default JetBrainsIntegration;

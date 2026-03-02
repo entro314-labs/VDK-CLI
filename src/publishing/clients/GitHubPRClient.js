@@ -12,76 +12,88 @@
  * - Community review process integration
  */
 
-import { Octokit } from '@octokit/rest'
-import chalk from 'chalk'
-import matter from 'gray-matter'
+import { Octokit } from '@octokit/rest';
+import chalk from 'chalk';
+import matter from 'gray-matter';
 
 export class GitHubPRClient {
   constructor() {
-    this.octokit = null
-    this.repoOwner = 'entro314-labs'
-    this.repoName = 'VDK-Blueprints'
-    this.baseBranch = 'main'
+    this.octokit = null;
+    this.repoOwner = 'vdkit';
+    this.repoName = 'VDK-Blueprints';
+    this.baseBranch = 'main';
   }
 
   /**
    * Initialize GitHub client with authentication
    */
   async initialize() {
-    if (this.octokit) return
+    if (this.octokit) return;
 
-    const token = process.env.GITHUB_TOKEN || process.env.VDK_GITHUB_TOKEN
+    const token = process.env.GITHUB_TOKEN || process.env.VDK_GITHUB_TOKEN;
 
     if (!token) {
       throw new Error(`GitHub token required. Set GITHUB_TOKEN or VDK_GITHUB_TOKEN environment variable.
-      
+
 Get a token from: https://github.com/settings/tokens
-Required permissions: public_repo, read:user`)
+Required permissions: public_repo, read:user`);
     }
 
     this.octokit = new Octokit({
       auth: token,
       userAgent: 'VDK-CLI/1.0.0',
-    })
+    });
 
     // Verify token works
     try {
-      await this.octokit.rest.users.getAuthenticated()
+      await this.octokit.rest.users.getAuthenticated();
     } catch (error) {
-      throw new Error(`GitHub authentication failed: ${error.message}`)
+      throw new Error(`GitHub authentication failed: ${error.message}`);
     }
   }
 
   /**
    * Create community blueprint PR
    */
-  async createCommunityBlueprintPR({ blueprint, originalPath, projectContext, qualityScore, customName }) {
-    await this.initialize()
+  async createCommunityBlueprintPR({
+    blueprint,
+    originalPath,
+    projectContext,
+    qualityScore,
+    customName,
+  }) {
+    await this.initialize();
 
     try {
       // Get authenticated user info
-      const { data: user } = await this.octokit.rest.users.getAuthenticated()
+      const { data: user } = await this.octokit.rest.users.getAuthenticated();
 
       // Generate blueprint filename and ID
-      const blueprintId = customName || this.generateBlueprintId(blueprint.frontmatter, user.login)
-      const filename = `${blueprintId}.yaml`
-      const filePath = `community/${blueprint.frontmatter.category}/${filename}`
+      const blueprintId = customName || this.generateBlueprintId(blueprint.frontmatter, user.login);
+      const filename = `${blueprintId}.yaml`;
+      const filePath = `community/${blueprint.frontmatter.category}/${filename}`;
 
       // Check if user has forked the repo
-      const forkData = await this.ensureFork(user.login)
+      const _forkData = await this.ensureFork(user.login);
 
       // Create branch for this contribution
-      const branchName = `community-blueprint-${blueprintId}`
-      await this.createBranch(user.login, branchName)
+      const branchName = `community-blueprint-${blueprintId}`;
+      await this.createBranch(user.login, branchName);
 
       // Convert blueprint to YAML format for storage
-      const yamlContent = this.convertBlueprintToYAML(blueprint, projectContext, originalPath)
+      const yamlContent = this.convertBlueprintToYAML(blueprint, projectContext, originalPath);
 
       // Create file in the fork
-      await this.createFile(user.login, branchName, filePath, yamlContent, blueprintId)
+      await this.createFile(user.login, branchName, filePath, yamlContent, blueprintId);
 
       // Create pull request
-      const prData = await this.createPullRequest(user.login, branchName, blueprint.frontmatter, qualityScore, filePath)
+      const prData = await this.createPullRequest(
+        user.login,
+        branchName,
+        blueprint.frontmatter,
+        qualityScore,
+        filePath
+      );
 
       return {
         success: true,
@@ -90,18 +102,22 @@ Required permissions: public_repo, read:user`)
         blueprintId: blueprintId,
         branchName: branchName,
         filePath: filePath,
-      }
+      };
     } catch (error) {
       // Provide helpful error messages for common issues
       if (error.message.includes('Bad credentials')) {
-        throw new Error('GitHub token is invalid. Please check your GITHUB_TOKEN environment variable.')
+        throw new Error(
+          'GitHub token is invalid. Please check your GITHUB_TOKEN environment variable.'
+        );
       }
 
       if (error.message.includes('Not Found')) {
-        throw new Error(`Repository ${this.repoOwner}/${this.repoName} not found or not accessible.`)
+        throw new Error(
+          `Repository ${this.repoOwner}/${this.repoName} not found or not accessible.`
+        );
       }
 
-      throw new Error(`GitHub PR creation failed: ${error.message}`)
+      throw new Error(`GitHub PR creation failed: ${error.message}`);
     }
   }
 
@@ -114,26 +130,26 @@ Required permissions: public_repo, read:user`)
       const { data: fork } = await this.octokit.rest.repos.get({
         owner: username,
         repo: this.repoName,
-      })
+      });
 
-      return fork
+      return fork;
     } catch (error) {
       if (error.status === 404) {
         // Fork doesn't exist, create it
-        console.log(chalk.gray('Creating fork of VDK-Blueprints repository...'))
+        console.log(chalk.gray('Creating fork of VDK-Blueprints repository...'));
 
         const { data: fork } = await this.octokit.rest.repos.createFork({
           owner: this.repoOwner,
           repo: this.repoName,
-        })
+        });
 
         // Wait a moment for fork to be ready
-        await new Promise((resolve) => setTimeout(resolve, 3000))
+        await new Promise(resolve => setTimeout(resolve, 3000));
 
-        return fork
+        return fork;
       }
 
-      throw error
+      throw error;
     }
   }
 
@@ -147,7 +163,7 @@ Required permissions: public_repo, read:user`)
         owner: username,
         repo: this.repoName,
         ref: `heads/${this.baseBranch}`,
-      })
+      });
 
       // Create new branch
       await this.octokit.rest.git.createRef({
@@ -155,15 +171,15 @@ Required permissions: public_repo, read:user`)
         repo: this.repoName,
         ref: `refs/heads/${branchName}`,
         sha: ref.object.sha,
-      })
+      });
     } catch (error) {
       if (error.status === 422) {
         // Branch might already exist
-        console.warn(chalk.yellow(`Branch ${branchName} may already exist, continuing...`))
-        return
+        console.warn(chalk.yellow(`Branch ${branchName} may already exist, continuing...`));
+        return;
       }
 
-      throw new Error(`Failed to create branch: ${error.message}`)
+      throw new Error(`Failed to create branch: ${error.message}`);
     }
   }
 
@@ -172,7 +188,7 @@ Required permissions: public_repo, read:user`)
    */
   async createFile(username, branchName, filePath, content, blueprintId) {
     try {
-      const message = `Add community blueprint: ${blueprintId}`
+      const message = `Add community blueprint: ${blueprintId}`;
 
       await this.octokit.rest.repos.createOrUpdateFileContents({
         owner: username,
@@ -181,9 +197,9 @@ Required permissions: public_repo, read:user`)
         message: message,
         content: Buffer.from(content).toString('base64'),
         branch: branchName,
-      })
+      });
     } catch (error) {
-      throw new Error(`Failed to create file: ${error.message}`)
+      throw new Error(`Failed to create file: ${error.message}`);
     }
   }
 
@@ -191,8 +207,8 @@ Required permissions: public_repo, read:user`)
    * Create pull request
    */
   async createPullRequest(username, branchName, frontmatter, qualityScore, filePath) {
-    const title = `Add community blueprint: ${frontmatter.title}`
-    const body = this.generatePRDescription(frontmatter, qualityScore, filePath)
+    const title = `Add community blueprint: ${frontmatter.title}`;
+    const body = this.generatePRDescription(frontmatter, qualityScore, filePath);
 
     try {
       const { data: pr } = await this.octokit.rest.pulls.create({
@@ -203,11 +219,11 @@ Required permissions: public_repo, read:user`)
         base: this.baseBranch,
         body: body,
         maintainer_can_modify: true,
-      })
+      });
 
-      return pr
+      return pr;
     } catch (error) {
-      throw new Error(`Failed to create pull request: ${error.message}`)
+      throw new Error(`Failed to create pull request: ${error.message}`);
     }
   }
 
@@ -227,33 +243,33 @@ Required permissions: public_repo, read:user`)
         language: projectContext.language,
         technologies: projectContext.technologies,
       },
-    }
+    };
 
     // Use matter to serialize back to frontmatter + content
-    const yamlContent = matter.stringify(blueprint.content, yamlFrontmatter)
+    const yamlContent = matter.stringify(blueprint.content, yamlFrontmatter);
 
-    return yamlContent
+    return yamlContent;
   }
 
   /**
    * Generate rule ID for filename
    */
   generateBlueprintId(frontmatter, username) {
-    const title = frontmatter.title || 'untitled-blueprint'
+    const title = frontmatter.title || 'untitled-blueprint';
     const cleanTitle = title
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
-      .substring(0, 30)
+      .substring(0, 30);
 
     const usernameSuffix = username
       .toLowerCase()
       .replace(/[^a-z0-9]/g, '')
-      .substring(0, 10)
-    const timestamp = Date.now().toString(36).substring(-6)
+      .substring(0, 10);
+    const timestamp = Date.now().toString(36).substring(-6);
 
-    return `${cleanTitle}-${usernameSuffix}-${timestamp}`
+    return `${cleanTitle}-${usernameSuffix}-${timestamp}`;
   }
 
   /**
@@ -309,7 +325,7 @@ vdk deploy ${this.generateBlueprintId(frontmatter, 'community')}
 📊 **Quality Score**: ${qualityScore}/10 | **Format**: ${frontmatter.originalFormat || 'unknown'}
 🔗 **Original Project**: ${frontmatter.projectContext?.name || 'Unknown'}
 
-Thank you for contributing to the VDK community! 🎉`
+Thank you for contributing to the VDK community! 🎉`;
   }
 
   /**
@@ -322,22 +338,22 @@ Thank you for contributing to the VDK community! 🎉`
         repo: this.repoName,
         head: `${username}:${branchName}`,
         state: 'all',
-      })
+      });
 
       if (prs.length === 0) {
-        return { exists: false }
+        return { exists: false };
       }
 
-      const pr = prs[0]
+      const pr = prs[0];
       return {
         exists: true,
         status: pr.state,
         merged: pr.merged_at !== null,
         url: pr.html_url,
         number: pr.number,
-      }
+      };
     } catch (error) {
-      return { exists: false, error: error.message }
+      return { exists: false, error: error.message };
     }
   }
 }

@@ -7,121 +7,139 @@
  * VDK Web Application.
  */
 
-import fs from 'node:fs/promises'
-import path from 'node:path'
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
-import chalk from 'chalk'
-import express from 'express'
-import matter from 'gray-matter'
-import { marked } from 'marked'
-import TerminalRenderer from 'marked-terminal'
-import open from 'open'
+import chalk from 'chalk';
+import express from 'express';
+import matter from 'gray-matter';
+import { marked } from 'marked';
+import TerminalRenderer from 'marked-terminal';
+import open from 'open';
 
 // Set up Markdown renderer for terminal
 marked.setOptions({
   renderer: new TerminalRenderer(),
-})
+});
 
 // Get the rule file path from command line arguments
-let rulePath
+let rulePath;
 
 function initializeRulePath() {
-  rulePath = process.argv[2]
+  rulePath = process.argv[2];
 
   if (!rulePath) {
-    console.error(chalk.red('Please provide a path to a rule file.'))
-    console.log(chalk.yellow('Usage: npm run preview-rule <path-to-rule-file>'))
-    process.exit(1)
+    console.error(chalk.red('Please provide a path to a rule file.'));
+    console.log(chalk.yellow('Usage: npm run preview-rule <path-to-rule-file>'));
+    process.exit(1);
   }
 }
 
 // Function to resolve absolute path (called after initialization)
 function getAbsoluteRulePath() {
-  return path.resolve(process.cwd(), rulePath)
+  return path.resolve(process.cwd(), rulePath);
 }
 
 async function previewRule() {
   try {
     // Initialize rule path
-    initializeRulePath()
-    const absoluteRulePath = getAbsoluteRulePath()
+    initializeRulePath();
+    const absoluteRulePath = getAbsoluteRulePath();
 
     // Check if file exists
-    await fs.access(absoluteRulePath)
+    await fs.access(absoluteRulePath);
 
     // Read the file
-    const fileContent = await fs.readFile(absoluteRulePath, 'utf-8')
+    const fileContent = await fs.readFile(absoluteRulePath, 'utf-8');
 
     // Parse front matter
-    const { data: frontMatter, content } = matter(fileContent)
+    const { data: frontMatter, content } = matter(fileContent);
 
-    console.log(chalk.blue.bold('\n📄 Rule Preview\n'))
+    console.log(chalk.blue.bold('\n📄 Rule Preview\n'));
 
     // Display metadata
-    console.log(chalk.cyan.bold('Metadata:\n'))
+    console.log(chalk.cyan.bold('Metadata:\n'));
 
-    console.log(chalk.cyan('Title: ') + chalk.white(frontMatter.title || 'Not specified'))
-    console.log(chalk.cyan('Description: ') + chalk.white(frontMatter.description || 'Not specified'))
-    console.log(chalk.cyan('Version: ') + chalk.white(frontMatter.version || 'Not specified'))
-    console.log(chalk.cyan('Author: ') + chalk.white(frontMatter.author || 'Not specified'))
-    console.log(chalk.cyan('Last Updated: ') + chalk.white(frontMatter.lastUpdated || 'Not specified'))
+    console.log(chalk.cyan('Title: ') + chalk.white(frontMatter.title || 'Not specified'));
+    console.log(
+      chalk.cyan('Description: ') + chalk.white(frontMatter.description || 'Not specified')
+    );
+    console.log(chalk.cyan('Version: ') + chalk.white(frontMatter.version || 'Not specified'));
+    console.log(chalk.cyan('Author: ') + chalk.white(frontMatter.author || 'Not specified'));
+    console.log(
+      chalk.cyan('Last Updated: ') + chalk.white(frontMatter.lastUpdated || 'Not specified')
+    );
 
     if (frontMatter.tags && frontMatter.tags.length > 0) {
-      console.log(chalk.cyan('Tags: ') + chalk.white(frontMatter.tags.join(', ')))
+      console.log(chalk.cyan('Tags: ') + chalk.white(frontMatter.tags.join(', ')));
     }
 
     if (frontMatter.globs && frontMatter.globs.length > 0) {
-      console.log(chalk.cyan('Globs: ') + chalk.white(frontMatter.globs.join(', ')))
+      console.log(chalk.cyan('Globs: ') + chalk.white(frontMatter.globs.join(', ')));
     }
 
-    console.log(chalk.cyan('Always Apply: ') + chalk.white(frontMatter.alwaysApply ? 'Yes' : 'No'))
+    console.log(chalk.cyan('Always Apply: ') + chalk.white(frontMatter.alwaysApply ? 'Yes' : 'No'));
 
     if (frontMatter.compatibleWith) {
-      console.log(chalk.cyan('Compatible With:'))
+      console.log(chalk.cyan('Compatible With:'));
 
       if (frontMatter.compatibleWith.ides && frontMatter.compatibleWith.ides.length > 0) {
-        console.log(chalk.cyan('  IDEs: ') + chalk.white(frontMatter.compatibleWith.ides.join(', ')))
+        console.log(
+          chalk.cyan('  IDEs: ') + chalk.white(frontMatter.compatibleWith.ides.join(', '))
+        );
       }
 
-      if (frontMatter.compatibleWith.aiAssistants && frontMatter.compatibleWith.aiAssistants.length > 0) {
-        console.log(chalk.cyan('  AI Assistants: ') + chalk.white(frontMatter.compatibleWith.aiAssistants.join(', ')))
+      if (
+        frontMatter.compatibleWith.aiAssistants &&
+        frontMatter.compatibleWith.aiAssistants.length > 0
+      ) {
+        console.log(
+          chalk.cyan('  AI Assistants: ') +
+            chalk.white(frontMatter.compatibleWith.aiAssistants.join(', '))
+        );
       }
 
-      if (frontMatter.compatibleWith.frameworks && frontMatter.compatibleWith.frameworks.length > 0) {
-        console.log(chalk.cyan('  Frameworks: ') + chalk.white(frontMatter.compatibleWith.frameworks.join(', ')))
+      if (
+        frontMatter.compatibleWith.frameworks &&
+        frontMatter.compatibleWith.frameworks.length > 0
+      ) {
+        console.log(
+          chalk.cyan('  Frameworks: ') +
+            chalk.white(frontMatter.compatibleWith.frameworks.join(', '))
+        );
       }
     }
 
     // Display content
-    console.log(chalk.cyan.bold('\nContent:\n'))
-    console.log(marked(content))
+    console.log(chalk.cyan.bold('\nContent:\n'));
+    console.log(marked(content));
 
     // Ask if the user wants to see the HTML preview
-    console.log(chalk.yellow('\nWould you like to see an HTML preview? (y/n)'))
+    console.log(chalk.yellow('\nWould you like to see an HTML preview? (y/n)'));
 
-    process.stdin.setRawMode(true)
-    process.stdin.resume()
-    process.stdin.once('data', async (data) => {
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.once('data', async data => {
       if (data.toString().toLowerCase() === 'y') {
-        await openHtmlPreview(frontMatter, content)
+        await openHtmlPreview(frontMatter, content);
       } else {
-        process.exit(0)
+        process.exit(0);
       }
-    })
+    });
   } catch (err) {
-    console.error(chalk.red(`Error: ${err.message}`))
-    process.exit(1)
+    console.error(chalk.red(`Error: ${err.message}`));
+    process.exit(1);
   }
 }
 
 async function openHtmlPreview(frontMatter, content) {
   try {
     // Create a temporary Express server to serve the preview
-    const app = express()
-    const port = 3333
+    const app = express();
+    const port = 3333;
 
     // Convert Markdown to HTML
-    const htmlContent = marked.parse(content)
+    const htmlContent = marked.parse(content);
 
     // Simple template for the HTML preview
     const htmlTemplate = `
@@ -276,7 +294,7 @@ async function openHtmlPreview(frontMatter, content) {
               ? `
           <div class="metadata-item">
             <span class="label">Tags:</span><br />
-            ${frontMatter.tags.map((tag) => `<span class="tag">${tag}</span>`).join('')}
+            ${frontMatter.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
           </div>
           `
               : ''
@@ -287,7 +305,7 @@ async function openHtmlPreview(frontMatter, content) {
               ? `
           <div class="metadata-item">
             <span class="label">Globs:</span><br />
-            ${frontMatter.globs.map((glob) => `<code>${glob}</code>`).join(', ')}
+            ${frontMatter.globs.map(glob => `<code>${glob}</code>`).join(', ')}
           </div>
           `
               : ''
@@ -303,29 +321,31 @@ async function openHtmlPreview(frontMatter, content) {
                 ? `
               <div class="metadata-item">
                 <span class="label">IDEs:</span>
-                ${frontMatter.compatibleWith.ides.map((ide) => `<span class="compatibility">${ide}</span>`).join('')}
+                ${frontMatter.compatibleWith.ides.map(ide => `<span class="compatibility">${ide}</span>`).join('')}
               </div>
             `
                 : ''
             }
 
             ${
-              frontMatter.compatibleWith.aiAssistants && frontMatter.compatibleWith.aiAssistants.length > 0
+              frontMatter.compatibleWith.aiAssistants &&
+              frontMatter.compatibleWith.aiAssistants.length > 0
                 ? `
               <div class="metadata-item">
                 <span class="label">AI Assistants:</span>
-                ${frontMatter.compatibleWith.aiAssistants.map((assistant) => `<span class="compatibility">${assistant}</span>`).join('')}
+                ${frontMatter.compatibleWith.aiAssistants.map(assistant => `<span class="compatibility">${assistant}</span>`).join('')}
               </div>
             `
                 : ''
             }
 
             ${
-              frontMatter.compatibleWith.frameworks && frontMatter.compatibleWith.frameworks.length > 0
+              frontMatter.compatibleWith.frameworks &&
+              frontMatter.compatibleWith.frameworks.length > 0
                 ? `
               <div class="metadata-item">
                 <span class="label">Frameworks:</span>
-                ${frontMatter.compatibleWith.frameworks.map((framework) => `<span class="compatibility">${framework}</span>`).join('')}
+                ${frontMatter.compatibleWith.frameworks.map(framework => `<span class="compatibility">${framework}</span>`).join('')}
               </div>
             `
                 : ''
@@ -341,35 +361,35 @@ async function openHtmlPreview(frontMatter, content) {
         </div>
       </body>
       </html>
-    `
+    `;
 
     app.get('/', (_req, res) => {
-      res.send(htmlTemplate)
-    })
+      res.send(htmlTemplate);
+    });
 
     const server = app.listen(port, () => {
-      console.log(chalk.green(`\nOpening HTML preview at http://localhost:${port}`))
+      console.log(chalk.green(`\nOpening HTML preview at http://localhost:${port}`));
 
       // Open the browser with the preview
-      open(`http://localhost:${port}`)
+      open(`http://localhost:${port}`);
 
       // Exit when the user presses any key
-      console.log(chalk.yellow('\nPress any key to close the preview and exit.'))
+      console.log(chalk.yellow('\nPress any key to close the preview and exit.'));
 
-      process.stdin.setRawMode(true)
-      process.stdin.resume()
+      process.stdin.setRawMode(true);
+      process.stdin.resume();
       process.stdin.once('data', () => {
-        server.close()
-        process.exit(0)
-      })
-    })
+        server.close();
+        process.exit(0);
+      });
+    });
   } catch (err) {
-    console.error(chalk.red(`Error opening HTML preview: ${err.message}`))
-    process.exit(1)
+    console.error(chalk.red(`Error opening HTML preview: ${err.message}`));
+    process.exit(1);
   }
 }
 
 // Run preview only if this file is executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  previewRule()
+  previewRule();
 }

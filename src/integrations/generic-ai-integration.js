@@ -6,10 +6,10 @@
  * AI services, and generic AI assistant setups.
  */
 
-import fs from 'node:fs'
-import path from 'node:path'
+import fs from 'node:fs';
+import path from 'node:path';
 
-import { BaseIntegration } from './base-integration.js'
+import { BaseIntegration } from './base-integration.js';
 
 /**
  * Generic AI integration that detects and manages AI services and platforms
@@ -17,8 +17,8 @@ import { BaseIntegration } from './base-integration.js'
  */
 export class GenericAIIntegration extends BaseIntegration {
   constructor(projectPath = process.cwd()) {
-    super('Generic AI Platform', projectPath)
-    this.detectedAIServices = []
+    super('Generic AI Platform', projectPath);
+    this.detectedAIServices = [];
   }
 
   /**
@@ -32,24 +32,24 @@ export class GenericAIIntegration extends BaseIntegration {
       indicators: [],
       recommendations: [],
       hasProjectSpecificConfig: false,
-    })
+    });
 
     // Check for generic AI configuration files
-    this.checkAIConfigFiles(detection)
+    this.checkAIConfigFiles(detection);
 
     // Check for AI-related environment variables
-    this.checkAIEnvironmentVariables(detection)
+    this.checkAIEnvironmentVariables(detection);
 
     // Check for AI service configurations
-    this.checkAIServiceConfigurations(detection)
+    this.checkAIServiceConfigurations(detection);
 
     // Check for custom AI tool configurations
-    this.checkCustomAITools(detection)
+    this.checkCustomAITools(detection);
 
     // Add recommendations based on findings
-    this.addAIRecommendations(detection)
+    this.addAIRecommendations(detection);
 
-    return detection
+    return detection;
   }
 
   /**
@@ -60,7 +60,10 @@ export class GenericAIIntegration extends BaseIntegration {
     const aiConfigFiles = {
       'AI configuration file (.aiconfig.json)': path.join(this.projectPath, '.aiconfig.json'),
       'AI configuration file (ai-config.json)': path.join(this.projectPath, 'ai-config.json'),
-      'AI assistant configuration (.ai-assistant.json)': path.join(this.projectPath, '.ai-assistant.json'),
+      'AI assistant configuration (.ai-assistant.json)': path.join(
+        this.projectPath,
+        '.ai-assistant.json'
+      ),
       'LLM configuration (llm-config.json)': path.join(this.projectPath, 'llm-config.json'),
       'OpenAI configuration (.openai.json)': path.join(this.projectPath, '.openai.json'),
       'Anthropic configuration (.anthropic.json)': path.join(this.projectPath, '.anthropic.json'),
@@ -69,9 +72,9 @@ export class GenericAIIntegration extends BaseIntegration {
       'LLM directory (.llm/)': path.join(this.projectPath, '.llm'),
       'GPT configuration directory (.gpt/)': path.join(this.projectPath, '.gpt'),
       'Assistant configuration directory (.assistant/)': path.join(this.projectPath, '.assistant'),
-    }
+    };
 
-    this.checkPaths(detection, aiConfigFiles, 'medium', true)
+    this.checkPaths(detection, aiConfigFiles, 'medium', true);
   }
 
   /**
@@ -79,7 +82,7 @@ export class GenericAIIntegration extends BaseIntegration {
    * @param {Object} detection - Detection result to update
    */
   checkAIEnvironmentVariables(detection) {
-    const envFiles = ['.env', '.env.local', '.env.ai', '.env.llm', '.env.openai']
+    const envFiles = ['.env', '.env.local', '.env.ai', '.env.llm', '.env.openai'];
     const aiEnvVars = [
       'OPENAI_API_KEY',
       'ANTHROPIC_API_KEY',
@@ -96,24 +99,26 @@ export class GenericAIIntegration extends BaseIntegration {
       'PERPLEXITY_API_KEY',
       'PALM_API_KEY',
       'GEMINI_API_KEY',
-    ]
+    ];
 
     for (const envFile of envFiles) {
-      const envPath = path.join(this.projectPath, envFile)
+      const envPath = path.join(this.projectPath, envFile);
       if (this.fileExists(envPath)) {
         try {
-          const content = fs.readFileSync(envPath, 'utf8')
+          const content = fs.readFileSync(envPath, 'utf8');
           for (const varName of aiEnvVars) {
             if (content.includes(varName)) {
-              detection.indicators.push(`AI API key configuration found in ${envFile} (${varName})`)
-              detection.isUsed = true
-              detection.hasProjectSpecificConfig = true
+              detection.indicators.push(
+                `AI API key configuration found in ${envFile} (${varName})`
+              );
+              detection.isUsed = true;
+              detection.hasProjectSpecificConfig = true;
               if (detection.confidence === 'none') {
-                detection.confidence = 'low'
+                detection.confidence = 'low';
               }
             }
           }
-        } catch (error) {
+        } catch (_error) {
           // Ignore file read errors
         }
       }
@@ -126,10 +131,10 @@ export class GenericAIIntegration extends BaseIntegration {
    */
   checkAIServiceConfigurations(detection) {
     // Check package.json for AI dependencies
-    const packageJsonPath = path.join(this.projectPath, 'package.json')
+    const packageJsonPath = path.join(this.projectPath, 'package.json');
     if (this.fileExists(packageJsonPath)) {
       try {
-        const packageJson = this.readJsonFile(packageJsonPath)
+        const packageJson = this.readJsonFile(packageJsonPath);
         if (packageJson) {
           const aiDependencies = [
             'openai',
@@ -147,26 +152,26 @@ export class GenericAIIntegration extends BaseIntegration {
             'replicate',
             'cohere-ai',
             'together-ai',
-          ]
+          ];
 
           const allDeps = {
             ...packageJson.dependencies,
             ...packageJson.devDependencies,
             ...packageJson.peerDependencies,
-          }
+          };
 
           for (const dep of aiDependencies) {
             if (allDeps[dep]) {
-              detection.indicators.push(`AI dependency found: ${dep}`)
-              detection.isUsed = true
-              detection.hasProjectSpecificConfig = true
+              detection.indicators.push(`AI dependency found: ${dep}`);
+              detection.isUsed = true;
+              detection.hasProjectSpecificConfig = true;
               if (detection.confidence === 'none') {
-                detection.confidence = 'low'
+                detection.confidence = 'low';
               }
             }
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // Ignore package.json read errors
       }
     }
@@ -180,9 +185,9 @@ export class GenericAIIntegration extends BaseIntegration {
       'Ollama configuration': path.join(this.projectPath, 'ollama.config.js'),
       'AI workflow configuration': path.join(this.projectPath, 'ai-workflow.json'),
       'LLM pipeline configuration': path.join(this.projectPath, 'llm-pipeline.json'),
-    }
+    };
 
-    this.checkPaths(detection, serviceConfigFiles, 'medium', true)
+    this.checkPaths(detection, serviceConfigFiles, 'medium', true);
   }
 
   /**
@@ -199,36 +204,38 @@ export class GenericAIIntegration extends BaseIntegration {
       'Custom AI prompt templates': path.join(this.projectPath, 'prompts'),
       'AI prompt directory': path.join(this.projectPath, 'ai-prompts'),
       'LLM prompt templates': path.join(this.projectPath, 'llm-prompts'),
-    }
+    };
 
-    this.checkPaths(detection, aiToolPaths, 'low', true)
+    this.checkPaths(detection, aiToolPaths, 'low', true);
 
     // Check for AI-related files in common directories
-    const commonDirs = ['src', 'lib', 'utils', 'helpers', 'tools']
+    const commonDirs = ['src', 'lib', 'utils', 'helpers', 'tools'];
     for (const dir of commonDirs) {
-      const dirPath = path.join(this.projectPath, dir)
+      const dirPath = path.join(this.projectPath, dir);
       if (this.directoryExists(dirPath)) {
         try {
-          const files = fs.readdirSync(dirPath)
+          const files = fs.readdirSync(dirPath);
           const aiFiles = files.filter(
-            (file) =>
+            file =>
               file.includes('ai') ||
               file.includes('llm') ||
               file.includes('gpt') ||
               file.includes('claude') ||
               file.includes('openai') ||
               file.includes('anthropic')
-          )
+          );
 
           if (aiFiles.length > 0) {
-            detection.indicators.push(`AI-related files found in ${dir}/ (${aiFiles.length} files)`)
-            detection.isUsed = true
-            detection.hasProjectSpecificConfig = true
+            detection.indicators.push(
+              `AI-related files found in ${dir}/ (${aiFiles.length} files)`
+            );
+            detection.isUsed = true;
+            detection.hasProjectSpecificConfig = true;
             if (detection.confidence === 'none') {
-              detection.confidence = 'low'
+              detection.confidence = 'low';
             }
           }
-        } catch (error) {
+        } catch (_error) {
           // Ignore directory read errors
         }
       }
@@ -241,21 +248,31 @@ export class GenericAIIntegration extends BaseIntegration {
    */
   addAIRecommendations(detection) {
     if (detection.confidence === 'none') {
-      detection.recommendations.push('No AI platform configurations detected')
-      detection.recommendations.push('Consider setting up AI assistance with: vdk init --interactive')
-      detection.recommendations.push('VDK can help configure AI tools for your development workflow')
+      detection.recommendations.push('No AI platform configurations detected');
+      detection.recommendations.push(
+        'Consider setting up AI assistance with: vdk init --interactive'
+      );
+      detection.recommendations.push(
+        'VDK can help configure AI tools for your development workflow'
+      );
     } else if (detection.confidence === 'low') {
-      detection.recommendations.push('Basic AI configurations detected but may need optimization')
-      detection.recommendations.push('Run: vdk init to create optimized AI assistant rules')
-      detection.recommendations.push('Consider creating project-specific AI prompts and templates')
+      detection.recommendations.push('Basic AI configurations detected but may need optimization');
+      detection.recommendations.push('Run: vdk init to create optimized AI assistant rules');
+      detection.recommendations.push('Consider creating project-specific AI prompts and templates');
     } else if (detection.confidence === 'medium') {
-      detection.recommendations.push('AI configurations found - consider centralizing with VDK')
-      detection.recommendations.push('VDK can help standardize AI tool configurations across your project')
-      detection.recommendations.push('Review .vdk/rules/ for AI assistant optimization opportunities')
+      detection.recommendations.push('AI configurations found - consider centralizing with VDK');
+      detection.recommendations.push(
+        'VDK can help standardize AI tool configurations across your project'
+      );
+      detection.recommendations.push(
+        'Review .vdk/rules/ for AI assistant optimization opportunities'
+      );
     } else {
-      detection.recommendations.push('Well-configured AI setup detected')
-      detection.recommendations.push('Consider creating custom AI rules for your specific project patterns')
-      detection.recommendations.push('Keep AI configurations updated as your project evolves')
+      detection.recommendations.push('Well-configured AI setup detected');
+      detection.recommendations.push(
+        'Consider creating custom AI rules for your specific project patterns'
+      );
+      detection.recommendations.push('Keep AI configurations updated as your project evolves');
     }
   }
 
@@ -265,6 +282,9 @@ export class GenericAIIntegration extends BaseIntegration {
    */
   getConfigPaths() {
     return {
+      projectConfig: path.join(this.projectPath, '.ai'),
+      rulesPath: path.join(this.projectPath, '.vdk', 'rules'),
+      configFile: path.join(this.projectPath, '.aiconfig.json'),
       aiConfig: path.join(this.projectPath, '.ai'),
       vdkRules: path.join(this.projectPath, '.vdk', 'rules'),
       aiConfigFiles: [
@@ -283,7 +303,7 @@ export class GenericAIIntegration extends BaseIntegration {
         path.join(this.projectPath, 'ai-prompts'),
         path.join(this.projectPath, 'llm-prompts'),
       ],
-    }
+    };
   }
 
   /**
@@ -292,33 +312,33 @@ export class GenericAIIntegration extends BaseIntegration {
    * @returns {boolean} Success status
    */
   async initialize(options = {}) {
-    const { verbose = false } = options
+    const { verbose = false } = options;
 
     try {
       if (verbose) {
-        console.log('Setting up generic AI platform integration...')
+        console.log('Setting up generic AI platform integration...');
       }
 
       // Ensure .vdk/rules directory exists
-      const rulesPath = path.join(this.projectPath, '.vdk', 'rules')
-      await this.ensureDirectory(rulesPath)
+      const rulesPath = path.join(this.projectPath, '.vdk', 'rules');
+      await this.ensureDirectory(rulesPath);
 
       // Create basic AI configuration if none exists
-      await this.createBasicAIConfiguration(rulesPath, options)
+      await this.createBasicAIConfiguration(rulesPath, options);
 
       // Add .vdk to .gitignore if not already present
-      await this.ensureGitignoreEntry('.vdk/')
+      await this.ensureGitignoreEntry('.vdk/');
 
       if (verbose) {
-        console.log('✅ Generic AI platform integration configured')
+        console.log('✅ Generic AI platform integration configured');
       }
 
-      return true
+      return true;
     } catch (error) {
       if (verbose) {
-        console.log(`❌ Failed to configure generic AI integration: ${error.message}`)
+        console.log(`❌ Failed to configure generic AI integration: ${error.message}`);
       }
-      return false
+      return false;
     }
   }
 
@@ -327,9 +347,9 @@ export class GenericAIIntegration extends BaseIntegration {
    * @param {string} rulesPath - Path to rules directory
    * @param {Object} options - Configuration options
    */
-  async createBasicAIConfiguration(rulesPath, options = {}) {
+  async createBasicAIConfiguration(rulesPath, _options = {}) {
     // Create basic AI assistant configuration
-    const aiConfigPath = path.join(rulesPath, 'ai-assistant.md')
+    const aiConfigPath = path.join(rulesPath, 'ai-assistant.md');
 
     if (!this.fileExists(aiConfigPath)) {
       const basicConfig = `# AI Assistant Configuration
@@ -357,13 +377,13 @@ This configuration was automatically generated by VDK to provide basic AI assist
 1. Run \`vdk scan\` to analyze your project and generate specific rules
 2. Review and customize the generated rules for your project
 3. Consider setting up IDE-specific integrations with \`vdk init --interactive\`
-`
+`;
 
-      await fs.promises.writeFile(aiConfigPath, basicConfig, 'utf8')
+      await fs.promises.writeFile(aiConfigPath, basicConfig, 'utf8');
     }
 
     // Create VDK configuration file
-    const vdkConfigPath = path.join(rulesPath, '.vdk-config.json')
+    const vdkConfigPath = path.join(rulesPath, '.vdk-config.json');
     if (!this.fileExists(vdkConfigPath)) {
       const config = {
         platform: 'generic-ai',
@@ -371,9 +391,9 @@ This configuration was automatically generated by VDK to provide basic AI assist
         lastUpdated: new Date().toISOString(),
         vdkVersion: '3.0.0',
         autoGenerated: true,
-      }
+      };
 
-      await this.writeJsonFile(vdkConfigPath, config)
+      await this.writeJsonFile(vdkConfigPath, config);
     }
   }
 
@@ -382,8 +402,8 @@ This configuration was automatically generated by VDK to provide basic AI assist
    * @returns {Array} Array of detected AI service configurations
    */
   getDetectedAIServices() {
-    const detection = this.getCachedDetection()
-    return detection.detectedAIServices || []
+    const detection = this.getCachedDetection();
+    return detection.detectedAIServices || [];
   }
 
   /**
@@ -392,8 +412,10 @@ This configuration was automatically generated by VDK to provide basic AI assist
    * @returns {boolean} True if service is detected
    */
   isAIServiceDetected(serviceName) {
-    const detection = this.getCachedDetection()
-    return detection.indicators.some((indicator) => indicator.toLowerCase().includes(serviceName.toLowerCase()))
+    const detection = this.getCachedDetection();
+    return detection.indicators.some(indicator =>
+      indicator.toLowerCase().includes(serviceName.toLowerCase())
+    );
   }
 
   /**
@@ -401,15 +423,16 @@ This configuration was automatically generated by VDK to provide basic AI assist
    * @returns {Object} Summary of AI integration status
    */
   getSummary() {
-    const detection = this.getCachedDetection()
-    const baseSummary = super.getSummary()
+    const detection = this.getCachedDetection();
+    const baseSummary = super.getSummary();
 
     return {
       ...baseSummary,
       detectedServices: this.getDetectedAIServices().length,
       hasProjectConfig: detection.hasProjectSpecificConfig,
-      aiIndicators: detection.indicators.filter((i) => i.includes('AI') || i.includes('LLM') || i.includes('API key'))
-        .length,
-    }
+      aiIndicators: detection.indicators.filter(
+        i => i.includes('AI') || i.includes('LLM') || i.includes('API key')
+      ).length,
+    };
   }
 }

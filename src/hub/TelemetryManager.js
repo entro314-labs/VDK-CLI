@@ -12,31 +12,30 @@
  * - Background flushing with proper cleanup
  */
 
-import chalk from 'chalk'
-import { VDKHubClient } from './VDKHubClient.js'
+import chalk from 'chalk';
 
 export class TelemetryManager {
   constructor(hubClient, config = {}) {
-    this.hubClient = hubClient
+    this.hubClient = hubClient;
     this.config = {
       batchSize: config.batchSize || 25,
       flushInterval: config.flushInterval || 60000, // 1 minute
       maxQueueSize: config.maxQueueSize || 1000,
       telemetryEnabled: config.telemetryEnabled !== false,
       ...config,
-    }
+    };
 
     // Event queues
-    this.usageQueue = []
-    this.errorQueue = []
-    this.integrationQueue = []
+    this.usageQueue = [];
+    this.errorQueue = [];
+    this.integrationQueue = [];
 
     // Flush timer
-    this.flushTimer = null
-    this.isShuttingDown = false
+    this.flushTimer = null;
+    this.isShuttingDown = false;
 
     if (this.config.telemetryEnabled) {
-      this.startFlushTimer()
+      this.startFlushTimer();
     }
   }
 
@@ -49,22 +48,22 @@ export class TelemetryManager {
    */
   addUsageEvent(event) {
     if (!this.config.telemetryEnabled || this.isShuttingDown) {
-      return
+      return;
     }
 
     // Validate event structure
     if (!this.validateUsageEvent(event)) {
-      console.warn(chalk.yellow('Invalid usage event, skipping'))
-      return
+      console.warn(chalk.yellow('Invalid usage event, skipping'));
+      return;
     }
 
     this.usageQueue.push({
       ...event,
       timestamp: event.timestamp || new Date().toISOString(),
-    })
+    });
 
-    this.checkQueueLimits()
-    this.checkFlushCondition()
+    this.checkQueueLimits();
+    this.checkFlushCondition();
   }
 
   /**
@@ -72,21 +71,21 @@ export class TelemetryManager {
    */
   addErrorEvent(event) {
     if (!this.config.telemetryEnabled || this.isShuttingDown) {
-      return
+      return;
     }
 
     if (!this.validateErrorEvent(event)) {
-      console.warn(chalk.yellow('Invalid error event, skipping'))
-      return
+      console.warn(chalk.yellow('Invalid error event, skipping'));
+      return;
     }
 
     this.errorQueue.push({
       ...event,
       timestamp: event.timestamp || new Date().toISOString(),
-    })
+    });
 
-    this.checkQueueLimits()
-    this.checkFlushCondition()
+    this.checkQueueLimits();
+    this.checkFlushCondition();
   }
 
   /**
@@ -94,21 +93,21 @@ export class TelemetryManager {
    */
   addIntegrationEvent(event) {
     if (!this.config.telemetryEnabled || this.isShuttingDown) {
-      return
+      return;
     }
 
     if (!this.validateIntegrationEvent(event)) {
-      console.warn(chalk.yellow('Invalid integration event, skipping'))
-      return
+      console.warn(chalk.yellow('Invalid integration event, skipping'));
+      return;
     }
 
     this.integrationQueue.push({
       ...event,
       timestamp: event.timestamp || new Date().toISOString(),
-    })
+    });
 
-    this.checkQueueLimits()
-    this.checkFlushCondition()
+    this.checkQueueLimits();
+    this.checkFlushCondition();
   }
 
   // ============================================================================
@@ -119,10 +118,11 @@ export class TelemetryManager {
    * Check if we should flush based on batch size
    */
   checkFlushCondition() {
-    const totalEvents = this.usageQueue.length + this.errorQueue.length + this.integrationQueue.length
+    const totalEvents =
+      this.usageQueue.length + this.errorQueue.length + this.integrationQueue.length;
 
     if (totalEvents >= this.config.batchSize) {
-      this.flush()
+      this.flush();
     }
   }
 
@@ -130,11 +130,12 @@ export class TelemetryManager {
    * Check queue size limits to prevent memory issues
    */
   checkQueueLimits() {
-    const totalEvents = this.usageQueue.length + this.errorQueue.length + this.integrationQueue.length
+    const totalEvents =
+      this.usageQueue.length + this.errorQueue.length + this.integrationQueue.length;
 
     if (totalEvents >= this.config.maxQueueSize) {
-      console.warn(chalk.yellow('Telemetry queue full, forcing flush'))
-      this.flush()
+      console.warn(chalk.yellow('Telemetry queue full, forcing flush'));
+      this.flush();
     }
   }
 
@@ -143,14 +144,14 @@ export class TelemetryManager {
    */
   startFlushTimer() {
     if (this.flushTimer) {
-      clearInterval(this.flushTimer)
+      clearInterval(this.flushTimer);
     }
 
     this.flushTimer = setInterval(() => {
       if (!this.isShuttingDown) {
-        this.flush()
+        this.flush();
       }
-    }, this.config.flushInterval)
+    }, this.config.flushInterval);
   }
 
   /**
@@ -158,35 +159,35 @@ export class TelemetryManager {
    */
   async flush() {
     if (!this.config.telemetryEnabled) {
-      return
+      return;
     }
 
-    const promises = []
+    const promises = [];
 
     // Flush usage events
     if (this.usageQueue.length > 0) {
-      const events = this.usageQueue.splice(0, 50) // Max 50 per API spec
-      promises.push(this.flushUsageEvents(events))
+      const events = this.usageQueue.splice(0, 50); // Max 50 per API spec
+      promises.push(this.flushUsageEvents(events));
     }
 
     // Flush error events
     if (this.errorQueue.length > 0) {
-      const events = this.errorQueue.splice(0, 20) // Max 20 per API spec
-      promises.push(this.flushErrorEvents(events))
+      const events = this.errorQueue.splice(0, 20); // Max 20 per API spec
+      promises.push(this.flushErrorEvents(events));
     }
 
     // Flush integration events
     if (this.integrationQueue.length > 0) {
-      const events = this.integrationQueue.splice(0, 30) // Max 30 per API spec
-      promises.push(this.flushIntegrationEvents(events))
+      const events = this.integrationQueue.splice(0, 30); // Max 30 per API spec
+      promises.push(this.flushIntegrationEvents(events));
     }
 
     if (promises.length > 0) {
       try {
-        await Promise.allSettled(promises)
+        await Promise.allSettled(promises);
       } catch (error) {
         // Individual flush methods handle their own errors
-        console.warn(chalk.yellow(`Telemetry flush error: ${error.message}`))
+        console.warn(chalk.yellow(`Telemetry flush error: ${error.message}`));
       }
     }
   }
@@ -196,14 +197,14 @@ export class TelemetryManager {
    */
   async flushUsageEvents(events) {
     try {
-      const result = await this.hubClient.sendUsageTelemetry(events)
+      const result = await this.hubClient.sendUsageTelemetry(events);
       if (result.success && this.config.verbose) {
-        console.log(chalk.gray(`📊 Sent ${events.length} usage events`))
+        console.log(chalk.gray(`📊 Sent ${events.length} usage events`));
       }
-      return result
+      return result;
     } catch (error) {
-      console.warn(chalk.yellow(`Failed to send usage telemetry: ${error.message}`))
-      return { success: false, error: error.message }
+      console.warn(chalk.yellow(`Failed to send usage telemetry: ${error.message}`));
+      return { success: false, error: error.message };
     }
   }
 
@@ -212,14 +213,14 @@ export class TelemetryManager {
    */
   async flushErrorEvents(events) {
     try {
-      const result = await this.hubClient.sendErrorTelemetry(events)
+      const result = await this.hubClient.sendErrorTelemetry(events);
       if (result.success && this.config.verbose) {
-        console.log(chalk.gray(`🐛 Sent ${events.length} error events`))
+        console.log(chalk.gray(`🐛 Sent ${events.length} error events`));
       }
-      return result
+      return result;
     } catch (error) {
-      console.warn(chalk.yellow(`Failed to send error telemetry: ${error.message}`))
-      return { success: false, error: error.message }
+      console.warn(chalk.yellow(`Failed to send error telemetry: ${error.message}`));
+      return { success: false, error: error.message };
     }
   }
 
@@ -228,14 +229,14 @@ export class TelemetryManager {
    */
   async flushIntegrationEvents(events) {
     try {
-      const result = await this.hubClient.sendIntegrationTelemetry(events)
+      const result = await this.hubClient.sendIntegrationTelemetry(events);
       if (result.success && this.config.verbose) {
-        console.log(chalk.gray(`🔌 Sent ${events.length} integration events`))
+        console.log(chalk.gray(`🔌 Sent ${events.length} integration events`));
       }
-      return result
+      return result;
     } catch (error) {
-      console.warn(chalk.yellow(`Failed to send integration telemetry: ${error.message}`))
-      return { success: false, error: error.message }
+      console.warn(chalk.yellow(`Failed to send integration telemetry: ${error.message}`));
+      return { success: false, error: error.message };
     }
   }
 
@@ -247,24 +248,31 @@ export class TelemetryManager {
    * Validate usage event structure
    */
   validateUsageEvent(event) {
-    const required = ['cli_version', 'command', 'platform', 'success', 'session_id']
-    return required.every((field) => Object.hasOwn(event, field))
+    const required = ['cli_version', 'command', 'platform', 'success', 'session_id'];
+    return required.every(field => Object.hasOwn(event, field));
   }
 
   /**
    * Validate error event structure
    */
   validateErrorEvent(event) {
-    const required = ['cli_version', 'command', 'error_type', 'error_message', 'platform', 'session_id']
-    return required.every((field) => Object.hasOwn(event, field))
+    const required = [
+      'cli_version',
+      'command',
+      'error_type',
+      'error_message',
+      'platform',
+      'session_id',
+    ];
+    return required.every(field => Object.hasOwn(event, field));
   }
 
   /**
    * Validate integration event structure
    */
   validateIntegrationEvent(event) {
-    const required = ['cli_version', 'integration_type', 'action', 'success', 'session_id']
-    return required.every((field) => Object.hasOwn(event, field))
+    const required = ['cli_version', 'integration_type', 'action', 'success', 'session_id'];
+    return required.every(field => Object.hasOwn(event, field));
   }
 
   // ============================================================================
@@ -275,8 +283,8 @@ export class TelemetryManager {
    * Track command execution
    */
   trackCommand(command, options = {}) {
-    const sessionId = options.sessionId || this.generateSessionId()
-    const startTime = options.startTime || Date.now()
+    const sessionId = options.sessionId || this.generateSessionId();
+    const startTime = options.startTime || Date.now();
 
     const event = {
       cli_version: options.cliVersion || '2.0.0',
@@ -288,10 +296,10 @@ export class TelemetryManager {
       session_id: sessionId,
       timestamp: new Date().toISOString(),
       ...options.metadata,
-    }
+    };
 
-    this.addUsageEvent(event)
-    return sessionId
+    this.addUsageEvent(event);
+    return sessionId;
   }
 
   /**
@@ -309,9 +317,9 @@ export class TelemetryManager {
       session_id: options.sessionId || this.generateSessionId(),
       timestamp: new Date().toISOString(),
       context: options.context || {},
-    }
+    };
 
-    this.addErrorEvent(event)
+    this.addErrorEvent(event);
   }
 
   /**
@@ -327,9 +335,9 @@ export class TelemetryManager {
       configuration_details: options.configurationDetails,
       session_id: options.sessionId || this.generateSessionId(),
       timestamp: new Date().toISOString(),
-    }
+    };
 
-    this.addIntegrationEvent(event)
+    this.addIntegrationEvent(event);
   }
 
   // ============================================================================
@@ -346,32 +354,32 @@ export class TelemetryManager {
       integrations: this.integrationQueue.length,
       total: this.usageQueue.length + this.errorQueue.length + this.integrationQueue.length,
       enabled: this.config.telemetryEnabled,
-    }
+    };
   }
 
   /**
    * Clear all queues
    */
   clearQueues() {
-    this.usageQueue.length = 0
-    this.errorQueue.length = 0
-    this.integrationQueue.length = 0
+    this.usageQueue.length = 0;
+    this.errorQueue.length = 0;
+    this.integrationQueue.length = 0;
   }
 
   /**
    * Enable/disable telemetry
    */
   setEnabled(enabled) {
-    this.config.telemetryEnabled = enabled
+    this.config.telemetryEnabled = enabled;
 
     if (enabled) {
-      this.startFlushTimer()
+      this.startFlushTimer();
     } else {
       if (this.flushTimer) {
-        clearInterval(this.flushTimer)
-        this.flushTimer = null
+        clearInterval(this.flushTimer);
+        this.flushTimer = null;
       }
-      this.clearQueues()
+      this.clearQueues();
     }
   }
 
@@ -379,26 +387,26 @@ export class TelemetryManager {
    * Shutdown telemetry manager and flush remaining events
    */
   async shutdown() {
-    this.isShuttingDown = true
+    this.isShuttingDown = true;
 
     if (this.flushTimer) {
-      clearInterval(this.flushTimer)
-      this.flushTimer = null
+      clearInterval(this.flushTimer);
+      this.flushTimer = null;
     }
 
     // Final flush of remaining events
     if (this.config.telemetryEnabled) {
-      await this.flush()
+      await this.flush();
     }
 
-    this.clearQueues()
+    this.clearQueues();
   }
 
   /**
    * Generate unique session ID
    */
   generateSessionId() {
-    return `cli_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    return `cli_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 }
 
@@ -406,20 +414,20 @@ export class TelemetryManager {
  * Factory function to create telemetry manager with Hub client
  */
 export function createTelemetryManager(hubClient, config = {}) {
-  return new TelemetryManager(hubClient, config)
+  return new TelemetryManager(hubClient, config);
 }
 
 /**
  * Singleton telemetry manager for global use
  */
-let globalTelemetryManager = null
+let globalTelemetryManager = null;
 
 export function getGlobalTelemetryManager() {
-  return globalTelemetryManager
+  return globalTelemetryManager;
 }
 
 export function setGlobalTelemetryManager(manager) {
-  globalTelemetryManager = manager
+  globalTelemetryManager = manager;
 }
 
 /**
@@ -427,7 +435,7 @@ export function setGlobalTelemetryManager(manager) {
  */
 export function initializeTelemetry(hubClient, config = {}) {
   if (!globalTelemetryManager) {
-    globalTelemetryManager = new TelemetryManager(hubClient, config)
+    globalTelemetryManager = new TelemetryManager(hubClient, config);
   }
-  return globalTelemetryManager
+  return globalTelemetryManager;
 }

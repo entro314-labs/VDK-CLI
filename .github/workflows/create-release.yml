@@ -65,7 +65,7 @@ jobs:
         run: |
           # Get the previous tag
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          
+
           if [ -z "$PREVIOUS_TAG" ]; then
             echo "No previous tag found, using full commit history"
             CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
@@ -73,10 +73,10 @@ jobs:
             echo "Generating changelog from $PREVIOUS_TAG to ${{ steps.tag.outputs.tag }}"
             CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges $PREVIOUS_TAG..${{ steps.tag.outputs.tag }})
           fi
-          
+
           # Save changelog to file for multiline output
           echo "$CHANGELOG" > changelog.txt
-          
+
           # Set output
           {
             echo "changelog<<EOF"
@@ -110,32 +110,32 @@ jobs:
           release_name: ${{ steps.package-info.outputs.name }} ${{ steps.tag.outputs.tag }}
           body: |
             ## ${{ steps.package-info.outputs.name }} ${{ steps.tag.outputs.tag }}
-            
+
             ${{ steps.package-info.outputs.description }}
-            
+
             ### Installation
-            
+
             ```bash
             npm install -g ${{ steps.package-info.outputs.name }}@${{ steps.tag.outputs.version }}
             ```
-            
+
             Or with pnpm:
             ```bash
             pnpm add -g ${{ steps.package-info.outputs.name }}@${{ steps.tag.outputs.version }}
             ```
-            
+
             ### Changes in this release
-            
+
             ${{ steps.changelog.outputs.changelog }}
-            
+
             ### Links
-            
+
             - [📦 npm package](https://www.npmjs.com/package/${{ steps.package-info.outputs.name }})
             - [🐙 Repository](https://github.com/${{ github.repository }})
             - [📋 Full Changelog](https://github.com/${{ github.repository }}/compare/v${{ steps.tag.outputs.version }}...HEAD)
-            
+
             ---
-            
+
             🤖 This release was created automatically by GitHub Actions
           draft: false
           prerelease: ${{ github.event.inputs.prerelease || false }}
@@ -145,7 +145,7 @@ jobs:
         run: |
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           NEW_VERSION="${{ steps.tag.outputs.version }}"
-          
+
           if [ "$CURRENT_VERSION" != "$NEW_VERSION" ]; then
             echo "Updating package.json version from $CURRENT_VERSION to $NEW_VERSION"
             pnpm version $NEW_VERSION --no-git-tag-version

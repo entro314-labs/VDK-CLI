@@ -5,13 +5,13 @@
  * Leverages the existing file discovery and pattern matching infrastructure.
  */
 
-import fs from 'node:fs'
-import path from 'node:path'
-import matter from 'gray-matter'
+import fs from 'node:fs';
+import path from 'node:path';
+import matter from 'gray-matter';
 
 export class MigrationDetector {
   constructor(projectPath) {
-    this.projectPath = projectPath
+    this.projectPath = projectPath;
 
     // AI context patterns to look for
     this.aiContextPatterns = {
@@ -45,7 +45,7 @@ export class MigrationDetector {
         indicators: ['ai', 'prompt', 'assistant', 'context', 'memory'],
         priority: 'low',
       },
-    }
+    };
   }
 
   /**
@@ -54,29 +54,29 @@ export class MigrationDetector {
    * @returns {Array} Detected AI contexts
    */
   async detectAIContexts(projectData) {
-    const contexts = []
+    const contexts = [];
 
     // Use existing file discovery from ProjectScanner
-    const allFiles = projectData.files || []
+    const allFiles = projectData.files || [];
 
     for (const file of allFiles) {
-      const context = await this.analyzeFileForAIContext(file)
+      const context = await this.analyzeFileForAIContext(file);
       if (context) {
-        contexts.push(context)
+        contexts.push(context);
       }
     }
 
     // Also check directories for AI context patterns
-    const directories = projectData.directories || []
+    const directories = projectData.directories || [];
     for (const dir of directories) {
-      const dirContext = this.analyzeDirForAIContext(dir, allFiles)
+      const dirContext = this.analyzeDirForAIContext(dir, allFiles);
       if (dirContext) {
-        contexts.push(dirContext)
+        contexts.push(dirContext);
       }
     }
 
     // Deduplicate and prioritize contexts
-    return this.dedupAndPrioritizeContexts(contexts)
+    return this.dedupAndPrioritizeContexts(contexts);
   }
 
   /**
@@ -85,37 +85,37 @@ export class MigrationDetector {
    * @returns {Object|null} AI context or null
    */
   async analyzeFileForAIContext(file) {
-    const fileName = file.name
-    const relativePath = file.relativePath
-    const fullPath = file.path || path.join(this.projectPath, relativePath)
+    const fileName = file.name;
+    const relativePath = file.relativePath;
+    const fullPath = file.path || path.join(this.projectPath, relativePath);
 
     // Check if file matches known AI context patterns
-    const contextType = this.identifyContextType(fileName, relativePath)
+    const contextType = this.identifyContextType(fileName, relativePath);
     if (!contextType) {
-      return null
+      return null;
     }
 
     // Read and analyze file content if it's a text file
-    let content = ''
-    let hasContent = false
+    let content = '';
+    let hasContent = false;
 
     try {
       // Only read text-based files
       if (this.isTextFile(fileName)) {
-        content = await fs.promises.readFile(fullPath, 'utf-8')
-        hasContent = content.trim().length > 0
+        content = await fs.promises.readFile(fullPath, 'utf-8');
+        hasContent = content.trim().length > 0;
       }
-    } catch (error) {
+    } catch (_error) {
       // File might not be readable, skip content analysis
-      hasContent = false
+      hasContent = false;
     }
 
     if (!hasContent && contextType === 'generic-ai') {
       // Skip empty generic AI files
-      return null
+      return null;
     }
 
-    const analysis = this.analyzeContent(content, contextType)
+    const analysis = this.analyzeContent(content, contextType);
 
     return {
       type: contextType,
@@ -130,7 +130,7 @@ export class MigrationDetector {
       wordCount: content.split(/\s+/).length,
       lineCount: content.split('\n').length,
       ...analysis,
-    }
+    };
   }
 
   /**
@@ -140,20 +140,20 @@ export class MigrationDetector {
    * @returns {Object|null} AI context or null
    */
   analyzeDirForAIContext(dir, allFiles) {
-    const dirName = dir.name
-    const relativePath = dir.relativePath
+    const dirName = dir.name;
+    const relativePath = dir.relativePath;
 
     // Check if directory matches AI context patterns
-    const contextType = this.identifyContextTypeFromPath(relativePath, dirName)
+    const contextType = this.identifyContextTypeFromPath(relativePath, dirName);
     if (!contextType) {
-      return null
+      return null;
     }
 
     // Get files within this directory
-    const dirFiles = allFiles.filter((file) => file.relativePath.startsWith(`${relativePath}/`))
+    const dirFiles = allFiles.filter(file => file.relativePath.startsWith(`${relativePath}/`));
 
     if (dirFiles.length === 0) {
-      return null
+      return null;
     }
 
     return {
@@ -164,14 +164,14 @@ export class MigrationDetector {
       relativePath,
       directoryName: dirName,
       fileCount: dirFiles.length,
-      files: dirFiles.map((f) => ({
+      files: dirFiles.map(f => ({
         name: f.name,
         relativePath: f.relativePath,
         type: f.type,
       })),
       confidence: this.calculateDirectoryConfidence(contextType, dirName, dirFiles),
-      lastModified: Math.max(...dirFiles.map((f) => new Date(f.modifiedTime || 0).getTime())),
-    }
+      lastModified: Math.max(...dirFiles.map(f => new Date(f.modifiedTime || 0).getTime())),
+    };
   }
 
   /**
@@ -181,32 +181,34 @@ export class MigrationDetector {
    * @returns {string|null} Context type or null
    */
   identifyContextType(fileName, relativePath) {
-    const lowerFileName = fileName.toLowerCase()
-    const lowerPath = relativePath.toLowerCase()
+    const _lowerFileName = fileName.toLowerCase();
+    const lowerPath = relativePath.toLowerCase();
 
     // Check specific file names first (highest priority)
-    if (fileName === 'CLAUDE.md') return 'claude-code-cli'
-    if (['.cursorrules', 'cursorrules', '.cursor-rules'].includes(fileName)) return 'cursor'
-    if (fileName.startsWith('.copilotrc')) return 'github-copilot'
-    if (fileName.startsWith('.windsurfrc') || fileName.startsWith('windsurf.config')) return 'windsurf'
+    if (fileName === 'CLAUDE.md') return 'claude-code-cli';
+    if (['.cursorrules', 'cursorrules', '.cursor-rules'].includes(fileName)) return 'cursor';
+    if (fileName.startsWith('.copilotrc')) return 'github-copilot';
+    if (fileName.startsWith('.windsurfrc') || fileName.startsWith('windsurf.config'))
+      return 'windsurf';
 
     // Check path-based patterns
     for (const [type, config] of Object.entries(this.aiContextPatterns)) {
       for (const pattern of config.filePatterns) {
         if (this.matchesPattern(relativePath, pattern)) {
-          return type
+          return type;
         }
       }
     }
 
     // Check directory-based patterns
-    if (lowerPath.includes('.claude/')) return 'claude-code-cli'
-    if (lowerPath.includes('.cursor/')) return 'cursor'
-    if (lowerPath.includes('copilot/') || lowerPath.includes('.github/copilot')) return 'github-copilot'
-    if (lowerPath.includes('.windsurf/')) return 'windsurf'
-    if (lowerPath.includes('.vdk/') || lowerPath.includes('prompts/')) return 'generic-ai'
+    if (lowerPath.includes('.claude/')) return 'claude-code-cli';
+    if (lowerPath.includes('.cursor/')) return 'cursor';
+    if (lowerPath.includes('copilot/') || lowerPath.includes('.github/copilot'))
+      return 'github-copilot';
+    if (lowerPath.includes('.windsurf/')) return 'windsurf';
+    if (lowerPath.includes('.vdk/') || lowerPath.includes('prompts/')) return 'generic-ai';
 
-    return null
+    return null;
   }
 
   /**
@@ -216,16 +218,16 @@ export class MigrationDetector {
    * @returns {string|null} Context type or null
    */
   identifyContextTypeFromPath(relativePath, dirName) {
-    const lowerPath = relativePath.toLowerCase()
-    const lowerDirName = dirName.toLowerCase()
+    const lowerPath = relativePath.toLowerCase();
+    const lowerDirName = dirName.toLowerCase();
 
-    if (lowerDirName === '.claude' || lowerPath.includes('.claude')) return 'claude-code-cli'
-    if (lowerDirName === '.cursor' || lowerPath.includes('.cursor')) return 'cursor'
-    if (lowerDirName === 'copilot' && lowerPath.includes('.github')) return 'github-copilot'
-    if (lowerDirName === '.windsurf' || lowerPath.includes('.windsurf')) return 'windsurf'
-    if (['.ai', 'ai-rules', 'prompts', '.prompts'].includes(lowerDirName)) return 'generic-ai'
+    if (lowerDirName === '.claude' || lowerPath.includes('.claude')) return 'claude-code-cli';
+    if (lowerDirName === '.cursor' || lowerPath.includes('.cursor')) return 'cursor';
+    if (lowerDirName === 'copilot' && lowerPath.includes('.github')) return 'github-copilot';
+    if (lowerDirName === '.windsurf' || lowerPath.includes('.windsurf')) return 'windsurf';
+    if (['.ai', 'ai-rules', 'prompts', '.prompts'].includes(lowerDirName)) return 'generic-ai';
 
-    return null
+    return null;
   }
 
   /**
@@ -239,10 +241,10 @@ export class MigrationDetector {
     const regexPattern = pattern
       .replace(/\*\*/g, '.*') // ** matches any path segment
       .replace(/\*/g, '[^/]*') // * matches any filename characters
-      .replace(/\./g, '\\.') // Escape dots
+      .replace(/\./g, '\\.'); // Escape dots
 
-    const regex = new RegExp(`^${regexPattern}$`, 'i')
-    return regex.test(path)
+    const regex = new RegExp(`^${regexPattern}$`, 'i');
+    return regex.test(path);
   }
 
   /**
@@ -251,13 +253,24 @@ export class MigrationDetector {
    * @returns {boolean} True if text file
    */
   isTextFile(fileName) {
-    const textExtensions = ['.md', '.txt', '.js', '.ts', '.json', '.yaml', '.yml', '.toml', '.ini', '.rc']
-    const extension = path.extname(fileName).toLowerCase()
+    const textExtensions = [
+      '.md',
+      '.txt',
+      '.js',
+      '.ts',
+      '.json',
+      '.yaml',
+      '.yml',
+      '.toml',
+      '.ini',
+      '.rc',
+    ];
+    const extension = path.extname(fileName).toLowerCase();
 
     // Files without extension that are typically text
-    const textFiles = ['.cursorrules', 'cursorrules', '.gitignore', '.copilotrc', '.windsurfrc']
+    const textFiles = ['.cursorrules', 'cursorrules', '.gitignore', '.copilotrc', '.windsurfrc'];
 
-    return textExtensions.includes(extension) || textFiles.includes(fileName)
+    return textExtensions.includes(extension) || textFiles.includes(fileName);
   }
 
   /**
@@ -268,7 +281,7 @@ export class MigrationDetector {
    */
   analyzeContent(content, contextType) {
     if (!content) {
-      return { hasValidContent: false }
+      return { hasValidContent: false };
     }
 
     const analysis = {
@@ -280,38 +293,38 @@ export class MigrationDetector {
       hasMemory: this.detectMemory(content),
       hasTemplating: this.detectTemplating(content),
       sections: this.extractSections(content),
-    }
+    };
 
     // Parse frontmatter if present
     if (analysis.hasFrontmatter) {
       try {
-        const parsed = matter(content)
-        analysis.frontmatter = parsed.data
-        analysis.bodyContent = parsed.content
-      } catch (error) {
-        analysis.bodyContent = content
+        const parsed = matter(content);
+        analysis.frontmatter = parsed.data;
+        analysis.bodyContent = parsed.content;
+      } catch (_error) {
+        analysis.bodyContent = content;
       }
     } else {
-      analysis.bodyContent = content
+      analysis.bodyContent = content;
     }
 
     // Context-specific analysis
     switch (contextType) {
       case 'claude-code-cli':
-        analysis.claudeSpecific = this.analyzeClaudeContent(content)
-        break
+        analysis.claudeSpecific = this.analyzeClaudeContent(content);
+        break;
       case 'cursor':
-        analysis.cursorSpecific = this.analyzeCursorContent(content)
-        break
+        analysis.cursorSpecific = this.analyzeCursorContent(content);
+        break;
       case 'github-copilot':
-        analysis.copilotSpecific = this.analyzeCopilotContent(content)
-        break
+        analysis.copilotSpecific = this.analyzeCopilotContent(content);
+        break;
       case 'windsurf':
-        analysis.windsurfSpecific = this.analyzeWindsurfContent(content)
-        break
+        analysis.windsurfSpecific = this.analyzeWindsurfContent(content);
+        break;
     }
 
-    return analysis
+    return analysis;
   }
 
   /**
@@ -327,12 +340,12 @@ export class MigrationDetector {
       'github-copilot': ['copilot:', 'gh ', 'github.com'],
       windsurf: ['cascade:', 'windsurf:', 'agent:'],
       'generic-ai': ['/command', '!', 'run:', 'execute:'],
-    }
+    };
 
-    const patterns = commandPatterns[contextType] || commandPatterns['generic-ai']
-    const lowerContent = content.toLowerCase()
+    const patterns = commandPatterns[contextType] || commandPatterns['generic-ai'];
+    const lowerContent = content.toLowerCase();
 
-    return patterns.some((pattern) => lowerContent.includes(pattern.toLowerCase()))
+    return patterns.some(pattern => lowerContent.includes(pattern.toLowerCase()));
   }
 
   /**
@@ -358,10 +371,10 @@ export class MigrationDetector {
       'must',
       'avoid',
       'prefer',
-    ]
+    ];
 
-    const lowerContent = content.toLowerCase()
-    return ruleKeywords.some((keyword) => lowerContent.includes(keyword))
+    const lowerContent = content.toLowerCase();
+    return ruleKeywords.some(keyword => lowerContent.includes(keyword));
   }
 
   /**
@@ -383,10 +396,10 @@ export class MigrationDetector {
       'codebase:',
       'architecture:',
       'stack:',
-    ]
+    ];
 
-    const lowerContent = content.toLowerCase()
-    return memoryKeywords.some((keyword) => lowerContent.includes(keyword))
+    const lowerContent = content.toLowerCase();
+    return memoryKeywords.some(keyword => lowerContent.includes(keyword));
   }
 
   /**
@@ -401,9 +414,9 @@ export class MigrationDetector {
       /<[\w-]+>/, // XML-like tags
       /\[\[[\s\S]*?\]\]/, // Double brackets
       /%[\w-]+%/, // Percent variables
-    ]
+    ];
 
-    return templatePatterns.some((pattern) => pattern.test(content))
+    return templatePatterns.some(pattern => pattern.test(content));
   }
 
   /**
@@ -412,37 +425,37 @@ export class MigrationDetector {
    * @returns {Array} Content sections
    */
   extractSections(content) {
-    const sections = []
-    const lines = content.split('\n')
-    let currentSection = null
+    const sections = [];
+    const lines = content.split('\n');
+    let currentSection = null;
 
     for (const line of lines) {
-      const trimmed = line.trim()
+      const trimmed = line.trim();
 
       // Markdown headers
-      const headerMatch = trimmed.match(/^(#{1,6})\s+(.+)/)
+      const headerMatch = trimmed.match(/^(#{1,6})\s+(.+)/);
       if (headerMatch) {
         if (currentSection) {
-          sections.push(currentSection)
+          sections.push(currentSection);
         }
         currentSection = {
           level: headerMatch[1].length,
           title: headerMatch[2],
           content: [],
-        }
-        continue
+        };
+        continue;
       }
 
       if (currentSection && trimmed) {
-        currentSection.content.push(line)
+        currentSection.content.push(line);
       }
     }
 
     if (currentSection) {
-      sections.push(currentSection)
+      sections.push(currentSection);
     }
 
-    return sections
+    return sections;
   }
 
   // Context-specific analyzers
@@ -454,7 +467,7 @@ export class MigrationDetector {
       hasFileReferences: content.includes('@'),
       hasHooks: content.toLowerCase().includes('hook'),
       hasMemoryFiles: content.toLowerCase().includes('claude.md'),
-    }
+    };
   }
 
   analyzeCursorContent(content) {
@@ -463,7 +476,7 @@ export class MigrationDetector {
       hasInstructions: content.toLowerCase().includes('instruction'),
       hasTabTriggers: content.includes('@'),
       hasIgnorePatterns: content.toLowerCase().includes('ignore'),
-    }
+    };
   }
 
   analyzeCopilotContent(content) {
@@ -472,7 +485,7 @@ export class MigrationDetector {
       hasSecurityRules: content.toLowerCase().includes('security'),
       hasWorkflowRules: content.toLowerCase().includes('workflow'),
       hasGitHubReferences: content.toLowerCase().includes('github'),
-    }
+    };
   }
 
   analyzeWindsurfContent(content) {
@@ -481,7 +494,7 @@ export class MigrationDetector {
       hasAgentRules: content.toLowerCase().includes('agent'),
       hasFlowRules: content.toLowerCase().includes('flow'),
       hasContextRules: content.toLowerCase().includes('context'),
-    }
+    };
   }
 
   /**
@@ -493,40 +506,40 @@ export class MigrationDetector {
    * @returns {string} Confidence level
    */
   calculateConfidence(contextType, fileName, content, relativePath) {
-    let score = 0
-    const config = this.aiContextPatterns[contextType]
+    let score = 0;
+    const config = this.aiContextPatterns[contextType];
 
     // Base score from pattern priority
-    const baseScore = { high: 60, medium: 40, low: 20 }[config.priority] || 20
-    score += baseScore
+    const baseScore = { high: 60, medium: 40, low: 20 }[config.priority] || 20;
+    score += baseScore;
 
     // Boost for exact matches
-    if (fileName === 'CLAUDE.md' && contextType === 'claude-code-cli') score += 30
-    if (['.cursorrules', 'cursorrules'].includes(fileName) && contextType === 'cursor') score += 30
-    if (fileName.startsWith('.copilotrc') && contextType === 'github-copilot') score += 25
-    if (fileName.startsWith('.windsurfrc') && contextType === 'windsurf') score += 25
+    if (fileName === 'CLAUDE.md' && contextType === 'claude-code-cli') score += 30;
+    if (['.cursorrules', 'cursorrules'].includes(fileName) && contextType === 'cursor') score += 30;
+    if (fileName.startsWith('.copilotrc') && contextType === 'github-copilot') score += 25;
+    if (fileName.startsWith('.windsurfrc') && contextType === 'windsurf') score += 25;
 
     // Boost for content indicators
-    const indicators = config.indicators || []
+    const indicators = config.indicators || [];
     for (const indicator of indicators) {
       if (content.toLowerCase().includes(indicator.toLowerCase())) {
-        score += 5
+        score += 5;
       }
     }
 
     // Boost for proper directory structure
-    if (relativePath.includes('.vdk/') && contextType === 'generic-ai') score += 10
-    if (relativePath.includes('.claude/') && contextType === 'claude-code-cli') score += 10
-    if (relativePath.includes('.cursor/') && contextType === 'cursor') score += 10
+    if (relativePath.includes('.vdk/') && contextType === 'generic-ai') score += 10;
+    if (relativePath.includes('.claude/') && contextType === 'claude-code-cli') score += 10;
+    if (relativePath.includes('.cursor/') && contextType === 'cursor') score += 10;
 
     // Penalty for generic patterns
-    if (contextType === 'generic-ai') score -= 10
+    if (contextType === 'generic-ai') score -= 10;
 
     // Convert score to confidence level
-    if (score >= 80) return 'high'
-    if (score >= 60) return 'medium'
-    if (score >= 40) return 'low'
-    return 'none'
+    if (score >= 80) return 'high';
+    if (score >= 60) return 'medium';
+    if (score >= 40) return 'low';
+    return 'none';
   }
 
   /**
@@ -537,23 +550,23 @@ export class MigrationDetector {
    * @returns {string} Confidence level
    */
   calculateDirectoryConfidence(contextType, dirName, files) {
-    let score = 40 // Base score for directory detection
+    let score = 40; // Base score for directory detection
 
     // Boost for exact directory name matches
-    if (dirName === '.claude' && contextType === 'claude-code-cli') score += 30
-    if (dirName === '.cursor' && contextType === 'cursor') score += 30
-    if (dirName === 'copilot' && contextType === 'github-copilot') score += 25
-    if (dirName === '.windsurf' && contextType === 'windsurf') score += 25
+    if (dirName === '.claude' && contextType === 'claude-code-cli') score += 30;
+    if (dirName === '.cursor' && contextType === 'cursor') score += 30;
+    if (dirName === 'copilot' && contextType === 'github-copilot') score += 25;
+    if (dirName === '.windsurf' && contextType === 'windsurf') score += 25;
 
     // Boost for relevant file types in directory
-    const relevantFiles = files.filter((file) => this.isRelevantFile(file, contextType))
-    score += Math.min(relevantFiles.length * 5, 20)
+    const relevantFiles = files.filter(file => this.isRelevantFile(file, contextType));
+    score += Math.min(relevantFiles.length * 5, 20);
 
     // Convert score to confidence level
-    if (score >= 80) return 'high'
-    if (score >= 60) return 'medium'
-    if (score >= 40) return 'low'
-    return 'none'
+    if (score >= 80) return 'high';
+    if (score >= 60) return 'medium';
+    if (score >= 40) return 'low';
+    return 'none';
   }
 
   /**
@@ -569,12 +582,12 @@ export class MigrationDetector {
       'github-copilot': ['.json', '.yml', '.yaml', '.md'],
       windsurf: ['.xml', '.md', '.json'],
       'generic-ai': ['.md', '.txt', '.json', '.yml'],
-    }
+    };
 
-    const extensions = relevantExtensions[contextType] || ['.md', '.txt']
-    const fileExt = path.extname(file.name).toLowerCase()
+    const extensions = relevantExtensions[contextType] || ['.md', '.txt'];
+    const fileExt = path.extname(file.name).toLowerCase();
 
-    return extensions.includes(fileExt)
+    return extensions.includes(fileExt);
   }
 
   /**
@@ -589,9 +602,9 @@ export class MigrationDetector {
       'github-copilot': 'GitHub Copilot',
       windsurf: 'Windsurf',
       'generic-ai': 'Generic AI',
-    }
+    };
 
-    return sourceMap[contextType] || 'Unknown'
+    return sourceMap[contextType] || 'Unknown';
   }
 
   /**
@@ -601,22 +614,22 @@ export class MigrationDetector {
    */
   dedupAndPrioritizeContexts(contexts) {
     // Remove contexts with 'none' confidence
-    const validContexts = contexts.filter((ctx) => ctx.confidence !== 'none')
+    const validContexts = contexts.filter(ctx => ctx.confidence !== 'none');
 
     // Sort by confidence and type priority
-    const priorityOrder = ['claude-code-cli', 'cursor', 'windsurf', 'github-copilot', 'generic-ai']
-    const confidenceOrder = ['high', 'medium', 'low']
+    const priorityOrder = ['claude-code-cli', 'cursor', 'windsurf', 'github-copilot', 'generic-ai'];
+    const confidenceOrder = ['high', 'medium', 'low'];
 
     return validContexts.sort((a, b) => {
       // First sort by confidence
-      const confA = confidenceOrder.indexOf(a.confidence)
-      const confB = confidenceOrder.indexOf(b.confidence)
-      if (confA !== confB) return confA - confB
+      const confA = confidenceOrder.indexOf(a.confidence);
+      const confB = confidenceOrder.indexOf(b.confidence);
+      if (confA !== confB) return confA - confB;
 
       // Then by type priority
-      const prioA = priorityOrder.indexOf(a.type)
-      const prioB = priorityOrder.indexOf(b.type)
-      return prioA - prioB
-    })
+      const prioA = priorityOrder.indexOf(a.type);
+      const prioB = priorityOrder.indexOf(b.type);
+      return prioA - prioB;
+    });
   }
 }

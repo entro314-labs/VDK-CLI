@@ -487,3 +487,6 @@ RELEASE_READINESS_ASSESSMENT.md
 .github/copilot/README.md
 CLAUDE.md
 .github/copilot/guidelines.json
+AGENTS.override.md
+docs/CANONICAL-TAXONOMY-HARD-CUTOVER.md
+docs/ADAPTER_INTEGRATION_ARCHITECTURE.md

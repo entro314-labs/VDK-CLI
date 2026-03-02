@@ -8,60 +8,60 @@
  * maintaining backwards compatibility. Uses internal service injection pattern.
  */
 
-import fs from 'node:fs/promises'
-import { createRequire } from 'node:module'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import dotenv from 'dotenv'
-import { createIntegrationManager } from '../../integrations/index.js'
+import fs from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import dotenv from 'dotenv';
+import { createIntegrationManager } from '../../integrations/index.js';
 
-const require = createRequire(import.meta.url)
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const require = createRequire(import.meta.url);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Service container for dependency injection
  */
 class ServiceContainer {
   constructor() {
-    this.services = new Map()
-    this.singletons = new Map()
+    this.services = new Map();
+    this.singletons = new Map();
   }
 
   register(name, factory, singleton = false) {
-    this.services.set(name, { factory, singleton })
+    this.services.set(name, { factory, singleton });
   }
 
   resolve(name) {
-    const service = this.services.get(name)
+    const service = this.services.get(name);
     if (!service) {
-      throw new Error(`Service '${name}' not found`)
+      throw new Error(`Service '${name}' not found`);
     }
 
     if (service.singleton) {
       if (!this.singletons.has(name)) {
-        this.singletons.set(name, service.factory())
+        this.singletons.set(name, service.factory());
       }
-      return this.singletons.get(name)
+      return this.singletons.get(name);
     }
 
-    return service.factory()
+    return service.factory();
   }
 
   clear() {
-    this.singletons.clear()
+    this.singletons.clear();
   }
 }
 
 export class CommandContext {
   constructor(serviceContainer = null) {
-    this.initialized = false
-    this.cliDir = null
-    this.packageInfo = null
-    this.integrationManager = null
-    this.services = serviceContainer || new ServiceContainer()
+    this.initialized = false;
+    this.cliDir = null;
+    this.packageInfo = null;
+    this.integrationManager = null;
+    this.services = serviceContainer || new ServiceContainer();
 
     // Register default services
-    this._registerDefaultServices()
+    this._registerDefaultServices();
   }
 
   /**
@@ -80,7 +80,7 @@ export class CommandContext {
         readdir: fs.readdir,
       }),
       true
-    )
+    );
 
     // Path service
     this.services.register(
@@ -92,42 +92,42 @@ export class CommandContext {
         dirname: path.dirname,
       }),
       true
-    )
+    );
 
     // Environment service
     this.services.register(
       'environment',
       () => ({
-        loadConfig: (configPath) => dotenv.config({ path: configPath }),
+        loadConfig: configPath => dotenv.config({ path: configPath }),
         cwd: () => process.cwd(),
       }),
       true
-    )
+    );
   }
 
   /**
    * Initialize the command context
    */
   async initialize() {
-    if (this.initialized) return
+    if (this.initialized) return;
 
     try {
-      const pathService = this.services.resolve('pathService')
-      const environment = this.services.resolve('environment')
+      const pathService = this.services.resolve('pathService');
+      const environment = this.services.resolve('environment');
 
       // Get CLI directory (VDK CLI root)
-      this.cliDir = pathService.resolve(__dirname, '../../..')
+      this.cliDir = pathService.resolve(__dirname, '../../..');
 
       // Load environment variables
-      environment.loadConfig(pathService.join(this.cliDir, '.env.local'))
-      environment.loadConfig(pathService.join(this.cliDir, '.env'))
+      environment.loadConfig(pathService.join(this.cliDir, '.env.local'));
+      environment.loadConfig(pathService.join(this.cliDir, '.env'));
 
       // Load package information
-      this.packageInfo = require(pathService.join(this.cliDir, 'package.json'))
+      this.packageInfo = require(pathService.join(this.cliDir, 'package.json'));
 
-      this.initialized = true
+      this.initialized = true;
     } catch (error) {
-      throw new Error(`Failed to initialize CommandContext: ${error.message}`)
+      throw new Error(`Failed to initialize CommandContext: ${error.message}`);
     }
   }
 
@@ -135,49 +135,49 @@ export class CommandContext {
    * Get package version
    */
   getVersion() {
-    this.ensureInitialized()
-    return this.packageInfo.version
+    this.ensureInitialized();
+    return this.packageInfo.version;
   }
 
   /**
    * Get CLI directory path
    */
   getCliDirectory() {
-    this.ensureInitialized()
-    return this.cliDir
+    this.ensureInitialized();
+    return this.cliDir;
   }
 
   /**
    * Create integration manager for a project
    */
   async createIntegrationManager(projectPath = process.cwd()) {
-    const environment = this.services.resolve('environment')
-    const resolvedProjectPath = projectPath || environment.cwd()
+    const environment = this.services.resolve('environment');
+    const resolvedProjectPath = projectPath || environment.cwd();
 
     if (!this.integrationManager || this.integrationManager.projectPath !== resolvedProjectPath) {
-      this.integrationManager = createIntegrationManager(resolvedProjectPath)
+      this.integrationManager = createIntegrationManager(resolvedProjectPath);
     }
-    return this.integrationManager
+    return this.integrationManager;
   }
 
   /**
    * Read and parse VDK configuration file
    */
   async readVdkConfig(projectPath = process.cwd(), configPath = 'vdk.config.json') {
-    const pathService = this.services.resolve('pathService')
-    const fileSystem = this.services.resolve('fileSystem')
-    const environment = this.services.resolve('environment')
+    const pathService = this.services.resolve('pathService');
+    const fileSystem = this.services.resolve('fileSystem');
+    const environment = this.services.resolve('environment');
 
-    const resolvedProjectPath = projectPath || environment.cwd()
-    const fullConfigPath = pathService.resolve(resolvedProjectPath, configPath)
+    const resolvedProjectPath = projectPath || environment.cwd();
+    const fullConfigPath = pathService.resolve(resolvedProjectPath, configPath);
 
     try {
-      await fileSystem.access(fullConfigPath)
-      const configContent = await fileSystem.readFile(fullConfigPath, 'utf8')
-      return JSON.parse(configContent)
+      await fileSystem.access(fullConfigPath);
+      const configContent = await fileSystem.readFile(fullConfigPath, 'utf8');
+      return JSON.parse(configContent);
     } catch (error) {
       // Return null for missing or invalid config files - this is expected behavior
-      return null
+      return null;
     }
   }
 
@@ -185,18 +185,18 @@ export class CommandContext {
    * Write VDK configuration file
    */
   async writeVdkConfig(config, projectPath = process.cwd(), configPath = 'vdk.config.json') {
-    const pathService = this.services.resolve('pathService')
-    const fileSystem = this.services.resolve('fileSystem')
-    const environment = this.services.resolve('environment')
+    const pathService = this.services.resolve('pathService');
+    const fileSystem = this.services.resolve('fileSystem');
+    const environment = this.services.resolve('environment');
 
-    const resolvedProjectPath = projectPath || environment.cwd()
-    const fullConfigPath = pathService.resolve(resolvedProjectPath, configPath)
+    const resolvedProjectPath = projectPath || environment.cwd();
+    const fullConfigPath = pathService.resolve(resolvedProjectPath, configPath);
 
     try {
-      await fileSystem.writeFile(fullConfigPath, JSON.stringify(config, null, 2))
-      return fullConfigPath
+      await fileSystem.writeFile(fullConfigPath, JSON.stringify(config, null, 2));
+      return fullConfigPath;
     } catch (error) {
-      throw new Error(`Failed to write VDK configuration to ${fullConfigPath}: ${error.message}`)
+      throw new Error(`Failed to write VDK configuration to ${fullConfigPath}: ${error.message}`);
     }
   }
 
@@ -204,15 +204,15 @@ export class CommandContext {
    * Ensure rules directory exists
    */
   async ensureRulesDirectory(rulesPath) {
-    const pathService = this.services.resolve('pathService')
-    const fileSystem = this.services.resolve('fileSystem')
+    const pathService = this.services.resolve('pathService');
+    const fileSystem = this.services.resolve('fileSystem');
 
-    const resolvedPath = pathService.resolve(rulesPath)
+    const resolvedPath = pathService.resolve(rulesPath);
     try {
-      await fileSystem.mkdir(resolvedPath, { recursive: true })
-      return resolvedPath
+      await fileSystem.mkdir(resolvedPath, { recursive: true });
+      return resolvedPath;
     } catch (error) {
-      throw new Error(`Failed to create rules directory ${resolvedPath}: ${error.message}`)
+      throw new Error(`Failed to create rules directory ${resolvedPath}: ${error.message}`);
     }
   }
 
@@ -220,14 +220,14 @@ export class CommandContext {
    * List files in directory with filtering
    */
   async listFiles(directoryPath, filter = null) {
-    const fileSystem = this.services.resolve('fileSystem')
+    const fileSystem = this.services.resolve('fileSystem');
 
     try {
-      const files = await fileSystem.readdir(directoryPath, { recursive: true })
-      return filter ? files.filter(filter) : files
+      const files = await fileSystem.readdir(directoryPath, { recursive: true });
+      return filter ? files.filter(filter) : files;
     } catch (error) {
       // Return empty array for missing directories - this is expected behavior
-      return []
+      return [];
     }
   }
 
@@ -235,13 +235,13 @@ export class CommandContext {
    * Check if path exists
    */
   async pathExists(filePath) {
-    const fileSystem = this.services.resolve('fileSystem')
+    const fileSystem = this.services.resolve('fileSystem');
 
     try {
-      await fileSystem.access(filePath)
-      return true
+      await fileSystem.access(filePath);
+      return true;
     } catch {
-      return false
+      return false;
     }
   }
 
@@ -249,19 +249,19 @@ export class CommandContext {
    * Resolve path relative to current working directory
    */
   resolvePath(relativePath) {
-    const pathService = this.services.resolve('pathService')
-    return pathService.resolve(relativePath)
+    const pathService = this.services.resolve('pathService');
+    return pathService.resolve(relativePath);
   }
 
   /**
    * Get relative path for display purposes
    */
   getRelativePath(absolutePath, basePath = process.cwd()) {
-    const pathService = this.services.resolve('pathService')
-    const environment = this.services.resolve('environment')
+    const pathService = this.services.resolve('pathService');
+    const environment = this.services.resolve('environment');
 
-    const resolvedBasePath = basePath || environment.cwd()
-    return pathService.relative(resolvedBasePath, absolutePath)
+    const resolvedBasePath = basePath || environment.cwd();
+    return pathService.relative(resolvedBasePath, absolutePath);
   }
 
   /**
@@ -269,7 +269,7 @@ export class CommandContext {
    */
   ensureInitialized() {
     if (!this.initialized) {
-      throw new Error('CommandContext must be initialized before use')
+      throw new Error('CommandContext must be initialized before use');
     }
   }
 
@@ -278,9 +278,9 @@ export class CommandContext {
    * Useful for testing and preventing memory leaks
    */
   cleanup() {
-    this.services.clear()
-    this.integrationManager = null
-    this.initialized = false
+    this.services.clear();
+    this.integrationManager = null;
+    this.initialized = false;
   }
 
   /**
@@ -289,7 +289,7 @@ export class CommandContext {
    * @returns {CommandContext} New context instance
    */
   static createWithServices(serviceContainer) {
-    return new CommandContext(serviceContainer)
+    return new CommandContext(serviceContainer);
   }
 
   /**
@@ -297,7 +297,7 @@ export class CommandContext {
    * @returns {ServiceContainer} Service container instance
    */
   getServiceContainer() {
-    return this.services
+    return this.services;
   }
 
   /**
@@ -307,7 +307,7 @@ export class CommandContext {
    * @param {boolean} singleton - Whether service should be singleton
    */
   registerService(name, factory, singleton = false) {
-    this.services.register(name, factory, singleton)
+    this.services.register(name, factory, singleton);
   }
 
   /**
@@ -316,13 +316,13 @@ export class CommandContext {
    * @returns {boolean} True if service is registered
    */
   hasService(name) {
-    return this.services.services.has(name)
+    return this.services.services.has(name);
   }
 }
 
 // Export singleton instance for backwards compatibility
 // New code should consider using dependency injection instead
-export const commandContext = new CommandContext()
+export const commandContext = new CommandContext();
 
 // Export ServiceContainer for advanced usage
-export { ServiceContainer }
+export { ServiceContainer };
