@@ -2,7 +2,7 @@
  * Schema Validator Utility
  * -----------------------
  * Centralized validation for VDK schemas including commands and blueprints
- * using the shared ai-context-schema validator.
+ * using the shared AI context schema validator package.
  */
 
 import fs from 'node:fs/promises';
@@ -13,10 +13,30 @@ import matter from 'gray-matter';
 import { fileSystem, pathUtils } from './file-system.js';
 
 const require = createRequire(import.meta.url);
-const { SchemaValidator } = require('ai-context-schema');
+
+const SCHEMA_PACKAGE_CANDIDATES = ['@vdkit/ai-context-schema', 'ai-context-schema'];
+
+let schemaPackageName = null;
+let SchemaValidator = null;
+
+for (const candidate of SCHEMA_PACKAGE_CANDIDATES) {
+  try {
+    ({ SchemaValidator } = require(candidate));
+    schemaPackageName = candidate;
+    break;
+  } catch {
+    // Try next candidate
+  }
+}
+
+if (!SchemaValidator || !schemaPackageName) {
+  throw new Error(
+    `Could not resolve schema validator package. Tried: ${SCHEMA_PACKAGE_CANDIDATES.join(', ')}`
+  );
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SCHEMAS_DIR = path.dirname(require.resolve('ai-context-schema/package.json'));
+const SCHEMAS_DIR = path.dirname(require.resolve(`${schemaPackageName}/package.json`));
 
 // Cache schema validator instances
 const validatorCache = new Map();
@@ -57,7 +77,7 @@ async function getValidator(schemaName) {
 }
 
 /**
- * Validate data against a schema using ai-context-schema
+ * Validate data against schema package validator
  */
 export async function validateSchema(data, schemaName) {
   const validator = await getValidator(schemaName);

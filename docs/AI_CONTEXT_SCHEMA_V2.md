@@ -1,348 +1,188 @@
-# AI Context Schema v2.1.0 - VDK CLI Integration
+# AI Context Schema Integration Guide (VDK CLI v3)
 
-## Overview
+## Purpose
 
-VDK CLI has been fully migrated to support the AI Context Schema v2.1.0, providing universal compatibility across 33+ AI coding assistants and platforms. This document outlines the new capabilities and how to use them.
+This document replaces the previous v2-focused guidance and describes how `VDK-CLI` integrates with the canonical AI Context Schema v3 contract.
 
-## What's New in Schema v2.1.0
+The filename is retained for compatibility with existing links, but the runtime contract and examples below are v3.
 
-### 1. Universal Platform Support
+## Current contract
 
-Blueprints now support detailed configuration for each AI platform:
+`VDK-CLI` aligns to the v3 schema model:
+
+- `schemaVersion: "3.0"`
+- canonical `kind` taxonomy
+- platform component model under `platforms.<platform>.components`
+- deterministic frontmatter validation for repository blueprints
+
+## Package naming and resolution
+
+The canonical npm package is:
+
+- `@vdkit/ai-context-schema`
+
+`VDK-CLI` schema validation utilities also support a fallback candidate:
+
+- `ai-context-schema`
+
+This compatibility behavior exists to support mixed local environments during migration.
+
+## Canonical kind taxonomy
+
+Blueprints should use one of these `kind` values:
+
+- `project-memory`
+- `conditional-rule`
+- `skill`
+- `command`
+- `workflow`
+- `agent`
+- `hook`
+- `mcp-integration`
+- `plugin-distribution`
+
+## Blueprint shape (v3)
+
+Minimal frontmatter expected by the v3 contract:
 
 ```yaml
+---
+schemaVersion: '3.0'
+id: 'my-blueprint-id'
+title: 'My Blueprint'
+description: 'What this blueprint does and when to use it'
+version: '1.0.0'
+kind: 'skill'
 platforms:
-  claude:
+  claude-code:
     compatible: true
-    memory: true
-    command: true
-    priority: 5
-    allowedTools: ['Read', 'Write', 'Edit']
-    mcpIntegration: true
-  cursor:
-    compatible: true
-    activation: 'auto-attached'
-    globs: ['**/*.js', '**/*.ts']
-    priority: 'medium'
-  windsurf:
-    compatible: true
-    mode: 'workspace'
-    characterLimit: 6000
-    priority: 7
-  zed:
-    compatible: true
-    mode: 'project'
-    aiFeatures: true
+    enabled: true
+    components:
+      skills:
+        type: claude-skill
+        enabled: true
+        location: .claude/skills/
+        manifests:
+          - name: my-blueprint-id
+            file: my-blueprint-id.md
+---
 ```
 
-### 2. Metadata
+## How VDK-CLI uses the schema
 
-Rich metadata support for better blueprint discovery and management:
+### 1) Validation utility
 
-```yaml
-# Identification and Classification
-author: 'Your Name'
-contributors: ['Contributor 1', 'Contributor 2']
-tags: ['javascript', 'react', 'testing']
-complexity: 'medium' # simple, medium, complex
-scope: 'project' # file, component, feature, project, system
-audience: 'developer' # developer, architect, team-lead, junior, senior, any
-maturity: 'stable' # experimental, beta, stable, deprecated
+`src/utils/schema-validator.js` loads schema definitions from the schema package and validates parsed frontmatter.
 
-# Links and Resources
-discussionUrl: 'https://github.com/your-org/discussions/123'
-repositoryUrl: 'https://github.com/your-org/blueprints'
-license: 'MIT'
+Primary flows:
 
-# Content Organization
-contentSections: ['introduction', 'implementation', 'examples']
-```
+- `validateBlueprint(...)`
+- `validateCommand(...)`
+- `fileValidation.validateMDCFile(...)`
+- `fileValidation.validateMDCFiles(...)`
 
-### 3. Blueprint Relationships
+### 2) Rule validation command
 
-Define dependencies and conflicts between blueprints:
+`vdk validate` executes `src/validation/validate-rules.js`.
 
-```yaml
-# Dependencies
-requires: ['basic-typescript-setup', 'jest-configuration']
-suggests: ['eslint-config', 'prettier-setup']
+It validates:
 
-# Conflicts and Replacements
-conflicts: ['old-test-setup']
-supersedes: ['legacy-typescript-config']
-```
+- frontmatter parseability
+- schema contract conformance
+- duplicate IDs
 
-### 4. Advanced Platform Features
+### 3) Contract linting in repository quality pipeline
 
-#### Character Limits and Truncation
+`VDK-CLI` adds Oxlint JS plugin checks for `.vdk/rules` frontmatter through:
 
-Automatic content optimization per platform:
+- `.oxlintrc.json` (`vdk/validate-blueprints`)
+- `pnpm run lint:contracts`
+- `pnpm run lint:contracts:dry`
+- `pnpm run lint:contracts:fix`
 
-- **Windsurf**: 6,000 characters per file
-- **GitHub Copilot**: 600 characters per guideline
-- **Claude**: Unlimited with memory management
+### 4) Formatting + linting stack
 
-#### File Pattern Matching
+`VDK-CLI` uses:
 
-Auto-activation based on file patterns:
+- `oxlint` for JavaScript/TypeScript linting
+- `oxfmt` for formatting
+- `markdownlint-cli2` for Markdown linting
 
-```yaml
-platforms:
-  cursor:
-    globs: ['**/*.test.js', '**/*.spec.ts']
-    activation: 'auto-attached'
-```
-
-#### Priority System
-
-Control context priority across platforms:
-
-```yaml
-platforms:
-  claude:
-    priority: 5 # 1-10 scale
-  windsurf:
-    priority: 8 # Higher priority = more important context
-```
-
-## Using the CLI Commands
-
-### 1. Create Blueprints with New Schema
-
-#### Interactive Mode
+## CLI commands relevant to schema integration
 
 ```bash
-vdk create --interactive
+# Validate generated/curated rule files
+vdk validate
+
+# Repo-level code lint
+pnpm run lint
+
+# Blueprint frontmatter contract lint
+pnpm run lint:contracts
+
+# Preview deterministic frontmatter normalization
+pnpm run lint:contracts:dry
+
+# Apply deterministic frontmatter normalization
+pnpm run lint:contracts:fix
 ```
 
-Follow the prompts to create a blueprint with full schema v2.1.0 support.
+## Migration notes (v2 -> v3)
 
-#### Command Line Mode
+If you still have v2-era content, migrate toward:
 
-```bash
-vdk create \
-  --name "react-testing-setup" \
-  --title "React Testing Configuration" \
-  --description "Complete testing setup for React applications" \
-  --category "stack" \
-  --complexity "medium" \
-  --scope "project" \
-  --audience "developer" \
-  --maturity "stable" \
-  --author "Your Name" \
-  --tags testing react jest
-```
-
-### 2. Validate Blueprint Schema
-
-#### Validate Single File
-
-```bash
-vdk validate --file ./blueprints/my-blueprint.mdc --verbose
-```
-
-#### Validate Directory
-
-```bash
-vdk validate --path ./.ai/rules --check-dependencies --check-platforms
-```
-
-#### Schema Compatibility Check
-
-```bash
-vdk validate --verbose
-```
-
-### 3. Project Initialization
-
-The `vdk init` command now leverages the new schema for better platform detection and configuration:
-
-```bash
-# Initialize with advanced platform configuration
-vdk init --verbose --categories development testing workflow
-
-# Interactive platform selection
-vdk init --interactive
-
-# Deep scanning with new schema features
-vdk init --deep --ide-integration
-```
-
-## Platform-Specific Features
-
-### Claude Code Integration
-
-```yaml
-platforms:
-  claude:
-    compatible: true
-    memory: true # Include in CLAUDE.md memory files
-    command: true # Generate slash commands
-    namespace: 'project' # Command namespace: project, user
-    priority: 5 # Memory priority 1-10
-    allowedTools: ['Read', 'Write', 'Edit', 'Bash']
-    mcpIntegration: true # Enable MCP server configuration
-```
-
-### Cursor Integration
-
-```yaml
-platforms:
-  cursor:
-    compatible: true
-    activation: 'auto-attached' # auto-attached, agent-requested, manual, always
-    globs: ['**/*.js', '**/*.ts'] # File patterns for auto-activation
-    priority: 'medium' # high, medium, low
-    fileTypes: ['javascript', 'typescript']
-```
-
-### Windsurf Integration
-
-```yaml
-platforms:
-  windsurf:
-    compatible: true
-    mode: 'workspace' # global, workspace
-    xmlTag: 'react-setup' # XML tag for formatting
-    characterLimit: 6000 # Character limit (0-10000)
-    priority: 7 # Context priority 1-10
-```
-
-### GitHub Copilot Integration
-
-```yaml
-platforms:
-  githubCopilot:
-    compatible: true
-    guidelineStyle: 'concise' # concise, detailed
-    priority: 8 # Priority 1-10
-    maxGuidelines: 5 # Maximum number of guidelines
-```
-
-## Migration from Legacy Format
-
-### Automatic Detection
-
-VDK CLI automatically detects and offers to migrate legacy formats:
-
-```bash
-vdk migrate --dry-run    # Preview migration changes
-vdk migrate              # Perform migration
-```
-
-### Manual Schema Updates
-
-For existing blueprints, add the new required fields:
-
-```yaml
-# Add to existing blueprint frontmatter
-complexity: 'medium'
-scope: 'project'
-audience: 'developer'
-maturity: 'stable'
-platforms:
-  claude: { compatible: true }
-  cursor: { compatible: true }
-  windsurf: { compatible: true }
-```
-
-## Validation and Quality Assurance
-
-### Schema Validation
-
-All blueprints are validated against the official AI Context Schema v2.1.0:
-
-- **Metadata validation**: Required fields, format checking
-- **Platform compatibility**: Ensure platform configurations are valid
-- **Relationship validation**: Check dependencies and conflicts
-- **Content validation**: Verify blueprint structure and content
-
-### Best Practices
-
-1. **Use Descriptive Metadata**
-
-   ```yaml
-   tags: ['specific', 'searchable', 'keywords']
-   complexity: 'medium' # Be realistic about complexity
-   audience: 'developer' # Target your audience
-   ```
-
-2. **Configure Platform-Specific Settings**
-
-   ```yaml
-   platforms:
-     cursor:
-       globs: ['**/*.{test,spec}.{js,ts}'] # Specific file patterns
-       activation: 'auto-attached' # Appropriate activation mode
-   ```
-
-3. **Manage Dependencies**
-
-   ```yaml
-   requires: ['typescript-config'] # Essential dependencies only
-   suggests: ['eslint-prettier'] # Nice-to-have enhancements
-   ```
-
-4. **Version Management**
-
-   ```yaml
-   version: '1.0.0' # Semantic versioning
-   lastUpdated: '2025-01-15' # Keep dates current
-   ```
+1. `schemaVersion: "3.0"`
+2. canonical `kind` values
+3. platform component manifests under `platforms.*.components`
+4. stable semver `version` fields
+5. kebab-case IDs
 
 ## Troubleshooting
 
-### Common Validation Errors
+### Error: Cannot find module 'ai-context-schema'
 
-1. **Date Format Issues**
+Cause:
 
-   ```yaml
-   # ❌ Wrong
-   created: "2025-01-15T10:30:00Z"
+- Runtime attempted unscoped package resolution while only scoped package is installed.
 
-   # ✅ Correct
-   created: "2025-01-15"
-   ```
+Resolution:
 
-2. **Tag Format Issues**
+1. Ensure dependency exists:
+   - `@vdkit/ai-context-schema`
+2. Ensure validator resolver checks scoped package first.
+3. Reinstall dependencies and rerun prepublish checks.
 
-   ```yaml
-   # ❌ Wrong
-   tags: ["React", "Testing_Setup"]
+### Error: Failed to load JS plugin `@vdk/oxlint-plugin-blueprints`
 
-   # ✅ Correct
-   tags: ["react", "testing-setup"]
-   ```
+Cause:
 
-3. **Platform Configuration Issues**
+- Namespace mismatch after package rename.
 
-   ```yaml
-   # ❌ Wrong
-   platforms:
-     cursor:
-       priority: "very-high"
+Resolution:
 
-   # ✅ Correct
-   platforms:
-     cursor:
-       priority: "high"
-   ```
+1. Update `.oxlintrc.json` plugin specifier to:
+   - `@vdkit/oxlint-plugin-blueprints`
+2. Confirm package is present in `devDependencies`.
 
-### Getting Help
+## Recommended release checks
 
-- Run `vdk validate --verbose` to see detailed error messages
-- Check the TODO-MIGRATION-GAPS.md file for known limitations
-- Use `vdk create --interactive` for guided blueprint creation
+Before publishing `VDK-CLI`:
 
-## Future Enhancements
+```bash
+pnpm run validate
+pnpm run lint
+pnpm run format:check
+pnpm run lint:contracts
+```
 
-The following features are planned for future releases:
+## Ecosystem alignment
 
-1. **Dependency Resolution**: Automatic blueprint dependency management
-2. **Platform Configuration Flow**: Extract platform configs from frontmatter during rule generation
-3. **Advanced Validation**: Cross-reference validation with VDK-Blueprints repository
-4. **Blueprint Marketplace**: discovery and sharing capabilities
+`VDK-CLI` should stay synchronized with the canonical contract source order:
 
----
+1. `ai-context-schema`
+2. `VDK-Blueprints`
+3. `VDK-CLI`
+4. `VDK-Hub`
+5. `VDK-Wiki`
 
-_For more information, see the [VDK CLI Documentation](../README.md) and the [AI Context Schema Specification](https://ai-context-schema.org/)_
+Changes to schema semantics should be propagated in that order to avoid runtime/documentation drift.

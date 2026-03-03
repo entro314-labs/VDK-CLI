@@ -1,6 +1,6 @@
 {
   "name": "@vdkit/cli",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Advanced Command-line toolkit that analyzes your codebase, migrates existing AI contexts from any platform, and deploys project-aware rules, memories, commands and agents to any AI coding assistant - VDK is the world's first Vibe Development Kit",
   "keywords": [
     "ai-assistant",
@@ -56,10 +56,6 @@
     "quality:fix": "pnpm run lint:contracts:fix && pnpm run lint:fix && pnpm run format && pnpm run lint:md:fix",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:legacy": "node tests/legacy/new-scanner-core.test.js && node tests/legacy/new-security.test.js && node tests/legacy/new-cli.test.js",
-    "test:legacy:cli": "node tests/legacy/new-cli.test.js",
-    "test:legacy:scanner": "node tests/legacy/new-scanner-core.test.js",
-    "test:legacy:security": "node tests/legacy/new-security.test.js",
     "test:ui": "vitest --ui",
     "test:watch": "vitest",
     "validate": "node src/validation/validate-rules.js"
@@ -67,8 +63,8 @@
   "dependencies": {
     "@clack/prompts": "^1.0.1",
     "@octokit/rest": "^22.0.1",
-    "acorn": "^8.16.0",
     "@vdkit/ai-context-schema": "3.0.0",
+    "acorn": "^8.16.0",
     "boxen": "^8.0.1",
     "chalk": "^5.6.2",
     "cli-table3": "^0.6.5",

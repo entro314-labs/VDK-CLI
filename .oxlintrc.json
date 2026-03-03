@@ -9,7 +9,7 @@
   "jsPlugins": [
     {
       "name": "vdk",
-      "specifier": "@vdk/oxlint-plugin-blueprints"
+      "specifier": "@vdkit/oxlint-plugin-blueprints"
     }
   ],
   "rules": {
