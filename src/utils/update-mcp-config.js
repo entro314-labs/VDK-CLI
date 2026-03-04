@@ -133,7 +133,7 @@ async function updateMCPConfig() {
   // Then, check common rule directories if none found from IDEs
   if (ruleDirectories.length === 0) {
     const commonPaths = [
-      '.vdk/rules',
+      '.vdk/blueprints/rules',
       '.vscode/ai-rules',
       '.vscode-insiders/ai-rules',
       '.vscode-oss/ai-rules',
@@ -164,7 +164,7 @@ async function updateMCPConfig() {
 
     // If force option is provided, use the default path
     if (options.force) {
-      const defaultPath = path.join(options.path, '.vdk/rules');
+      const defaultPath = path.join(options.path, '.vdk/blueprints/rules');
       console.log(`${colors.yellow}Creating default rule directory: ${defaultPath}${colors.reset}`);
 
       if (!fs.existsSync(defaultPath)) {

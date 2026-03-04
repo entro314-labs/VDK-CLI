@@ -9,6 +9,7 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { downloadRule, fetchRuleList } from '../blueprints-client.js';
+import { BLUEPRINT_ARTIFACT_KINDS } from './blueprint-artifact-paths.js';
 
 /**
  * Base sync operations that both blueprint and team sync can use
@@ -45,14 +46,18 @@ export class SyncOperations {
   /**
    * Sync blueprints from Hub (original blueprint sync logic)
    */
-  async syncBlueprintsFromHub(rulesDir, options, spinner) {
+  async syncBlueprintsFromHub(artifactsRoot, options, spinner) {
     const hubResult = await this.hubOps.syncBlueprints(options);
     const synced = hubResult.blueprints.length;
 
-    // Save Hub blueprints
+    // Save Hub blueprints by kind
     for (const blueprint of hubResult.blueprints) {
+      const kind = this.resolveBlueprintKind(blueprint);
+      const kindDir = path.join(artifactsRoot, kind);
+      await fs.mkdir(kindDir, { recursive: true });
+
       const fileName = `${blueprint.slug || blueprint.id}.hub.md`;
-      const filePath = path.join(rulesDir, fileName);
+      const filePath = path.join(kindDir, fileName);
       await fs.writeFile(filePath, blueprint.content);
     }
 
@@ -134,9 +139,12 @@ export class SyncOperations {
   /**
    * Sync blueprints from repository (original repository sync logic)
    */
-  async syncBlueprintsFromRepository(rulesDir, options, spinner) {
+  async syncBlueprintsFromRepository(artifactsRoot, options, spinner) {
     const { force, category } = options;
     const remoteRules = await fetchRuleList();
+
+    const rulesDir = path.join(artifactsRoot, 'rules');
+    await fs.mkdir(rulesDir, { recursive: true });
 
     if (remoteRules.length === 0) {
       spinner.fail('No blueprints found in repository or failed to connect');
@@ -209,7 +217,7 @@ export class SyncOperations {
 
     // Check for VDK files in repository
     const vdkFiles = [];
-    const filesToCheck = ['.vdk/rules/', '.vdk/config.json'];
+    const filesToCheck = ['.vdk/blueprints/', '.vdk/config.json'];
 
     for (const file of filesToCheck) {
       const fullPath = path.join(projectPath, file);
@@ -300,9 +308,11 @@ export class SyncOperations {
   async applyHubConfiguration(projectPath, teamConfig) {
     const appliedFiles = [];
     const vdkPath = path.join(projectPath, '.vdk');
+    const blueprintsPath = path.join(vdkPath, 'blueprints');
 
     // Ensure .vdk directory exists
     await fs.mkdir(vdkPath, { recursive: true });
+    await fs.mkdir(blueprintsPath, { recursive: true });
 
     // Apply main configuration
     if (teamConfig.main) {
@@ -311,18 +321,77 @@ export class SyncOperations {
       appliedFiles.push('.vdk/config.json');
     }
 
-    // Apply rules
+    // Apply rule artifacts from legacy team payload
     if (teamConfig.rules) {
-      const rulesPath = path.join(vdkPath, 'rules');
-      await fs.mkdir(rulesPath, { recursive: true });
+      await this.writeBlueprintKindFiles(blueprintsPath, 'rules', teamConfig.rules, appliedFiles);
+    }
 
-      for (const [filename, content] of Object.entries(teamConfig.rules)) {
-        const rulePath = path.join(rulesPath, filename);
-        await fs.writeFile(rulePath, content);
-        appliedFiles.push(`.vdk/rules/${filename}`);
+    // Apply structured artifact payload by kind
+    if (teamConfig.blueprints && typeof teamConfig.blueprints === 'object') {
+      for (const [kind, files] of Object.entries(teamConfig.blueprints)) {
+        await this.writeBlueprintKindFiles(blueprintsPath, kind, files, appliedFiles);
       }
     }
 
     return appliedFiles;
+  }
+
+  resolveBlueprintKind(blueprint) {
+    const normalizedKind = String(blueprint?.kind || '')
+      .toLowerCase()
+      .trim();
+
+    if (BLUEPRINT_ARTIFACT_KINDS.includes(normalizedKind)) {
+      return normalizedKind;
+    }
+
+    const sourceCandidates = [
+      blueprint?.sourcePath,
+      blueprint?.path,
+      blueprint?.slug,
+      blueprint?.id,
+    ]
+      .filter(Boolean)
+      .map(value => String(value).toLowerCase());
+
+    for (const candidate of sourceCandidates) {
+      for (const kind of BLUEPRINT_ARTIFACT_KINDS) {
+        if (
+          candidate.includes(`/library/${kind}/`) ||
+          candidate.includes(`/${kind}/`) ||
+          candidate.startsWith(`${kind}/`)
+        ) {
+          return kind;
+        }
+      }
+    }
+
+    throw new Error(
+      `Unable to determine blueprint kind for item: ${blueprint?.id || blueprint?.slug || 'unknown'}`
+    );
+  }
+
+  async writeBlueprintKindFiles(blueprintsPath, kind, files, appliedFiles) {
+    const normalizedKind = String(kind || '')
+      .toLowerCase()
+      .trim();
+
+    if (!BLUEPRINT_ARTIFACT_KINDS.includes(normalizedKind)) {
+      throw new Error(`Unsupported blueprint artifact kind: ${kind}`);
+    }
+
+    if (!files || typeof files !== 'object') {
+      return;
+    }
+
+    const kindPath = path.join(blueprintsPath, normalizedKind);
+    await fs.mkdir(kindPath, { recursive: true });
+
+    for (const [relativeFilePath, content] of Object.entries(files)) {
+      const outputPath = path.join(kindPath, relativeFilePath);
+      await fs.mkdir(path.dirname(outputPath), { recursive: true });
+      await fs.writeFile(outputPath, content);
+      appliedFiles.push(`.vdk/blueprints/${normalizedKind}/${relativeFilePath}`);
+    }
   }
 }

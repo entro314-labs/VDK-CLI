@@ -38,7 +38,7 @@
     "vdk/validate-blueprints": [
       "error",
       {
-        "targets": [".vdk/rules"],
+        "targets": [".vdk/blueprints/rules"],
         "expectedSchemaVersion": "3.0",
         "requireKind": true,
         "requireVersion": true,

@@ -52,11 +52,14 @@ export class DeployCommand extends BaseCommand {
     await commandContext.initialize();
     this.showHeader();
 
+    console.log('');
+    console.log(this.colorCyan('VDK Blueprint Deployment'));
+    this.showUsageGuide();
+
     const blueprintId = options.args?.[0];
 
     // If no blueprint ID provided, show usage guide
     if (!blueprintId) {
-      this.showUsageGuide();
       return;
     }
 
@@ -132,6 +135,12 @@ export class DeployCommand extends BaseCommand {
 
       return result;
     } catch (error) {
+      if (/not found/i.test(error.message)) {
+        console.log('');
+        this.logInfo('💡 Try:');
+        this.logInfo('   vdk browse --community');
+        this.logInfo('   vdk browse --trending');
+      }
       this.exitWithError(`Community deployment failed: ${error.message}`, error);
     }
   }
@@ -192,7 +201,7 @@ export class DeployCommand extends BaseCommand {
         limit: 10,
       });
 
-      const blueprint = exactResults[0];
+      const blueprint = this.resolveDeterministicRepositoryMatch(exactResults, blueprintId);
 
       if (!blueprint) {
         spinner.fail(`Blueprint '${blueprintId}' not found`);
@@ -218,6 +227,59 @@ export class DeployCommand extends BaseCommand {
     } catch (error) {
       this.exitWithError(`Repository deployment failed: ${error.message}`, error);
     }
+  }
+
+  /**
+   * Resolve a deterministic repository match for deployment.
+   *
+   * Preference order:
+   * 1) exact metadata.id or retrieval.canonicalName match
+   * 2) single exact-match result fallback
+   *
+   * Throws when multiple candidates remain unresolved to avoid accidental deployment.
+   */
+  resolveDeterministicRepositoryMatch(results = [], requestedId = '') {
+    if (!Array.isArray(results) || results.length === 0) {
+      return null;
+    }
+
+    const normalize = value =>
+      String(value || '')
+        .trim()
+        .toLowerCase();
+
+    const target = normalize(requestedId);
+
+    const directMatches = results.filter(item => {
+      const id = normalize(item?.metadata?.id);
+      const canonicalName = normalize(item?.retrieval?.canonicalName);
+      return id === target || canonicalName === target;
+    });
+
+    if (directMatches.length === 1) {
+      return directMatches[0];
+    }
+
+    if (directMatches.length > 1) {
+      const ids = directMatches
+        .map(item => item?.metadata?.id || item?.retrieval?.canonicalName || 'unknown')
+        .slice(0, 5)
+        .join(', ');
+      throw new Error(`Ambiguous blueprint id '${requestedId}'. Matches: ${ids}`);
+    }
+
+    if (results.length === 1) {
+      return results[0];
+    }
+
+    const candidates = results
+      .map(item => item?.metadata?.id || item?.retrieval?.canonicalName || 'unknown')
+      .slice(0, 5)
+      .join(', ');
+
+    throw new Error(
+      `Unable to deterministically resolve '${requestedId}'. Candidates: ${candidates}. Use an exact metadata.id.`
+    );
   }
 
   /**
@@ -309,6 +371,7 @@ export class DeployCommand extends BaseCommand {
     const { createIntegrationManager } = await import('../../integrations/index.js');
     const integrationManager = createIntegrationManager(projectPath);
     await integrationManager.discoverIntegrations({ verbose: options.verbose });
+    await integrationManager.scanAll({ verbose: options.verbose });
 
     const activeIntegrations = integrationManager.getActiveIntegrations();
 

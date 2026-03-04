@@ -78,7 +78,7 @@ export class TeamShareCommand extends BaseCommand {
       }
 
       // Prepare files to share
-      const filesToShare = ['.vdk/rules/', '.vdk/config.json'];
+      const filesToShare = ['.vdk/blueprints/', '.vdk/config.json'];
 
       if (includeLocal) {
         logger.warn('⚠️  Including local settings - ensure no sensitive data is shared');
@@ -202,14 +202,49 @@ export class TeamShareCommand extends BaseCommand {
       config.main = JSON.parse(fs.readFileSync(configFile, 'utf8'));
     }
 
-    // Read rules
-    const rulesPath = path.join(vdkPath, 'rules');
-    if (fs.existsSync(rulesPath)) {
-      config.rules = {};
-      const ruleFiles = fs.readdirSync(rulesPath).filter(f => f.endsWith('.md'));
-      for (const file of ruleFiles) {
-        const content = fs.readFileSync(path.join(rulesPath, file), 'utf8');
-        config.rules[file] = content;
+    // Read blueprint artifacts by kind
+    const artifactsRoot = path.join(vdkPath, 'blueprints');
+    if (fs.existsSync(artifactsRoot)) {
+      config.blueprints = {};
+
+      const collectFilesRecursively = baseDir => {
+        const files = [];
+        const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+
+        for (const entry of entries) {
+          const fullPath = path.join(baseDir, entry.name);
+
+          if (entry.isDirectory()) {
+            files.push(...collectFilesRecursively(fullPath));
+            continue;
+          }
+
+          files.push(fullPath);
+        }
+
+        return files;
+      };
+
+      const kindEntries = fs.readdirSync(artifactsRoot, { withFileTypes: true });
+      for (const kindEntry of kindEntries) {
+        if (!kindEntry.isDirectory()) {
+          continue;
+        }
+
+        const kind = kindEntry.name;
+        const kindPath = path.join(artifactsRoot, kind);
+        const artifactFiles = collectFilesRecursively(kindPath);
+
+        if (artifactFiles.length === 0) {
+          continue;
+        }
+
+        config.blueprints[kind] = {};
+        for (const artifactFile of artifactFiles) {
+          const relativeArtifactPath = path.relative(kindPath, artifactFile);
+          const content = fs.readFileSync(artifactFile, 'utf8');
+          config.blueprints[kind][relativeArtifactPath] = content;
+        }
       }
     }
 

@@ -28,7 +28,8 @@ import { MigrationDetector } from './core/migration-detector.js';
 export class MigrationManager {
   constructor(options = {}) {
     this.projectPath = options.projectPath || process.cwd();
-    this.outputPath = options.outputPath || path.join(this.projectPath, '.ai', 'rules');
+    this.outputPath =
+      options.outputPath || path.join(this.projectPath, '.vdk', 'blueprints', 'rules');
     this.migrationOutputPath =
       options.migrationOutputPath || path.join(this.projectPath, 'vdk-migration');
     this.verbose = options.verbose;
@@ -313,7 +314,7 @@ export class MigrationManager {
 
     console.log(chalk.cyan('\n🎯 Next Steps:'));
     console.log('1. Review migrated blueprints in vdk-migration/ folder');
-    console.log('2. Copy desired blueprints to .vdk/rules/ directory');
+    console.log('2. Copy desired blueprints to .vdk/blueprints/rules/ directory');
     console.log('3. Run `vdk init --overwrite` to apply migrated contexts');
     console.log('4. Test AI assistant integrations with new contexts');
 
@@ -461,7 +462,7 @@ Generated on: ${new Date(report.migrationDate).toLocaleString()}
 
 This migration used VDK's existing infrastructure:
 - **ProjectScanner** for file discovery
-- **TechnologyAnalyzer** for tech stack detection  
+- **TechnologyAnalyzer** for tech stack detection
 - **RuleGenerator** for blueprint creation
 - **IntegrationManager** for IDE deployment
 
@@ -472,7 +473,7 @@ This migration used VDK's existing infrastructure:
    - Verify the content and metadata are correct
 
 2. **Apply to Project**
-   - Copy desired blueprints to your project's \`.vdk/rules/\` directory
+  - Copy desired blueprints to your project's \`.vdk/blueprints/rules/\` directory
    - Or run \`vdk init --overwrite\` to regenerate with migrated contexts
 
 3. **Test AI Integration**

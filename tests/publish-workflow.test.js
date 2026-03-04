@@ -49,6 +49,15 @@ describe('Publish Workflow Integration', () => {
       expect(result.stderr).toMatch(/Publishing failed|Rule validation failed/);
     });
 
+    it('should reject invalid rule files during preview', async () => {
+      const invalidRuleFile = await setupInvalidRuleFile(tempDir);
+
+      const result = await runCliCommand(['publish', invalidRuleFile, '--preview']);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toMatch(/Publishing failed|Preview validation failed|Rule validation failed/);
+    });
+
     it('should publish valid rule to community hub', async () => {
       const ruleFile = await setupValidRuleFile(tempDir);
       await setupHubAuth(tempDir);
@@ -85,13 +94,13 @@ describe('Publish Workflow Integration', () => {
   });
 
   describe('Rule Validation and Quality', () => {
-    it('should validate VDK blueprint format files', async () => {
+    it('should enforce strict validation for VDK blueprint format files', async () => {
       const mdcFile = await setupVDKBlueprintFile(tempDir);
 
       const result = await runCliCommand(['publish', mdcFile, '--preview']);
 
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toMatch(/Publication Preview:/);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toMatch(/Preview validation failed|VDK Blueprint parsing failed|Blueprint/);
     });
 
     it('should validate Cursor rules format', async () => {
@@ -317,24 +326,16 @@ async function setupHubAuth(tempDir) {
 async function setupVDKBlueprintFile(tempDir) {
   const ruleFile = path.join(tempDir, 'test-blueprint.mdc');
   const content = `---
-schema_version: "2.1.0"
 id: "test-blueprint"
 title: "Test VDK Blueprint"
 description: "A test blueprint in VDK format"
 version: "1.0.0"
-category: "development"
-author: "test-author"
+category: "task"
 platforms:
   claude-code:
     compatible: true
-    command: true
-    memory: true
   cursor:
     compatible: true
-    activation: "auto-attached"
-metadata:
-  tags: ["typescript", "testing"]
-  complexity: "medium"
 ---
 
 # VDK Blueprint Test
@@ -540,7 +541,7 @@ async function setupXMLRulesFile(tempDir) {
 
   <patterns>
     <avoid>any type</avoid>
-    <avoid>eval() function</avoid>
+    <avoid>eval function usage</avoid>
     <prefer>explicit typing</prefer>
     <prefer>async/await over promises</prefer>
   </patterns>

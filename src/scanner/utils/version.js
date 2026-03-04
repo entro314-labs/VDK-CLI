@@ -33,5 +33,5 @@ export async function getVersionAsync() {
 export function getVersion() {
   // For simplicity in the synchronous version, we'll just return the current version
   // This could be enhanced to use fs.readFileSync if needed
-  return '2.0.0';
+  return '3.0.1';
 }

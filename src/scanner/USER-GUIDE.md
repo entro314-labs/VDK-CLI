@@ -3,7 +3,7 @@
 <div align="center">
 
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-2.0.0-brightgreen.svg)](https://github.com/vdkit/VDK-CLI)
+[![Version](https://img.shields.io/badge/Version-3.0.1-brightgreen.svg)](https://github.com/vdkit/VDK-CLI)
 
 _A powerful tool for analyzing project structures and generating customized AI coding rules_
 

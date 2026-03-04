@@ -149,20 +149,6 @@ export class CommunityDeployer {
       if (searchResults.length > 0) {
         return this.normalizeRepositoryBlueprint(searchResults[0]);
       }
-
-      // Try fuzzy search if exact match fails
-      const fuzzyResults = await searchBlueprints({
-        query: blueprintId,
-        fuzzy: true,
-        limit: 1,
-      });
-
-      if (fuzzyResults.length > 0) {
-        console.warn(
-          chalk.yellow(`Exact match not found, using similar: ${fuzzyResults[0].metadata.title}`)
-        );
-        return this.normalizeRepositoryBlueprint(fuzzyResults[0]);
-      }
     } catch (error) {
       console.warn(chalk.yellow(`Repository fetch failed: ${error.message}`));
     }
@@ -339,11 +325,13 @@ export class CommunityDeployer {
   /**
    * Deploy adapted blueprint to target platforms
    */
-  async deployToIntegrations(adaptedBlueprint, _projectContext) {
+  async deployToIntegrations(adaptedBlueprint, projectContext) {
     const deployResult = {
       success: false,
       platforms: [],
       errors: [],
+      warnings: [],
+      files: [],
     };
 
     try {
@@ -351,33 +339,70 @@ export class CommunityDeployer {
       if (!this.integrationManager) {
         this.integrationManager = createIntegrationManager(this.projectPath);
         await this.integrationManager.discoverIntegrations({ verbose: false });
-        await this.integrationManager.scanAll({ verbose: false });
+      }
+      await this.integrationManager.scanAll({ verbose: false });
+
+      if (typeof this.ruleAdapter?.adaptRules !== 'function') {
+        throw new Error('RuleAdapter does not support adaptRules() for community deployment');
       }
 
-      // Convert adapted blueprint to rule format
+      const activeIntegrations = this.integrationManager.getActiveIntegrations?.() || [];
+
+      if (activeIntegrations.length === 0) {
+        deployResult.errors.push('No active IDE integrations detected');
+        return deployResult;
+      }
+
+      // Convert adapted blueprint to standardized rule format and deploy per platform
       const rules = this.convertBlueprintToRules(adaptedBlueprint);
 
-      // Deploy using existing integration system
-      const integrationResult = await this.integrationManager.initializeActive({
-        rules: rules,
-        overwrite: true, // Community deployments should overwrite
-        verbose: false,
-      });
+      for (const integration of activeIntegrations) {
+        const platformId = this.mapIntegrationToPlatformId(integration.name);
 
-      deployResult.success = true;
-      deployResult.platforms = this.integrationManager
-        .getActiveIntegrations?.()
-        ?.map(i => i.name) || ['deployed'];
-      deployResult.errors = integrationResult.errors || [];
+        try {
+          const adaptResult = await this.ruleAdapter.adaptRules(
+            rules,
+            platformId,
+            projectContext || adaptedBlueprint?.adaptedFor || {},
+            adaptedBlueprint?.platforms?.[platformId] || {}
+          );
+
+          if (!adaptResult?.files || adaptResult.files.length === 0) {
+            deployResult.warnings.push(`No files generated for ${integration.name}`);
+            continue;
+          }
+
+          await this.writeAdaptedFiles(adaptResult.files);
+          deployResult.files.push(...adaptResult.files);
+          deployResult.platforms.push(integration.name);
+
+          if (Array.isArray(adaptResult.warnings) && adaptResult.warnings.length > 0) {
+            deployResult.warnings.push(...adaptResult.warnings);
+          }
+        } catch (error) {
+          deployResult.errors.push(`${integration.name}: ${error.message}`);
+        }
+      }
+
+      deployResult.success = deployResult.platforms.length > 0 && deployResult.errors.length === 0;
 
       // Log platform deployments
-      console.log(chalk.cyan('\n🚀 Deployed to platforms:'));
-      deployResult.platforms.forEach(platform => {
-        console.log(chalk.green(`✓ ${platform}`));
-      });
+      if (deployResult.platforms.length > 0) {
+        console.log(chalk.cyan('\n🚀 Deployed to platforms:'));
+        deployResult.platforms.forEach(platform => {
+          console.log(chalk.green(`✓ ${platform}`));
+        });
+      }
+
+      if (deployResult.warnings.length > 0) {
+        console.log(chalk.yellow('\nWarnings:'));
+        deployResult.warnings.forEach(warning => {
+          console.log(chalk.yellow(`  ⚠️  ${warning}`));
+        });
+      }
 
       if (deployResult.errors.length > 0) {
-        console.log(chalk.yellow('\nWarnings:'));
+        console.log(chalk.yellow('\nErrors:'));
         deployResult.errors.forEach(error => {
           console.log(chalk.yellow(`  ⚠️  ${error}`));
         });
@@ -714,7 +739,14 @@ ${enhancement.content}
     return [
       {
         id: blueprint.metadata?.id || 'community-blueprint',
+        name: blueprint.title || 'Community Blueprint',
         title: blueprint.title || 'Community Blueprint',
+        frontmatter: {
+          description: blueprint.description || 'Community imported blueprint',
+          category: 'imported',
+          alwaysApply: false,
+          globs: [],
+        },
         content: blueprint.content,
         metadata: {
           source: 'community',
@@ -724,6 +756,50 @@ ${enhancement.content}
         },
       },
     ];
+  }
+
+  async writeAdaptedFiles(files) {
+    const fs = await import('node:fs/promises');
+    const pathModule = await import('node:path');
+
+    for (const file of files) {
+      if (!file?.path || typeof file.content !== 'string') {
+        continue;
+      }
+
+      await fs.mkdir(pathModule.dirname(file.path), { recursive: true });
+      await fs.writeFile(file.path, file.content, 'utf8');
+    }
+  }
+
+  mapIntegrationToPlatformId(integrationName) {
+    const mapping = {
+      'Claude Code CLI': 'claude-code-cli',
+      Cursor: 'cursor',
+      Windsurf: 'windsurf',
+      'GitHub Copilot': 'github-copilot',
+      Continue: 'continue',
+      Aider: 'aider',
+      'OpenAI Codex': 'openai-codex',
+      OpenCode: 'opencode',
+      'Gemini CLI': 'gemini-cli',
+      Cline: 'cline',
+      'Roo Code': 'roo-code',
+      Goose: 'goose',
+      Junie: 'junie',
+      'Google Antigravity': 'google-antigravity',
+      'Kimi CLI': 'kimi-cli',
+      'Mistral Vibe': 'mistral-vibe',
+      Trae: 'trae',
+      'JetBrains AI': 'jetbrains-ai',
+      'VS Code Insiders': 'vscode-insiders',
+      'VS Codium': 'vscodium',
+      'Zed Editor': 'zed',
+      Zed: 'zed',
+      Tabnine: 'tabnine',
+    };
+
+    return mapping[integrationName] || integrationName.toLowerCase().replace(/\s+/g, '-');
   }
 
   // Project analysis helper methods

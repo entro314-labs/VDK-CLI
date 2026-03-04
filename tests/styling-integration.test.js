@@ -319,7 +319,7 @@ describe('Styling Integration', () => {
       statusTable.push([
         'Local Rules',
         styles.status.success('Found'),
-        `${styles.format.count(0)} rules in ${styles.format.path('./.vdk/rules')}`,
+        `${styles.format.count(0)} rules in ${styles.format.path('./.vdk/blueprints/rules')}`,
       ]);
 
       console.log(statusTable.toString());

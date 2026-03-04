@@ -20,10 +20,15 @@ import { TechnologyRuleMapper } from './TechnologyRuleMapper.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export class RuleGenerator {
-  constructor(outputPath = './.vdk/rules', template = 'default', overwrite = false, options = {}) {
+  constructor(
+    outputPath = './.vdk/blueprints/rules',
+    template = 'default',
+    overwrite = false,
+    options = {}
+  ) {
     if (typeof outputPath === 'object') {
       options = outputPath;
-      outputPath = options.outputPath || './.vdk/rules';
+      outputPath = options.outputPath || './.vdk/blueprints/rules';
       template = options.template || 'default';
       overwrite = options.overwrite;
     }
@@ -35,7 +40,7 @@ export class RuleGenerator {
     this.projectPath = options.projectPath || process.cwd();
     this.enableAnalytics = options.enableAnalytics !== false;
     this.hubEndpoint = options.hubEndpoint || 'https://vdk.tools';
-    this.ecosystemVersion = '2.1.0';
+    this.ecosystemVersion = '3.0.0';
 
     // Initialize Components
     this.mapper = new TechnologyRuleMapper();

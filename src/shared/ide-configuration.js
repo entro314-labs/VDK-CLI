@@ -359,17 +359,17 @@ const IDE_CONFIGURATIONS = [
   {
     id: 'generic-ai',
     name: 'Generic AI Platform',
-    configFolder: '.ai',
-    rulesFolder: '.ai/rules',
-    configFiles: ['.ai/config.json'],
+    configFolder: '.vdk',
+    rulesFolder: '.vdk/blueprints/rules',
+    configFiles: ['.vdk/config.json'],
     description: 'Works with most AI coding assistants and platforms.',
   },
   {
     id: 'generic',
     name: 'Generic AI Tool',
-    configFolder: '.ai',
-    rulesFolder: '.ai/rules',
-    configFiles: ['.ai/config.json'],
+    configFolder: '.vdk',
+    rulesFolder: '.vdk/blueprints/rules',
+    configFiles: ['.vdk/config.json'],
     description: 'Works with most AI coding assistants and is the VDK CLI standard.',
   },
 ];

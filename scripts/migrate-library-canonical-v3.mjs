@@ -471,7 +471,7 @@ function buildPlatformComponents(platformId, kind, id, title, data, platformConf
           ? 'README.md'
           : genericKey === 'settings'
             ? '.vdk/settings.json'
-            : '.vdk/rules/',
+            : '.vdk/blueprints/rules/',
       manifests:
         genericKey === 'rules'
           ? [{ name: safeName, file: `${safeName}.md`, globs: pickGlobs(data, platformConfig) }]

@@ -875,8 +875,8 @@ ${technologyGuidelines}
         'VS Code': ['.vscode/', '.vscode/settings.json', '.vscode/launch.json'],
         'VS Code Insiders': ['.vscode-insiders/', '.vscode-insiders/settings.json'],
         VSCodium: ['.vscode-oss/', '.vscode-oss/settings.json'],
-        Cursor: ['.cursor/', 'cursor.json', '.cursorrules'],
-        Windsurf: ['.windsurf/', '.windsurfrules.md', '.codeium/'],
+        Cursor: ['.cursor/', '.cursor/rules/', 'cursor.json'],
+        Windsurf: ['.windsurf/', '.windsurf/rules/', '.codeium/'],
         'Windsurf Next': ['.windsurf-next/', '.windsurf-next/config.json'],
         'Claude Code CLI': ['.claude/', '.claude/settings.json', '.claude/commands/'],
         'Claude Desktop': ['.claude-desktop/', '.claude-desktop/config.json'],
@@ -893,7 +893,7 @@ ${technologyGuidelines}
         'Android Studio': ['.idea/', 'build.gradle', 'app/build.gradle'],
         'JetBrains (Generic)': ['.idea/', '*.iml'],
         'GitHub Copilot': ['.github/copilot/', '.github/copilot/config.json'],
-        'Generic AI': ['.vdk/', '.vdk/config.json', '.vdk/rules/'],
+        'Generic AI': ['.vdk/', '.vdk/config.json', '.vdk/blueprints/rules/'],
       };
 
       for (const [ide, indicators] of Object.entries(ideIndicators)) {
@@ -1319,9 +1319,9 @@ ${await this.generateExternalServices(rules, projectContext)}
    */
   getCategoryFromPath(path) {
     const pathParts = path.split('/');
-    // Path structure: blueprints/vdk/commands/claude-code/category/command.md
+    // Path structure: library/commands/category/command.md
     if (pathParts.length >= 4) {
-      return pathParts[3]; // Get the category directory name
+      return pathParts[2]; // Get the category directory name
     }
     return 'general';
   }
@@ -1334,10 +1334,8 @@ ${await this.generateExternalServices(rules, projectContext)}
     const commands = [];
 
     try {
-      // Fetch command categories for the platform
-      const response = await fetch(
-        `${VDK_RULES_REPO_API_URL}/contents/blueprints/vdk/commands/${platform}`
-      );
+      // Fetch command categories from canonical library path
+      const response = await fetch(`${VDK_RULES_REPO_API_URL}/contents/library/commands`);
       if (!response.ok) {
         return [];
       }
@@ -1356,7 +1354,15 @@ ${await this.generateExternalServices(rules, projectContext)}
               if (commandContent) {
                 // Parse and validate command content
                 const parsedCommand = this.parseClaudeCodeCommand(commandContent);
-                if (parsedCommand && (await this.validateClaudeCodeCommand(parsedCommand))) {
+                const target = String(parsedCommand?.target || '').toLowerCase();
+                const normalizedPlatform = String(platform || '').toLowerCase();
+                const targetMatch = !target || target === normalizedPlatform;
+
+                if (
+                  parsedCommand &&
+                  targetMatch &&
+                  (await this.validateClaudeCodeCommand(parsedCommand))
+                ) {
                   commands.push({
                     name: file.name.replace('.md', ''),
                     content: commandContent,

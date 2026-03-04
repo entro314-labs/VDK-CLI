@@ -287,7 +287,7 @@ export class TelemetryManager {
     const startTime = options.startTime || Date.now();
 
     const event = {
-      cli_version: options.cliVersion || '2.0.0',
+      cli_version: options.cliVersion || '3.0.1',
       command: command,
       platform: process.platform,
       node_version: process.version,
@@ -307,7 +307,7 @@ export class TelemetryManager {
    */
   trackError(command, error, options = {}) {
     const event = {
-      cli_version: options.cliVersion || '2.0.0',
+      cli_version: options.cliVersion || '3.0.1',
       command: command,
       error_type: error.constructor.name,
       error_message: error.message,
@@ -327,7 +327,7 @@ export class TelemetryManager {
    */
   trackIntegration(integrationType, action = 'detected', options = {}) {
     const event = {
-      cli_version: options.cliVersion || '2.0.0',
+      cli_version: options.cliVersion || '3.0.1',
       integration_type: integrationType,
       action: action,
       success: options.success !== false,

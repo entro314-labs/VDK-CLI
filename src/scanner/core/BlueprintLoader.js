@@ -15,7 +15,7 @@ export class BlueprintLoader {
     this.enableRemoteFetch = options.enableRemoteFetch !== false;
     this.repositoryEndpoint =
       options.repositoryEndpoint || 'https://api.github.com/repos/vdkit/VDK-Blueprints';
-    this.ecosystemVersion = options.ecosystemVersion || '2.1.0';
+    this.ecosystemVersion = options.ecosystemVersion || '3.0.0';
     this.schemaValidation = options.schemaValidation !== false;
     this.technologyMapper = technologyMapper;
   }
@@ -53,8 +53,8 @@ export class BlueprintLoader {
    * Load standardized rules from local rules directory
    */
   async loadStandardizedRules(analysisData = {}) {
-    // Assumption: rules are in ../../../.vdk/rules relative to this file
-    const rulesDir = path.resolve(__dirname, '../../../.vdk/rules');
+    // Assumption: local rule artifacts are in ../../../.vdk/blueprints/rules relative to this file
+    const rulesDir = path.resolve(__dirname, '../../../.vdk/blueprints/rules');
     const rules = [];
 
     try {
@@ -164,7 +164,7 @@ export class BlueprintLoader {
     categoryFilter = null
   ) {
     try {
-      const apiUrl = `${this.repositoryEndpoint}/contents/blueprints/vdk/${contentType}`;
+      const apiUrl = `${this.repositoryEndpoint}/contents/${this.resolveCanonicalContentPath(contentType)}`;
       const headers = this.getRepositoryHeaders();
 
       const response = await fetch(apiUrl, { headers });
@@ -223,6 +223,17 @@ export class BlueprintLoader {
     } catch (_error) {
       return [];
     }
+  }
+
+  resolveCanonicalContentPath(contentType) {
+    const pathMap = {
+      rules: 'library/rules',
+      commands: 'library/commands',
+      docs: 'docs',
+      schemas: 'schemas',
+    };
+
+    return pathMap[contentType] || `library/${contentType}`;
   }
 
   async fetchTemplateContent(downloadUrl) {

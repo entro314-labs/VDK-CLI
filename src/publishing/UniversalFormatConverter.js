@@ -24,6 +24,7 @@ export class UniversalFormatConverter {
       ['claude-memory', 'claude-code'],
       ['cursor-rules', 'cursor'],
       ['copilot-config', 'github-copilot'],
+      ['json', 'generic'],
       ['windsurf-rules', 'windsurf'],
       ['agents-md', 'openai-codex'],
       ['continue-config', 'continue'],
@@ -35,6 +36,119 @@ export class UniversalFormatConverter {
       ['markdown', 'generic'],
       ['text', 'generic'],
     ]);
+  }
+
+  /**
+   * Backward-compatible format detector used by legacy comprehensive tests.
+   */
+  detectFormat(content, filePath = '') {
+    const lowerPath = String(filePath || '').toLowerCase();
+    const trimmed = String(content || '').trim();
+
+    if (lowerPath.endsWith('.json')) return 'json';
+    if (lowerPath.endsWith('.md') || lowerPath.endsWith('.mdc')) return 'markdown';
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        JSON.parse(trimmed);
+        return 'json';
+      } catch {
+        // Continue format detection
+      }
+    }
+    if (trimmed.startsWith('#') || /\n#{1,6}\s+/.test(`\n${trimmed}`)) return 'markdown';
+
+    return 'text';
+  }
+
+  /**
+   * Backward-compatible content validator used by legacy comprehensive tests.
+   */
+  validateFormat(content, format) {
+    const errors = [];
+    const text = String(content || '');
+
+    if (text.includes('\x00')) {
+      errors.push('Content contains invalid null bytes');
+    }
+
+    if (/\\x[0-9a-fA-F]{2}/.test(text)) {
+      errors.push('Content contains escaped binary byte sequences');
+    }
+
+    if (format === 'json') {
+      try {
+        JSON.parse(text);
+      } catch (error) {
+        errors.push(`Invalid JSON: ${error.message}`);
+      }
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+    };
+  }
+
+  /**
+   * Backward-compatible direct converter used by legacy comprehensive tests.
+   */
+  async convert(sourceContent, fromFormat, toFormat) {
+    const source = sourceContent ?? '';
+
+    if (fromFormat === toFormat) {
+      return typeof source === 'string' ? source : JSON.stringify(source, null, 2);
+    }
+
+    if (fromFormat === 'json' && toFormat === 'markdown') {
+      const parsed = typeof source === 'string' ? JSON.parse(source) : source;
+      const title = parsed?.title || 'Converted Content';
+      const description = parsed?.description ? `\n\n${parsed.description}` : '';
+      const body = parsed?.content
+        ? `\n\n${parsed.content}`
+        : `\n\n\`\`\`json\n${JSON.stringify(parsed, null, 2)}\n\`\`\``;
+      return `# ${title}${description}${body}`;
+    }
+
+    if (toFormat === 'json') {
+      if (typeof source === 'string') {
+        return JSON.stringify(
+          {
+            title: this.extractTitleFromMarkdown(source) || 'Converted Content',
+            content: source,
+          },
+          null,
+          2
+        );
+      }
+      return JSON.stringify(source, null, 2);
+    }
+
+    // Fallback to string output for unsupported direct mappings.
+    return typeof source === 'string' ? source : JSON.stringify(source, null, 2);
+  }
+
+  /**
+   * Preview conversion output without performing publication side effects.
+   */
+  async previewConversion({ content, format, projectContext = {} }) {
+    const detectedFormat = format || this.detectFormat(content);
+    const previewTitle =
+      this.extractTitleFromMarkdown(content) ||
+      projectContext?.name ||
+      'Publication Preview';
+
+    return {
+      title: previewTitle,
+      sourceFormat: detectedFormat,
+      targetFormat: 'vdk-blueprint',
+      estimatedLength: String(content || '').length,
+      compatiblePlatforms: this.getSupportedPlatforms().slice(0, 6),
+    };
+  }
+
+  extractTitleFromMarkdown(markdown) {
+    const match = String(markdown || '').match(/^#\s+(.+)$/m);
+    return match?.[1]?.trim() || '';
   }
 
   /**

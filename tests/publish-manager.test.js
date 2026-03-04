@@ -19,7 +19,9 @@ import { PublishManager } from '../src/publishing/PublishManager.js';
 
 // Mock dependencies
 vi.mock('fs/promises');
-vi.mock('matter');
+vi.mock('gray-matter', () => ({
+  default: vi.fn(),
+}));
 vi.mock('ora', () => ({
   default: vi.fn(() => ({
     start: vi.fn().mockReturnThis(),
@@ -78,6 +80,7 @@ describe('PublishManager', () => {
     mockHubClient = {
       checkAuth: vi.fn(),
       promptForAuth: vi.fn(),
+      initiateAuth: vi.fn(),
       uploadBlueprint: vi.fn(),
     };
 
@@ -119,7 +122,7 @@ describe('PublishManager', () => {
   describe('Rule Validation', () => {
     const testRulePath = '/test/project/.cursorrules';
     const mockRuleContent = `# Test Rules
-    
+
 This is a test rule file with sufficient content to pass basic validation.
 It includes examples and detailed explanations for comprehensive testing.
 
@@ -190,6 +193,46 @@ version: 1.0.0
       expect(validation.detectedFormat).toBe('vdk-blueprint');
       expect(matter).toHaveBeenCalledWith(blueprintContent);
       expect(validateBlueprint).toHaveBeenCalled();
+    });
+
+    it('should allow nested YAML frontmatter without false parsing failures', async () => {
+      const blueprintContent = `---
+id: test-blueprint
+title: Test Blueprint
+description: Test blueprint for nested YAML validation
+version: 1.0.0
+category: task
+platforms:
+  claude-code:
+    compatible: true
+  cursor:
+    compatible: true
+---
+
+# Test Blueprint Content`;
+
+      fs.readFile.mockResolvedValue(blueprintContent);
+      matter.mockReturnValue({
+        data: {
+          id: 'test-blueprint',
+          title: 'Test Blueprint',
+          description: 'Test blueprint for nested YAML validation',
+          version: '1.0.0',
+          category: 'task',
+          platforms: {
+            'claude-code': { compatible: true },
+            cursor: { compatible: true },
+          },
+        },
+      });
+
+      const { validateBlueprint } = await import('../src/utils/schema-validator.js');
+      validateBlueprint.mockResolvedValue({ valid: true, errors: [] });
+
+      const validation = await publishManager.validateRuleForPublishing('/test/blueprint.mdc');
+
+      expect(validation.valid).toBe(true);
+      expect(validation.errors).toEqual([]);
     });
 
     it('should handle JSON format validation', async () => {
@@ -500,6 +543,48 @@ description: Test
         );
       });
 
+      it('should complete interactive authentication before uploading when user opts in', async () => {
+        const originalNodeEnv = process.env.NODE_ENV;
+        const originalIsTTY = process.stdin.isTTY;
+
+        process.env.NODE_ENV = 'development';
+        Object.defineProperty(process.stdin, 'isTTY', {
+          value: true,
+          configurable: true,
+        });
+
+        mockHubClient.checkAuth
+          .mockResolvedValueOnce({ authenticated: false })
+          .mockResolvedValueOnce({ authenticated: true, user: 'test-user' });
+        mockHubClient.promptForAuth.mockResolvedValue(true);
+        mockHubClient.initiateAuth.mockResolvedValue(true);
+        mockFormatConverter.convertToUniversal.mockResolvedValue({
+          title: 'Converted Rule',
+          content: 'converted content',
+        });
+        mockHubClient.uploadBlueprint.mockResolvedValue({
+          blueprintId: 'bp-123',
+          tempUrl: 'https://vdk.tools/temp/bp-123',
+          expiresAt: '2024-01-02T00:00:00Z',
+        });
+
+        try {
+          const result = await publishManager.publishViaHub(mockRulePath, mockValidation);
+
+          expect(result.success).toBe(true);
+          expect(mockHubClient.promptForAuth).toHaveBeenCalledTimes(1);
+          expect(mockHubClient.initiateAuth).toHaveBeenCalledTimes(1);
+          expect(mockHubClient.checkAuth).toHaveBeenCalledTimes(2);
+          expect(mockHubClient.uploadBlueprint).toHaveBeenCalledTimes(1);
+        } finally {
+          process.env.NODE_ENV = originalNodeEnv;
+          Object.defineProperty(process.stdin, 'isTTY', {
+            value: originalIsTTY,
+            configurable: true,
+          });
+        }
+      });
+
       it('should publish as private when requested', async () => {
         mockHubClient.checkAuth.mockResolvedValue({ authenticated: true });
         mockFormatConverter.convertToUniversal.mockResolvedValue({ content: 'converted' });
@@ -650,6 +735,18 @@ description: Test
 
       await expect(publishManager.previewPublication('/test/rule.md')).rejects.toThrow(
         'Preview generation failed: Validation failed'
+      );
+    });
+
+    it('should fail preview when validation is invalid', async () => {
+      publishManager.validateRuleForPublishing.mockResolvedValue({
+        valid: false,
+        errors: ['Rule content too short (minimum 100 characters)'],
+        warnings: [],
+      });
+
+      await expect(publishManager.previewPublication('/test/rule.md')).rejects.toThrow(
+        'Preview generation failed: Preview validation failed: Rule content too short (minimum 100 characters)'
       );
     });
   });

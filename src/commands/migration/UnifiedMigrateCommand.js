@@ -19,15 +19,20 @@ export class UnifiedMigrateCommand extends BaseCommand {
   configureOptions(command) {
     return command
       .option('-p, --projectPath <path>', 'Path to the project to scan', process.cwd())
-      .option('-o, --outputPath <path>', 'Path where VDK rules should be saved', './.vdk/rules')
+      .option(
+        '-o, --outputPath <path>',
+        'Path where VDK rule artifacts should be saved',
+        './.vdk/blueprints/rules'
+      )
       .option(
         '--type <type>',
         'Migration type: auto, schema, context, or detect (default)',
         'detect'
       )
       .option('--source <path>', 'Source path for specific migration types')
-      .option('--schema-version <version>', 'Target schema version for schema migration', '2.1.0')
+      .option('--schema-version <version>', 'Target schema version for schema migration', '3.0.0')
       .option('--dry-run', 'Preview migration without creating files', false)
+      .option('--preview', 'Alias for --dry-run', false)
       .option('--force', 'Force migration even if files already exist', false)
       .option('--clean', 'Remove import files after successful migration', false)
       .option('--no-deploy', 'Skip deployment to IDE integrations')
@@ -41,9 +46,9 @@ export class UnifiedMigrateCommand extends BaseCommand {
     return {
       defaults: {
         projectPath: process.cwd(),
-        outputPath: './.vdk/rules',
+        outputPath: './.vdk/blueprints/rules',
         type: 'detect',
-        schemaVersion: '2.1.0',
+        schemaVersion: '3.0.0',
         dryRun: false,
         force: false,
         clean: false,
@@ -112,6 +117,10 @@ export class UnifiedMigrateCommand extends BaseCommand {
     await commandContext.initialize();
     this.showHeader();
 
+    if (options.preview) {
+      options.dryRun = true;
+    }
+
     // Dry-run should never require deploy capabilities.
     // Normalize this before validation so --dry-run works out-of-the-box.
     if (options.dryRun && options.deploy !== false) {
@@ -151,6 +160,9 @@ export class UnifiedMigrateCommand extends BaseCommand {
 
       return { success: true, strategy, result };
     } catch (error) {
+      if (/no\s+rules\s+found|no\s+migration\s+targets\s+found/i.test(error.message)) {
+        console.log('No rules found');
+      }
       this.exitWithError(`Migration failed: ${error.message}`, error);
     }
   }
@@ -167,9 +179,11 @@ export class UnifiedMigrateCommand extends BaseCommand {
     spinner.start();
 
     try {
-      // Check for imported files in .vdk/import
-      const importPath = `${options.projectPath}/.vdk/import`;
-      const hasImportedFiles = await this.checkDirectory(importPath);
+      // Check for imported files in .vdk/migrate (legacy fallback: .vdk/import)
+      const importPath = `${options.projectPath}/.vdk/migrate`;
+      const legacyImportPath = `${options.projectPath}/.vdk/import`;
+      const hasImportedFiles =
+        (await this.checkDirectory(importPath)) || (await this.checkDirectory(legacyImportPath));
 
       // Check for existing VDK rules that might need schema migration
       const rulesPath = options.outputPath;

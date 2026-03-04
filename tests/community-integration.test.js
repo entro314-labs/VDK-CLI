@@ -57,7 +57,7 @@ describe('Community Integration Tests', () => {
       retryAttempts: 2,
     });
 
-    fetch.mockClear();
+    fetch.mockReset();
   });
 
   afterEach(() => {
@@ -361,15 +361,20 @@ describe('Community Integration Tests', () => {
             }),
         });
 
-      const hubOps = await quickHubOperations();
+      const resilientClient = new VDKHubClient({
+        hubUrl: 'https://test-hub.example.com',
+        apiKey: 'test-key',
+        timeout: 5000,
+        retryAttempts: 2,
+      });
 
-      const blueprints = await hubOps.searchCommunityBlueprints({});
+      const blueprints = await resilientClient.searchCommunityBlueprints({});
       expect(blueprints.blueprints).toHaveLength(1);
 
-      const trending = await hubOps.getTrendingBlueprints({});
+      const trending = await resilientClient.getTrendingBlueprints({});
       expect(trending.blueprints).toEqual([]);
 
-      const categories = await hubOps.getCommunityCategories();
+      const categories = await resilientClient.getCommunityCategories();
       expect(categories.categories).toHaveLength(1);
     });
   });

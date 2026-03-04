@@ -416,12 +416,7 @@ export function detectPlatformFromPath(filePath) {
 
   if (normalizedPath.includes('.claude') || normalizedPath.includes('claude.md'))
     return 'claude-code';
-  if (
-    normalizedPath.includes('.cursor') ||
-    normalizedPath.includes('.cursorrules') ||
-    normalizedPath.endsWith('.mdc')
-  )
-    return 'cursor';
+  if (normalizedPath.includes('.cursor') || normalizedPath.endsWith('.mdc')) return 'cursor';
   if (normalizedPath.includes('copilot') || normalizedPath.includes('.github/copilot'))
     return 'github-copilot';
   if (normalizedPath.includes('.windsurf')) return 'windsurf';

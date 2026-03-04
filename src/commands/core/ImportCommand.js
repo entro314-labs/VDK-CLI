@@ -56,7 +56,7 @@ export class ImportCommand extends BaseCommand {
       if (contextFiles.length === 0) {
         this.logWarning('No AI context files found. Looking for:');
         this.logInfo('  • .claude/ directory or CLAUDE.md');
-        this.logInfo('  • .cursor/rules/ or .cursorrules');
+        this.logInfo('  • .cursor/rules/');
         this.logInfo('  • .github/copilot-instructions.md');
         this.logInfo('  • .windsurf/rules/');
         return { success: true, filesImported: 0 };
@@ -166,12 +166,10 @@ export class ImportCommand extends BaseCommand {
     const searchPatterns = [
       { glob: 'CLAUDE.md', platform: 'claude-code' },
       { glob: '.claude/**/*.md', platform: 'claude-code' },
-      { glob: '.cursorrules', platform: 'cursor' },
       { glob: '.cursor/rules/**/*.mdc', platform: 'cursor' },
       { glob: '.cursor/rules/**/*.md', platform: 'cursor' },
       { glob: '.github/copilot-instructions.md', platform: 'github-copilot' },
       { glob: '.windsurf/rules/**/*.md', platform: 'windsurf' },
-      { glob: '.windsurfrules', platform: 'windsurf' },
     ];
 
     for (const pattern of searchPatterns) {

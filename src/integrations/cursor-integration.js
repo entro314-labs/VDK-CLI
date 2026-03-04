@@ -256,7 +256,7 @@ temp/
 *.temp
 
 # VDK specific (comment out if you want AI to see these)
-# .vdk/rules/
+# .vdk/blueprints/rules/
 # vdk.config.json
 `;
 
@@ -424,7 +424,7 @@ Reference this rule with @vdk-integration when working with VDK CLI.
 
 ## Integration Features
 - **Automatic Detection**: VDK CLI detects Cursor configuration
-- **Rule Generation**: Creates Cursor-compatible .vdk/rules
+- **Rule Generation**: Creates Cursor-compatible .vdk/blueprints/rules
 - **MDC Format**: Proper metadata for rule activation
 - **Cross-IDE Compatibility**: Works with multiple AI assistants
 

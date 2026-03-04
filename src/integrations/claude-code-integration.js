@@ -374,7 +374,7 @@ This project uses VDK CLI for AI assistant integration and follows specific patt
 - **Framework**: ${options.framework || 'Not detected'}
 
 ### Important Conventions
-- All AI rules are stored in \`.vdk/rules/\` directory
+- All AI rule artifacts are stored in \`.vdk/blueprints/rules/\` directory
 - Rules follow unified YAML frontmatter format
 - Project follows VDK CLI naming conventions
 - Memory persistence is enabled for context continuity
@@ -422,7 +422,7 @@ claudeCode:
     supports: false
   fileReferences:
     supports: true
-    autoInclude: ["CLAUDE.md", ".vdk/rules/", "package.json"]
+    autoInclude: ["CLAUDE.md", ".vdk/blueprints/rules/", "package.json"]
 
 permissions:
   allowedTools: ["Read", "Glob", "Grep"]
@@ -456,7 +456,7 @@ Analyze the current project using VDK CLI capabilities and provide actionable re
 ### File References
 Auto-included files:
 - \`@CLAUDE.md\` - Project context and conventions
-- \`@.vdk/rules/\` - Current VDK rules directory
+- \`@.vdk/blueprints/rules/\` - Current VDK rule artifacts directory
 - \`@package.json\` - Project dependencies
 
 ## Analysis Areas
@@ -467,7 +467,7 @@ Auto-included files:
    - Analyze technology stack and dependencies
 
 2. **Rule Status Review**
-   - Check existing VDK rules in \`.vdk/rules/\`
+  - Check existing VDK rules in \`.vdk/blueprints/rules/\`
    - Validate rule format and content
    - Identify missing or outdated rules
 
@@ -516,7 +516,7 @@ claudeCode:
     supports: false
   fileReferences:
     supports: true
-    autoInclude: ["CLAUDE.md", ".vdk/rules/", "package.json"]
+    autoInclude: ["CLAUDE.md", ".vdk/blueprints/rules/", "package.json"]
 
 permissions:
   allowedTools: ["Read", "Write", "Edit", "Bash(git:*)"]
@@ -604,7 +604,7 @@ claudeCode:
     supports: false
   fileReferences:
     supports: true
-    autoInclude: ["CLAUDE.md", ".vdk/rules/", "package.json"]
+    autoInclude: ["CLAUDE.md", ".vdk/blueprints/rules/", "package.json"]
   bashCommands:
     supports: true
     commands: ["git status", "git log --oneline -10"]

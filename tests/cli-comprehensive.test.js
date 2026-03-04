@@ -10,16 +10,16 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { cleanupTempDir, createTempDir, runCLI } from './helpers/cli-helper.js';
 
+let tempDir;
+
+afterEach(async () => {
+  if (tempDir) {
+    await cleanupTempDir(tempDir);
+    tempDir = null;
+  }
+});
+
 describe('Complete CLI Command Coverage', () => {
-  let tempDir;
-
-  afterEach(async () => {
-    if (tempDir) {
-      await cleanupTempDir(tempDir);
-      tempDir = null;
-    }
-  });
-
   describe('Init Command - Complete Coverage', () => {
     it('should handle all init command options', async () => {
       tempDir = await createTempDir('comprehensive-init-test');
@@ -153,7 +153,7 @@ describe('Status Command - Complete Coverage', () => {
     const config = {
       project: { name: 'test-project' },
       ide: 'claude-code',
-      rulesPath: './.vdk/rules',
+      rulesPath: './.vdk/blueprints/rules',
       lastUpdated: new Date().toISOString(),
     };
     await fs.writeFile(configPath, JSON.stringify(config, null, 2));

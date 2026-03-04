@@ -333,6 +333,10 @@ export class ProjectContextAnalyzer {
       }
     }
 
+    if (platforms.length === 0) {
+      return ['claude-code', 'cursor'];
+    }
+
     return platforms;
   }
 

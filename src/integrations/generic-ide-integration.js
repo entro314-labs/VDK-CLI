@@ -295,7 +295,7 @@ export class GenericIDEIntegration extends BaseIntegration {
       if (verbose) {
         console.log('No IDEs detected - setting up generic configuration');
       }
-      // Set up generic .vdk/rules configuration
+      // Set up generic .vdk/blueprints/rules configuration
       await this.setupGenericConfiguration(options);
       return true;
     }
@@ -330,11 +330,11 @@ export class GenericIDEIntegration extends BaseIntegration {
   }
 
   /**
-   * Set up generic .vdk/rules configuration
+   * Set up generic .vdk/blueprints/rules configuration
    * @param {Object} options - Configuration options
    */
   async setupGenericConfiguration(options = {}) {
-    const genericRulesPath = path.join(this.projectPath, '.vdk', 'rules');
+    const genericRulesPath = path.join(this.projectPath, '.vdk', 'blueprints', 'rules');
     await this.ensureDirectory(genericRulesPath);
     await this.createInitialRules(genericRulesPath, 'generic', options);
   }

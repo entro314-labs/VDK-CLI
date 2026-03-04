@@ -54,6 +54,7 @@ export class BrowseCommand extends BaseCommand {
    */
   async browseCommunityBlueprints(options) {
     if (!this.hubOps) {
+      this.showBrowseTips();
       this.exitWithError(
         'Hub integration required for community features. Please check your connection.'
       );

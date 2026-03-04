@@ -74,7 +74,7 @@ describe('Configuration & Environment', () => {
       const config = {
         project: { name: 'test-project' },
         ide: 'claude-code-cli',
-        rulesPath: './.vdk/rules',
+        rulesPath: './.vdk/blueprints/rules',
         lastUpdated: new Date().toISOString(),
       };
 

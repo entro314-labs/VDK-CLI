@@ -28,7 +28,7 @@ describe('VDKHubClient Community Methods', () => {
     });
 
     // Reset fetch mock
-    fetch.mockClear();
+    fetch.mockReset();
   });
 
   afterEach(() => {

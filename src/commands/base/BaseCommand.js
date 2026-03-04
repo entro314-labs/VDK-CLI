@@ -322,7 +322,7 @@ export class BaseCommand {
 
         case 'writeable': {
           // Allow creation of nested output directories by validating the nearest existing ancestor.
-          // Example: ./.vdk/rules should be valid even when .vdk does not exist yet.
+          // Example: ./.vdk/blueprints/rules should be valid even when .vdk does not exist yet.
           const resolvedTarget = commandContext.resolvePath(pathValue);
           let candidate = path.dirname(resolvedTarget);
 

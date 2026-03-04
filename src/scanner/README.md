@@ -3,7 +3,7 @@
 # 🔍 Project Scanner
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-2.0.0-green.svg)](https://github.com/vdkit/VDK-CLI)
+[![Version](https://img.shields.io/badge/Version-3.0.1-green.svg)](https://github.com/vdkit/VDK-CLI)
 [![Status](https://img.shields.io/badge/Status-Active-brightgreen)](https://github.com/vdkit/VDK-CLI)
 
 **Automatically analyzes codebases to generate custom VDK CLI tailored to your project**

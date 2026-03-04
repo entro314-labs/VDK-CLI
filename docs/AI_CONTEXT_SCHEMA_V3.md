@@ -93,7 +93,7 @@ It validates:
 
 ### 3) Contract linting in repository quality pipeline
 
-`VDK-CLI` adds Oxlint JS plugin checks for `.vdk/rules` frontmatter through:
+`VDK-CLI` adds Oxlint JS plugin checks for `.vdk/blueprints/rules` frontmatter through:
 
 - `.oxlintrc.json` (`vdk/validate-blueprints`)
 - `pnpm run lint:contracts`

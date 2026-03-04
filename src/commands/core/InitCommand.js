@@ -22,8 +22,8 @@ export class InitCommand extends BaseCommand {
       .option('-p, --projectPath <path>', 'Path to the project to scan', process.cwd())
       .option(
         '-o, --outputPath <path>',
-        'Path where generated rules should be saved',
-        './.vdk/rules'
+        'Path where generated rule artifacts should be saved',
+        './.vdk/blueprints/rules'
       )
       .option('-d, --deep', 'Enable deep scanning for more thorough pattern detection', false)
       .option('-i, --ignorePattern <patterns...>', 'Glob patterns to ignore', [
@@ -71,7 +71,7 @@ export class InitCommand extends BaseCommand {
     return {
       defaults: {
         projectPath: process.cwd(),
-        outputPath: './.vdk/rules',
+        outputPath: './.vdk/blueprints/rules',
         template: 'default',
         useGitignore: true,
         ideIntegration: true,

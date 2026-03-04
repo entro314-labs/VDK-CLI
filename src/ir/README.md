@@ -26,7 +26,7 @@ VDK-CLI/src/ir/
 ### Base Platforms (index.js + generators.js)
 
 - **Claude Code** - Full support (.claude/, CLAUDE.md, agents, rules, commands, skills)
-- **Cursor** - MDC format, .cursorrules, glob patterns, activation modes
+- **Cursor** - MDC format in `.cursor/rules/*.mdc`, glob patterns, activation modes
 - **GitHub Copilot** - 3000 char limit with smart truncation
 - **Windsurf** - Rules and workflows
 
@@ -273,7 +273,7 @@ const { lossInfo } = irToCopilot(ir);
 - ✅ MDC (Markdown Component) format
 - ✅ Glob patterns for auto-attachment
 - ✅ Activation modes: always, auto-attached, agent-requested, manual
-- ✅ .cursorrules and .cursor/rules/\*.mdc
+- ✅ `.cursor/rules/*.mdc`
 - ❌ No agents
 - ❌ No settings
 

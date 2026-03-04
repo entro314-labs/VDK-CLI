@@ -329,7 +329,9 @@ export class BaseIntegration {
         break;
       case 'medium':
         detection.recommendations.push(`${name} appears to be configured`);
-        detection.recommendations.push('Consider optimizing .vdk/rules for better AI assistance');
+        detection.recommendations.push(
+          'Consider optimizing .vdk/blueprints/rules for better AI assistance'
+        );
         break;
       case 'high':
         detection.recommendations.push(`${name} is actively configured and being used`);

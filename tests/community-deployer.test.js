@@ -215,6 +215,22 @@ describe('CommunityDeployer', () => {
 
       expect(result).toBeNull();
     });
+
+    it('does not fallback to fuzzy repository matches for deploy-by-id', async () => {
+      mockHubClient.getCommunityBlueprint.mockRejectedValue(new Error('Hub error'));
+
+      const { searchBlueprints } = await import('../src/blueprints-client.js');
+      searchBlueprints.mockResolvedValue([]);
+
+      const result = await communityDeployer.fetchCommunityBlueprint('almost-matching-id');
+
+      expect(result).toBeNull();
+      expect(searchBlueprints).toHaveBeenCalledTimes(1);
+      expect(searchBlueprints).toHaveBeenCalledWith({
+        query: 'almost-matching-id',
+        exactMatch: true,
+      });
+    });
   });
 
   describe('Project Context Analysis', () => {
@@ -414,6 +430,79 @@ describe('CommunityDeployer', () => {
       expect(consoleSpy.warn).toHaveBeenCalledWith(
         expect.stringContaining('Analytics tracking failed: Tracking failed')
       );
+    });
+  });
+
+  describe('Adapted deployment wiring', () => {
+    it('adapts blueprint content and writes generated files per active integration', async () => {
+      mockIntegrationManager.getActiveIntegrations.mockReturnValue([{ name: 'Cursor' }]);
+
+      communityDeployer.ruleAdapter = {
+        adaptRules: vi.fn().mockResolvedValue({
+          files: [
+            {
+              path: '/tmp/community/.cursor/rules/community-import.mdc',
+              content: '# ADAPTED_BLUEPRINT_CONTENT',
+            },
+          ],
+          warnings: ['cursor adaptation warning'],
+        }),
+      };
+
+      communityDeployer.writeAdaptedFiles = vi.fn().mockResolvedValue(undefined);
+
+      const result = await communityDeployer.deployToIntegrations(
+        {
+          title: 'Community Import',
+          description: 'Community import description',
+          content: '# ADAPTED_BLUEPRINT_CONTENT',
+          metadata: { id: 'community-import' },
+          adaptedFor: { name: 'project' },
+          platforms: {},
+        },
+        { framework: 'react', language: 'typescript' }
+      );
+
+      expect(communityDeployer.ruleAdapter.adaptRules).toHaveBeenCalledTimes(1);
+
+      const [rulesArg, platformArg] = communityDeployer.ruleAdapter.adaptRules.mock.calls[0];
+      expect(platformArg).toBe('cursor');
+      expect(rulesArg[0].content).toContain('ADAPTED_BLUEPRINT_CONTENT');
+      expect(rulesArg[0].frontmatter.category).toBe('imported');
+
+      expect(communityDeployer.writeAdaptedFiles).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ content: expect.stringContaining('ADAPTED_BLUEPRINT_CONTENT') }),
+        ])
+      );
+
+      expect(mockIntegrationManager.initializeActive).not.toHaveBeenCalled();
+      expect(result.success).toBe(true);
+      expect(result.platforms).toEqual(['Cursor']);
+      expect(result.warnings).toContain('cursor adaptation warning');
+    });
+
+    it('returns a failed result when no active integrations are detected', async () => {
+      mockIntegrationManager.getActiveIntegrations.mockReturnValue([]);
+
+      communityDeployer.ruleAdapter = {
+        adaptRules: vi.fn(),
+      };
+
+      const result = await communityDeployer.deployToIntegrations(
+        {
+          title: 'No Targets',
+          description: 'No targets available',
+          content: '# nothing to deploy',
+          metadata: { id: 'no-targets' },
+          platforms: {},
+        },
+        { framework: 'generic', language: 'javascript' }
+      );
+
+      expect(communityDeployer.ruleAdapter.adaptRules).not.toHaveBeenCalled();
+      expect(result.success).toBe(false);
+      expect(result.errors).toContain('No active IDE integrations detected');
     });
   });
 

@@ -18,7 +18,7 @@ export class PublishCommand extends BaseCommand {
    */
   configureOptions(command) {
     return command
-      .argument('<rule-file>', 'Rule file to publish (.mdc, .md, .json, .xml, .cursorrules)')
+      .argument('[rule-file]', 'Rule file to publish (.mdc, .md, .json, .xml)')
       .option(
         '--github',
         'Publish via GitHub PR instead of VDK Hub (no registration required)',
@@ -68,7 +68,7 @@ export class PublishCommand extends BaseCommand {
 
     console.log('');
     console.log(this.colorCyan('📋 Publication Preview:'));
-    console.log(colors.gray(`   ${preview.summary}`));
+    console.log(colors.muted(`   ${preview.summary}`));
     console.log('');
 
     if (preview.validation.qualityScore) {
@@ -77,17 +77,17 @@ export class PublishCommand extends BaseCommand {
 
     if (preview.recommendations.length > 0) {
       console.log('');
-      console.log(colors.yellow('💡 Recommendations:'));
+      console.log(colors.warning('💡 Recommendations:'));
       preview.recommendations.forEach(rec => {
-        console.log(colors.gray(`   • ${rec}`));
+        console.log(colors.muted(`   • ${rec}`));
       });
     }
 
     if (preview.validation.warnings.length > 0) {
       console.log('');
-      console.log(colors.yellow('⚠️  Warnings:'));
+      console.log(colors.warning('⚠️  Warnings:'));
       preview.validation.warnings.forEach(warning => {
-        console.log(colors.yellow(`   • ${warning}`));
+        console.log(colors.warning(`   • ${warning}`));
       });
     }
 
@@ -131,11 +131,11 @@ export class PublishCommand extends BaseCommand {
   showHubPublishResult(result) {
     console.log('');
     console.log(this.colorCyan('🔗 Share your rule:'));
-    console.log(colors.gray(`   ${result.shareUrl}`));
+    console.log(colors.muted(`   ${result.shareUrl}`));
     console.log('');
     console.log(this.colorCyan('📧 Check your email to activate permanent sharing'));
     console.log(this.colorCyan('💡 Community can use with:'));
-    console.log(colors.gray('   vdk sync'));
+    console.log(colors.muted('   vdk sync'));
   }
 
   /**
@@ -144,9 +144,9 @@ export class PublishCommand extends BaseCommand {
   showGitHubPublishResult(result) {
     console.log('');
     console.log(this.colorCyan('📝 GitHub PR created:'));
-    console.log(colors.gray(`   ${result.prUrl}`));
+    console.log(colors.muted(`   ${result.prUrl}`));
     console.log('');
     console.log(this.colorCyan('⏳ After community review and merge:'));
-    console.log(colors.gray('   vdk sync'));
+    console.log(colors.muted('   vdk sync'));
   }
 }

@@ -372,7 +372,7 @@ describe(' CLI Commands', () => {
           {
             project: { name: 'test-project' },
             ide: 'vscode',
-            rulesPath: './.vdk/rules',
+            rulesPath: './.vdk/blueprints/rules',
             lastUpdated: new Date().toISOString(),
           },
           null,

@@ -104,11 +104,10 @@ export function irToClaude(ir, _options = {}) {
  * @param {IntermediateRepresentation} ir - IR to convert
  * @param {Object} [options] - Generation options
  * @param {boolean} [options.useMDC=true] - Use MDC format for .cursor/rules/
- * @param {boolean} [options.singleFile=false] - Generate single .cursorrules file
  * @returns {{content: string, filePath: string, lossInfo: Array}}
  */
 export function irToCursor(ir, options = {}) {
-  const { useMDC = true, singleFile = false } = options;
+  const { useMDC = true } = options;
   const lossInfo = trackConversionLoss(ir, ir, 'cursor');
 
   // Track agent conversion (Cursor doesn't support agents)
@@ -122,9 +121,9 @@ export function irToCursor(ir, options = {}) {
   }
 
   let content = '';
-  const filePath = singleFile ? '.cursorrules' : `.cursor/rules/${sanitizeFileName(ir.name)}.mdc`;
+  const filePath = `.cursor/rules/${sanitizeFileName(ir.name)}.mdc`;
 
-  if (useMDC && !singleFile) {
+  if (useMDC) {
     // Generate MDC format
     const frontmatter = {};
     if (ir.description) frontmatter.description = ir.description;

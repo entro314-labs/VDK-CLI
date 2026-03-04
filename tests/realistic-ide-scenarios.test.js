@@ -58,7 +58,7 @@ describe('Realistic IDE/AI Scenarios', () => {
     const configPath = path.join(tempDir, 'vdk.config.json');
     const config = JSON.parse(await fs.readFile(configPath, 'utf-8'));
     expect(config.project.name).toBeTruthy();
-    expect(config.rulesPath).toBe('./.vdk/rules');
+    expect(config.rulesPath).toBe('./.vdk/blueprints/rules');
   });
 
   it('generates Claude project memory artifacts for a Claude-configured project', async () => {

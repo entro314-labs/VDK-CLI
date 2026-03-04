@@ -31,7 +31,7 @@ export class ValidateCommand extends BaseCommand {
    */
   configureOptions(command) {
     return command
-      .option('-p, --path <path>', 'Path to blueprint/rule files', './.vdk/rules')
+      .option('-p, --path <path>', 'Path to blueprint artifact files', './.vdk/blueprints/rules')
       .option('-f, --file <file>', 'Validate specific blueprint file')
       .option('--platform <platform>', 'Validate against specific platform constraints')
       .option('-v, --verbose', 'Show detailed validation results', false);

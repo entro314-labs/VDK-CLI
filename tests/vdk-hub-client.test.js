@@ -292,6 +292,55 @@ describe('VDKHubClient', () => {
       );
     });
 
+    it('should normalize numeric package response fields', async () => {
+      const mockResponse = {
+        packageId: 'pkg-123',
+        downloadUrl: 'https://example.com/download/pkg-123',
+        packageType: 'zip',
+        ruleCount: '5',
+        fileSize: '2048',
+        expiresAt: '2024-01-02T00:00:00Z',
+      };
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        headers: {
+          get: vi.fn(header => {
+            if (header === 'content-type') return 'application/json';
+            return null;
+          }),
+        },
+        json: vi.fn().mockResolvedValue(mockResponse),
+      });
+
+      const result = await hubClient.generatePackage({ projectContext: { framework: 'react' } });
+
+      expect(result.ruleCount).toBe(5);
+      expect(result.fileSize).toBe(2048);
+    });
+
+    it('should reject malformed package generation responses', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        headers: {
+          get: vi.fn(header => {
+            if (header === 'content-type') return 'application/json';
+            return null;
+          }),
+        },
+        json: vi.fn().mockResolvedValue({
+          packageType: 'zip',
+          ruleCount: 2,
+          fileSize: 1024,
+          expiresAt: '2024-01-02T00:00:00Z',
+        }),
+      });
+
+      await expect(hubClient.generatePackage({ projectContext: { framework: 'react' } })).rejects.toThrow(
+        /Invalid package generation response from Hub/
+      );
+    });
+
     it('should handle package generation errors', async () => {
       fetch.mockResolvedValueOnce({
         ok: false,
@@ -759,8 +808,8 @@ describe('VDKHubClient', () => {
 
       const result = await hubClient.trackCommunityBlueprintUsage('react-hooks', usageData);
 
-      expect(result.success).toBe(true);
       expect(result.usageId).toBe('usage-456');
+      expect(result.message).toBe('Usage tracked');
       expect(fetch).toHaveBeenCalledWith(
         'https://test-hub.example.com/api/community/blueprints/react-hooks/usage',
         expect.objectContaining({

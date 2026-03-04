@@ -1,6 +1,6 @@
 {
   "name": "@vdkit/cli",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "Advanced Command-line toolkit that analyzes your codebase, migrates existing AI contexts from any platform, and deploys project-aware rules, memories, commands and agents to any AI coding assistant - VDK is the world's first Vibe Development Kit",
   "keywords": [
     "ai-assistant",
@@ -44,8 +44,8 @@
     "insights": "node src/utils/project-insights.js",
     "lint": "oxlint .",
     "lint:contracts": "oxlint --import-plugin -c .oxlintrc.json \"lint/blueprint-lint-trigger.mjs\"",
-    "lint:contracts:dry": "vdk-blueprints-fix --target .vdk/rules --ext md",
-    "lint:contracts:fix": "vdk-blueprints-fix --write --target .vdk/rules --ext md",
+    "lint:contracts:dry": "vdk-blueprints-fix --target .vdk/blueprints/rules --ext md",
+    "lint:contracts:fix": "vdk-blueprints-fix --write --target .vdk/blueprints/rules --ext md",
     "lint:fix": "oxlint --fix . && oxfmt --write .",
     "lint:fix-unsafe": "oxlint --fix --fix-suggestions --fix-dangerously . && oxfmt --write .",
     "lint:json": "oxfmt --check --no-error-on-unmatched-pattern src/schemas/*.json vdk.config.json package.json",
@@ -61,19 +61,19 @@
     "validate": "node src/validation/validate-rules.js"
   },
   "dependencies": {
-    "@clack/prompts": "^1.0.1",
+    "@clack/prompts": "^1.1.0",
     "@octokit/rest": "^22.0.1",
     "@vdkit/ai-context-schema": "3.0.0",
     "acorn": "^8.16.0",
     "boxen": "^8.0.1",
     "chalk": "^5.6.2",
     "cli-table3": "^0.6.5",
-    "commander": "^14.0.3",
+    "commander": "15.0.0-0",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "fast-glob": "^3.3.3",
     "figures": "^6.1.0",
-    "fs-extra": "^11.3.3",
+    "fs-extra": "^11.3.4",
     "glob": "^13.0.6",
     "glob-to-regexp": "^0.4.1",
     "gradient-string": "^3.0.0",
@@ -81,7 +81,7 @@
     "handlebars": "^4.7.8",
     "js-yaml": "^4.1.1",
     "jscodeshift": "^17.3.0",
-    "marked": "^17.0.3",
+    "marked": "^17.0.4",
     "marked-terminal": "^7.3.0",
     "open": "^11.0.0",
     "ora": "^9.3.0",
@@ -100,6 +100,6 @@
     "vitest": "beta"
   },
   "engines": {
-    "node": ">=22.x"
+    "node": ">=22.22.0"
   }
 }

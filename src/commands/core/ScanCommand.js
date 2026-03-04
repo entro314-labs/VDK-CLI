@@ -22,7 +22,11 @@ export class ScanCommand extends BaseCommand {
   configureOptions(command) {
     return command
       .option('-p, --projectPath <path>', 'Path to the project to rescan', process.cwd())
-      .option('-o, --outputPath <path>', 'Path where updated rules should be saved', './.vdk/rules')
+      .option(
+        '-o, --outputPath <path>',
+        'Path where updated rule artifacts should be saved',
+        './.vdk/blueprints/rules'
+      )
       .option('--ide <ide>', 'Target specific IDE for scanning (vscode, jetbrains, cursor, etc.)')
       .option('-d, --deep', 'Enable deep scanning for more thorough pattern detection', false)
       .option('-i, --ignorePattern <patterns...>', 'Glob patterns to ignore', [
@@ -53,7 +57,7 @@ export class ScanCommand extends BaseCommand {
     return {
       defaults: {
         projectPath: process.cwd(),
-        outputPath: './.vdk/rules',
+        outputPath: './.vdk/blueprints/rules',
         useGitignore: true,
         incremental: false,
         force: false,

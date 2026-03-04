@@ -60,9 +60,9 @@ export function generateSafeFilename(input, options = {}) {
 
 /**
  * Generate unique filename for Cursor IDE rules
- * Handles the specific requirements for Cursor .cursorrules format
+ * Handles canonical Cursor `.cursor/rules/*.mdc` naming requirements
  * @param {Object} rule - Rule object with frontmatter
- * @returns {string} Unique filename
+ * @returns {string} Unique base filename (without extension)
  */
 export function generateCursorFilename(rule) {
   const category = rule.frontmatter?.category || 'general';
@@ -96,7 +96,6 @@ export function generateCursorFilename(rule) {
 
   return generateSafeFilename(baseName, {
     maxLength: 40,
-    extension: '.md',
     separator: '-',
   });
 }

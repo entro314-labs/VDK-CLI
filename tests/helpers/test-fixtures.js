@@ -84,7 +84,7 @@ export const validBlueprint = {
     'generic-ai': {
       compatible: true,
       configPath: '.vdk/',
-      rulesPath: '.vdk/rules/',
+      rulesPath: '.vdk/blueprints/rules/',
       priority: 5,
     },
   },

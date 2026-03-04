@@ -19,7 +19,11 @@ export class SchemaMigrateCommand extends BaseCommand {
    */
   configureOptions(command) {
     return command
-      .option('-i, --input <path>', 'Input directory containing blueprints', './.vdk/rules')
+      .option(
+        '-i, --input <path>',
+        'Input directory containing blueprints',
+        './.vdk/blueprints/rules'
+      )
       .option('-o, --output <path>', 'Output directory for migrated blueprints')
       .option('--force', 'Force migration even if already in v3.0 format', false)
       .option('--dry-run', 'Preview migration without making changes', false)

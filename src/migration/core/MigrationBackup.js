@@ -286,24 +286,30 @@ export class MigrationBackup {
       });
     }
 
-    // VDK rules directory
-    const rulesDir = path.join(this.projectPath, '.vdk', 'rules');
+    // VDK rule artifacts directory
+    const rulesDir = path.join(this.projectPath, '.vdk', 'blueprints', 'rules');
     if (await this.fileExists(rulesDir)) {
       targets.push({
         type: 'directory',
         path: rulesDir,
-        relativePath: '.vdk/rules',
+        relativePath: '.vdk/blueprints/rules',
       });
     }
 
-    // VDK import directory (if it contains user data)
-    const importDir = path.join(this.projectPath, '.vdk', 'import');
-    if (await this.fileExists(importDir)) {
-      targets.push({
-        type: 'directory',
-        path: importDir,
-        relativePath: '.vdk/import',
-      });
+    // VDK migration staging directories (primary + legacy)
+    const migrationDirs = [
+      { path: path.join(this.projectPath, '.vdk', 'migrate'), relativePath: '.vdk/migrate' },
+      { path: path.join(this.projectPath, '.vdk', 'import'), relativePath: '.vdk/import' },
+    ];
+
+    for (const migrationDir of migrationDirs) {
+      if (await this.fileExists(migrationDir.path)) {
+        targets.push({
+          type: 'directory',
+          path: migrationDir.path,
+          relativePath: migrationDir.relativePath,
+        });
+      }
     }
 
     // IDE-specific configuration files that VDK might modify
@@ -498,7 +504,7 @@ export class MigrationBackup {
    * @private
    */
   async removeCurrentVDKFiles(options = {}) {
-    const filesToRemove = ['vdk.config.json', '.vdk/rules'];
+    const filesToRemove = ['vdk.config.json', '.vdk/blueprints/rules'];
 
     for (const relativePath of filesToRemove) {
       const fullPath = path.join(this.projectPath, relativePath);

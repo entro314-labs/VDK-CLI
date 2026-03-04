@@ -289,7 +289,7 @@ export class WindsurfContextIntegration extends BaseIntegration {
       },
       projectAwareness: {
         enabled: true,
-        includeFiles: ['README.md', 'package.json', '*.config.*', '.vdk/rules/**'],
+        includeFiles: ['README.md', 'package.json', '*.config.*', '.vdk/blueprints/rules/**'],
         excludePatterns: ['node_modules/**', 'dist/**', '*.log', '.git/**'],
       },
     };

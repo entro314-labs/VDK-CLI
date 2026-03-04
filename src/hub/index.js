@@ -120,7 +120,7 @@ export async function isHubAvailable() {
  */
 export const HUB_CONSTANTS = {
   DEFAULT_HUB_URL: 'https://vdk.tools',
-  API_VERSION: '2.0.0',
+  API_VERSION: '3.0.0',
   SUPPORTED_OUTPUT_FORMATS: ['bash', 'zip', 'config'],
   TELEMETRY_BATCH_LIMITS: {
     usage: 50,
@@ -140,7 +140,7 @@ export const HUB_CONSTANTS = {
  */
 export function createUsageEvent(command, options = {}) {
   return {
-    cli_version: options.cliVersion || '2.0.0',
+    cli_version: options.cliVersion || '3.0.1',
     command: command,
     platform: process.platform,
     node_version: process.version,
@@ -157,7 +157,7 @@ export function createUsageEvent(command, options = {}) {
 
 export function createErrorEvent(command, error, options = {}) {
   return {
-    cli_version: options.cliVersion || '2.0.0',
+    cli_version: options.cliVersion || '3.0.1',
     command: command,
     error_type: error.constructor.name,
     error_message: error.message,
@@ -172,7 +172,7 @@ export function createErrorEvent(command, error, options = {}) {
 
 export function createIntegrationEvent(integrationType, action = 'detected', options = {}) {
   return {
-    cli_version: options.cliVersion || '2.0.0',
+    cli_version: options.cliVersion || '3.0.1',
     integration_type: integrationType,
     action: action,
     success: options.success !== false,
@@ -187,8 +187,8 @@ export function createIntegrationEvent(integrationType, action = 'detected', opt
  * Version information
  */
 export const VERSION_INFO = {
-  hubApiVersion: '2.1.0',
-  cliApiVersion: '1.0.0',
-  schemaVersion: '2.1.0',
-  compatibleCliVersions: ['1.0.0', '1.1.0', '1.2.0', '2.0.0'],
+  hubApiVersion: '3.0.0',
+  cliApiVersion: '3.0.1',
+  schemaVersion: '3.0.0',
+  compatibleCliVersions: ['3.0.0', '3.0.1'],
 };

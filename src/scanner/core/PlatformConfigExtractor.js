@@ -115,9 +115,9 @@ export class PlatformConfigExtractor {
     // FIRST: Look for project-specific configuration files (highest priority)
     // These indicate the user's intentional choice for THIS project
     const projectIndicators = {
-      Cursor: ['.cursorrules', '.cursor/', '.cursorignore'],
+      Cursor: ['.cursor/', '.cursor/rules/', '.cursorignore'],
       'VS Code': ['.vscode/settings.json', '.vscode/launch.json'],
-      Windsurf: ['.windsurf/', '.windsurfrules'],
+      Windsurf: ['.windsurf/', '.windsurf/rules/'],
       'JetBrains IDEs': ['.idea/', '*.iml'],
       'Zed Editor': ['.zed/'],
       'Claude Code CLI': ['CLAUDE.md', '.claude/'],

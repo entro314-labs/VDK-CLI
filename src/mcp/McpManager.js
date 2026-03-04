@@ -82,7 +82,7 @@ export class McpManager {
     // Check common paths if none found
     if (ruleDirectories.length === 0) {
       const commonPaths = [
-        '.vdk/rules',
+        '.vdk/blueprints/rules',
         '.vscode/ai-rules',
         '.cursor/rules',
         '.claude/rules',
@@ -101,7 +101,7 @@ export class McpManager {
 
     // Create default if forced
     if (ruleDirectories.length === 0 && force) {
-      const defaultPath = path.join(projectPath, '.vdk/rules');
+      const defaultPath = path.join(projectPath, '.vdk/blueprints/rules');
       if (!existsSync(defaultPath)) {
         await fs.mkdir(defaultPath, { recursive: true });
       }

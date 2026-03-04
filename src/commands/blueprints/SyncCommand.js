@@ -18,7 +18,11 @@ export class SyncCommand extends BaseCommand {
    */
   configureOptions(command) {
     return command
-      .option('-o, --outputPath <path>', 'Path to the blueprints directory', './.vdk/rules')
+      .option(
+        '-o, --outputPath <path>',
+        'Path to the blueprints artifact root directory',
+        './.vdk/blueprints'
+      )
       .option('--force', 'Force full sync instead of incremental', false)
       .option('--category <category>', 'Sync specific category only')
       .option('--hub-only', 'Sync only from Hub, not repository', false)
@@ -32,7 +36,7 @@ export class SyncCommand extends BaseCommand {
     await commandContext.initialize();
     this.showHeader();
 
-    const rulesDir = await commandContext.ensureRulesDirectory(options.outputPath);
+    const artifactsRoot = await commandContext.ensureRulesDirectory(options.outputPath);
     const syncOps = new SyncOperations(this);
 
     let totalSynced = 0;
@@ -41,7 +45,7 @@ export class SyncCommand extends BaseCommand {
 
     // Sync from Hub if available and not disabled
     if (this.hubOps && !options.repoOnly) {
-      const hubResult = await syncOps.syncFromHub(rulesDir, {
+      const hubResult = await syncOps.syncFromHub(artifactsRoot, {
         force: options.force,
         category: options.category,
         type: 'blueprints',
@@ -52,7 +56,7 @@ export class SyncCommand extends BaseCommand {
 
     // Sync from repository if not disabled
     if (!options.hubOnly) {
-      const repoResult = await syncOps.syncFromRepository(rulesDir, {
+      const repoResult = await syncOps.syncFromRepository(artifactsRoot, {
         force: options.force,
         category: options.category,
         type: 'blueprints',

@@ -450,7 +450,7 @@ vdk validate
 # Existing code quality (Biome + markdown)
 pnpm run quality
 
-# Blueprint frontmatter contract linting for .vdk/rules
+# Blueprint frontmatter contract linting for .vdk/blueprints/rules
 pnpm run lint:contracts
 
 # Preview deterministic frontmatter normalization

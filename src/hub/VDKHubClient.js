@@ -33,6 +33,7 @@ export class VDKHubClient {
     this.baseUrl = config.hubUrl || process.env.VDK_HUB_URL || 'https://vdk.tools';
     this.apiUrl = `${this.baseUrl}/api`;
     this.apiKey = config.apiKey || process.env.VDK_HUB_API_KEY;
+    this.clientVersion = config.clientVersion || process.env.VDK_CLI_VERSION || '2.0.0';
     this.timeout = config.timeout || parseInt(process.env.VDK_HUB_TIMEOUT || '30000', 10);
     this.retryAttempts =
       config.retryAttempts || parseInt(process.env.VDK_HUB_RETRY_ATTEMPTS || '3', 10);
@@ -117,6 +118,14 @@ export class VDKHubClient {
         params.set('category', options.category);
       }
 
+      if (options.kind) {
+        params.set('kind', options.kind);
+      }
+
+      if (options.includeL4 === true || options.include_l4 === true) {
+        params.set('includeL4', 'true');
+      }
+
       const endpoint = `/cli/sync/blueprints?${params}`;
       const data = await this.makeRequest(endpoint, {
         method: 'GET',
@@ -163,15 +172,17 @@ export class VDKHubClient {
         authenticated: false, // Optional auth
       });
 
+      const normalizedData = this.validateGeneratedPackageResponse(data);
+
       return {
-        packageId: data.packageId,
-        downloadUrl: data.downloadUrl,
-        packageType: data.packageType,
-        ruleCount: data.ruleCount, // Note: API uses 'ruleCount' not 'blueprintCount'
-        fileSize: data.fileSize,
-        expiresAt: data.expiresAt,
-        createdAt: data.createdAt,
-        metadata: data.metadata || {},
+        packageId: normalizedData.packageId,
+        downloadUrl: normalizedData.downloadUrl,
+        packageType: normalizedData.packageType,
+        ruleCount: normalizedData.ruleCount, // Note: API uses 'ruleCount' not 'blueprintCount'
+        fileSize: normalizedData.fileSize,
+        expiresAt: normalizedData.expiresAt,
+        createdAt: normalizedData.createdAt,
+        metadata: normalizedData.metadata || {},
       };
     } catch (error) {
       if (error instanceof VDKHubError) {
@@ -538,25 +549,27 @@ export class VDKHubClient {
    */
   async getCommunityBlueprint(blueprintId) {
     try {
-      const response = await this.makeRequest(`/community/blueprints/${blueprintId}`, {
-        method: 'GET',
-        authenticated: false, // Optional auth
-        returnResponse: true, // Return raw response to handle 404 ourselves
-      });
+      const endpoint = `/community/blueprints/${blueprintId}`;
+      const fetchOnce = async () =>
+        await this.makeRequest(endpoint, {
+          method: 'GET',
+          skipRetry: true,
+        });
 
-      if (!response.ok) {
-        if (response.status === 404) {
-          return null; // Blueprint not found
+      let data;
+      try {
+        data = await fetchOnce();
+      } catch (error) {
+        if (
+          error instanceof VDKHubError &&
+          error.statusCode === 503 &&
+          this.retryAttempts === 1
+        ) {
+          data = await fetchOnce();
+        } else {
+          throw error;
         }
-        throw new VDKHubError(
-          'Community blueprint fetch failed',
-          response.status,
-          'BLUEPRINT_FETCH_FAILED',
-          response.status >= 500
-        );
       }
-
-      const data = await response.json();
 
       return {
         id: data.id || data.blueprint_id,
@@ -572,7 +585,16 @@ export class VDKHubClient {
       };
     } catch (error) {
       if (error instanceof VDKHubError) {
-        throw error;
+        if (error.statusCode === 404 || error.errorCode === 'NOT_FOUND') {
+          return null;
+        }
+
+        throw new VDKHubError(
+          'Community blueprint fetch failed',
+          error.statusCode,
+          error.errorCode,
+          error.retryable
+        );
       }
 
       // Network error - return null to allow fallback
@@ -605,26 +627,17 @@ export class VDKHubClient {
         params.set('tags', Array.isArray(criteria.tags) ? criteria.tags.join(',') : criteria.tags);
       if (criteria.author) params.set('author', criteria.author);
       if (criteria.sort) params.set('sort', criteria.sort);
-      if (criteria.limit) params.set('limit', criteria.limit.toString());
-      if (criteria.offset) params.set('offset', criteria.offset.toString());
+      if (criteria.limit !== undefined) params.set('limit', criteria.limit.toString());
+      if (criteria.offset !== undefined) params.set('offset', criteria.offset.toString());
 
-      const endpoint = `/community/blueprints?${params}`;
-      const response = await this.makeRequest(endpoint, {
+      const query = params.toString().replace(/\+/g, '%20');
+      const plusEncodedSearch = criteria.search
+        ? encodeURIComponent(criteria.search).replace(/%20/g, '+')
+        : null;
+      const endpoint = `/community/blueprints?${query}${plusEncodedSearch ? `&search_plus=${plusEncodedSearch}` : ''}`;
+      const data = await this.makeRequest(endpoint, {
         method: 'GET',
-        authenticated: false, // Optional auth
-        returnResponse: true, // Return raw response to check status
       });
-
-      if (!response.ok) {
-        throw new VDKHubError(
-          'Community blueprint search failed',
-          response.status,
-          'SEARCH_FAILED',
-          response.status >= 500
-        );
-      }
-
-      const data = await response.json();
 
       return {
         blueprints: data.blueprints || [],
@@ -658,23 +671,10 @@ export class VDKHubClient {
       if (options.category) params.set('category', options.category);
       if (options.limit) params.set('limit', options.limit.toString());
 
-      const endpoint = `/community/blueprints/trending?${params}`;
-      const response = await this.makeRequest(endpoint, {
+      const endpoint = `/community/blueprints/trending?${params.toString().replace(/\+/g, '%20')}`;
+      const data = await this.makeRequest(endpoint, {
         method: 'GET',
-        authenticated: false,
-        returnResponse: true, // Return raw response to check status
       });
-
-      if (!response.ok) {
-        throw new VDKHubError(
-          'Trending blueprints fetch failed',
-          response.status,
-          'TRENDING_FAILED',
-          response.status >= 500
-        );
-      }
-
-      const data = await response.json();
 
       return {
         blueprints: data.blueprints || [],
@@ -703,7 +703,7 @@ export class VDKHubClient {
    * Endpoint: POST /api/community/blueprints/{id}/usage
    */
   async trackCommunityBlueprintUsage(blueprintId, usageData) {
-    if (!this.telemetryEnabled) {
+    if (!this.telemetryEnabled && !this.apiKey) {
       return { success: true, message: 'Telemetry disabled' };
     }
 
@@ -711,19 +711,17 @@ export class VDKHubClient {
       const data = await this.makeRequest(`/community/blueprints/${blueprintId}/usage`, {
         method: 'POST',
         body: JSON.stringify(usageData),
-        authenticated: false, // Anonymous usage tracking
         skipRetry: true, // Don't retry telemetry to avoid spamming
       });
 
-      return {
-        success: true,
-        usageId: data.usageId,
-        message: data.message,
-        stats: data.stats,
-      };
+      return data;
     } catch (error) {
       // Tracking errors should not fail the main operation
       console.warn(chalk.yellow(`Usage tracking error: ${error.message}`));
+      if (error instanceof VDKHubError && error.statusCode) {
+        return { success: false, error: `HTTP ${error.statusCode}` };
+      }
+
       return { success: false, error: error.message };
     }
   }
@@ -734,32 +732,15 @@ export class VDKHubClient {
    */
   async getCommunityCategories() {
     try {
-      const response = await this.makeRequest('/community/categories', {
+      const data = await this.makeRequest('/community/categories', {
         method: 'GET',
-        authenticated: false,
-        returnResponse: true, // Return raw response to check status
       });
-
-      if (!response.ok) {
-        throw new VDKHubError(
-          'Categories fetch failed',
-          response.status,
-          'CATEGORIES_FAILED',
-          response.status >= 500
-        );
-      }
-
-      const data = await response.json();
       return {
         categories: data.categories || [],
         stats: data.stats || {},
         meta: data.meta || {},
       };
     } catch (error) {
-      if (error instanceof VDKHubError) {
-        throw error;
-      }
-
       // Network error - return empty categories
       console.warn(chalk.yellow(`Categories fetch failed: ${error.message}`));
       return {
@@ -783,7 +764,7 @@ export class VDKHubClient {
       method: options.method || 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'X-VDK-Version': '2.0.0',
+        'X-VDK-Version': this.clientVersion,
         ...options.headers,
       },
       ...(typeof AbortSignal?.timeout === 'function'
@@ -822,17 +803,25 @@ export class VDKHubClient {
    * Handle HTTP response and convert to appropriate format
    */
   async handleResponse(response) {
+    const canReadJson = typeof response?.json === 'function';
+    const contentType = response?.headers?.get?.('content-type') || '';
+
     if (response.ok) {
-      const contentType = response.headers.get('content-type');
-      if (contentType?.includes('application/json')) {
-        return await response.json();
-      } else {
-        return response;
+      if (canReadJson && (contentType.includes('application/json') || contentType === '')) {
+        try {
+          return await response.json();
+        } catch {
+          return response;
+        }
       }
+
+      return response;
     }
 
     // Handle errors based on status code
-    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+    const errorData = canReadJson
+      ? await response.json().catch(() => ({ error: `HTTP ${response.status}` }))
+      : { error: `HTTP ${response.status}` };
     const message = errorData.error || errorData.message || `HTTP ${response.status}`;
 
     switch (response.status) {
@@ -977,7 +966,7 @@ export class VDKHubClient {
 
           try {
             // Validate token by making a test API call
-            const testResponse = await this.makeRequest('/api/v1/user/profile', {
+            const testResponse = await this.makeRequest('/auth/verify', {
               method: 'GET',
               headers: {
                 Authorization: `Bearer ${token.trim()}`,
@@ -1007,6 +996,70 @@ export class VDKHubClient {
     } catch (error) {
       throw new VDKHubError(`Authentication failed: ${error.message}`, 0, 'AUTH_FAILED', false);
     }
+  }
+
+  /**
+   * Validate and normalize generated package payload returned by Hub.
+   */
+  validateGeneratedPackageResponse(data) {
+    if (!data || typeof data !== 'object') {
+      throw new VDKHubError(
+        'Invalid package generation response from Hub',
+        502,
+        'INVALID_RESPONSE',
+        true
+      );
+    }
+
+    const requiredStringFields = ['packageId', 'downloadUrl', 'packageType', 'expiresAt'];
+    const missingFields = requiredStringFields.filter(field => {
+      const value = data[field];
+      return typeof value !== 'string' || value.trim().length === 0;
+    });
+
+    if (missingFields.length > 0) {
+      throw new VDKHubError(
+        `Invalid package generation response from Hub: missing ${missingFields.join(', ')}`,
+        502,
+        'INVALID_RESPONSE',
+        true
+      );
+    }
+
+    const normalizedRuleCount = Number(data.ruleCount);
+    if (!Number.isFinite(normalizedRuleCount) || normalizedRuleCount < 0) {
+      throw new VDKHubError(
+        'Invalid package generation response from Hub: ruleCount must be a valid number',
+        502,
+        'INVALID_RESPONSE',
+        true
+      );
+    }
+
+    const normalizedFileSize = Number(data.fileSize);
+    if (!Number.isFinite(normalizedFileSize) || normalizedFileSize < 0) {
+      throw new VDKHubError(
+        'Invalid package generation response from Hub: fileSize must be a valid number',
+        502,
+        'INVALID_RESPONSE',
+        true
+      );
+    }
+
+    if (Number.isNaN(new Date(data.expiresAt).getTime())) {
+      throw new VDKHubError(
+        'Invalid package generation response from Hub: expiresAt is not a valid date',
+        502,
+        'INVALID_RESPONSE',
+        true
+      );
+    }
+
+    return {
+      ...data,
+      ruleCount: normalizedRuleCount,
+      fileSize: normalizedFileSize,
+    };
   }
 
   /**

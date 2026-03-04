@@ -22,7 +22,8 @@ import { MigrationBackup } from './core/MigrationBackup.js';
 export class AutoMigrator {
   constructor(projectPath) {
     this.projectPath = projectPath;
-    this.importPath = path.join(projectPath, '.vdk', 'import');
+    this.importPath = path.join(projectPath, '.vdk', 'migrate');
+    this.legacyImportPath = path.join(projectPath, '.vdk', 'import');
     this.projectScanner = new ProjectScanner({ projectPath: projectPath });
     this.technologyAnalyzer = new TechnologyAnalyzer({ verbose: false });
     this.patternDetector = new PatternDetector({ verbose: false });
@@ -46,11 +47,11 @@ export class AutoMigrator {
 
     try {
       // 1. Scan import directory for old rules
-      spinner.text = 'Scanning .vdk/import/ for AI rules...';
+      spinner.text = 'Scanning .vdk/migrate/ for AI rules...';
       const detectedRules = await this.detectImportedRules();
 
       if (detectedRules.length === 0) {
-        spinner.info('No rules found in .vdk/import/');
+        spinner.info('No rules found in .vdk/migrate/ (legacy: .vdk/import/)');
         this.showImportInstructions();
         return { success: false, reason: 'no_rules_found' };
       }
@@ -160,28 +161,34 @@ export class AutoMigrator {
    */
   async detectImportedRules() {
     const rules = [];
+    const seenFiles = new Set();
+    const candidatePaths = [this.importPath, this.legacyImportPath];
 
-    try {
-      await fs.access(this.importPath);
-    } catch {
-      // Import directory doesn't exist
-      return rules;
-    }
+    for (const candidatePath of candidatePaths) {
+      try {
+        await fs.access(candidatePath);
+      } catch {
+        continue;
+      }
 
-    try {
-      const importFiles = await fs.readdir(this.importPath, { withFileTypes: true });
+      try {
+        const importFiles = await fs.readdir(candidatePath, { withFileTypes: true });
 
-      for (const entry of importFiles) {
-        if (entry.isFile()) {
-          const filePath = path.join(this.importPath, entry.name);
-          const detectedRule = await this.detectRuleType(filePath);
-          if (detectedRule) {
-            rules.push(detectedRule);
+        for (const entry of importFiles) {
+          if (entry.isFile()) {
+            const filePath = path.join(candidatePath, entry.name);
+            if (seenFiles.has(filePath)) continue;
+
+            const detectedRule = await this.detectRuleType(filePath);
+            if (detectedRule) {
+              rules.push(detectedRule);
+              seenFiles.add(filePath);
+            }
           }
         }
+      } catch (error) {
+        console.warn(chalk.yellow(`Warning: Could not read import directory: ${error.message}`));
       }
-    } catch (error) {
-      console.warn(chalk.yellow(`Warning: Could not read import directory: ${error.message}`));
     }
 
     return rules;
@@ -597,14 +604,20 @@ export class AutoMigrator {
    * Clean up the import directory after successful migration
    */
   async cleanImportDirectory() {
-    try {
-      const files = await fs.readdir(this.importPath);
-      for (const file of files) {
-        await fs.unlink(path.join(this.importPath, file));
+    const candidatePaths = [this.importPath, this.legacyImportPath];
+
+    for (const candidatePath of candidatePaths) {
+      try {
+        const files = await fs.readdir(candidatePath);
+        for (const file of files) {
+          await fs.unlink(path.join(candidatePath, file));
+        }
+        await fs.rmdir(candidatePath);
+      } catch (error) {
+        if (error?.code !== 'ENOENT') {
+          console.warn(chalk.yellow(`Warning: Could not clean import directory: ${error.message}`));
+        }
       }
-      await fs.rmdir(this.importPath);
-    } catch (error) {
-      console.warn(chalk.yellow(`Warning: Could not clean import directory: ${error.message}`));
     }
   }
 
@@ -702,12 +715,13 @@ export class AutoMigrator {
   showImportInstructions() {
     console.log(chalk.cyan('\n📁 To migrate existing AI rules:'));
     console.log(chalk.gray('1. Create the import directory:'));
-    console.log(chalk.gray('   mkdir -p .vdk/import'));
+    console.log(chalk.gray('   mkdir -p .vdk/migrate'));
     console.log(chalk.gray('\n2. Copy your existing rule files:'));
-    console.log(chalk.gray('   cp .cursorrules .vdk/import/'));
-    console.log(chalk.gray('   cp .claude/memory.md .vdk/import/'));
-    console.log(chalk.gray('   cp .github/copilot-instructions.json .vdk/import/'));
-    console.log(chalk.gray('   cp .windsurf/rules.xml .vdk/import/'));
+    console.log(chalk.gray('   cp .cursorrules .vdk/migrate/'));
+    console.log(chalk.gray('   cp .claude/memory.md .vdk/migrate/'));
+    console.log(chalk.gray('   cp .github/copilot-instructions.json .vdk/migrate/'));
+    console.log(chalk.gray('   cp .windsurf/rules.xml .vdk/migrate/'));
+    console.log(chalk.gray('\n   # Legacy path .vdk/import/ is still supported during transition'));
     console.log(chalk.gray('\n3. Run migration:'));
     console.log(chalk.gray('   vdk migrate'));
   }

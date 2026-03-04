@@ -180,12 +180,12 @@ describe('Advanced Scanner Components', () => {
 
   describe('Claude Code CLI Adapter', () => {
     it('should adapt content for Claude Code CLI', async () => {
-      const { ClaudeCodeCLIAdapter } = await import('../src/scanner/core/ClaudeCodeAdapter.js');
+      const { ClaudeCodeAdapter } = await import('../src/scanner/core/ClaudeCodeAdapter.js');
 
-      expect(ClaudeCodeCLIAdapter).toBeDefined();
+      expect(ClaudeCodeAdapter).toBeDefined();
 
-      if (typeof ClaudeCodeCLIAdapter === 'function') {
-        const adapter = new ClaudeCodeCLIAdapter();
+      if (typeof ClaudeCodeAdapter === 'function') {
+        const adapter = new ClaudeCodeAdapter();
         expect(adapter).toBeDefined();
       }
     });

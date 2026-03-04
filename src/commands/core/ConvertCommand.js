@@ -298,7 +298,7 @@ export class ConvertCommand extends BaseCommand {
     const name = path.basename(lower);
 
     // Known context files
-    const knownFiles = ['claude.md', '.cursorrules', 'copilot-instructions.md', '.windsurfrules'];
+    const knownFiles = ['claude.md', 'copilot-instructions.md'];
 
     if (knownFiles.some(f => name.includes(f))) return true;
 
@@ -360,7 +360,7 @@ export class ConvertCommand extends BaseCommand {
     this.logInfo('\nUsage examples:');
     this.logInfo('  vdk convert --input CLAUDE.md --to cursor');
     this.logInfo('  vdk convert --input .claude/ --to cursor github-copilot --output ./converted');
-    this.logInfo('  vdk convert --input .cursorrules --to claude-code --dry-run');
+    this.logInfo('  vdk convert --input .cursor/rules/index.mdc --to claude-code --dry-run');
     this.logInfo('  vdk convert --input ./project --all --show-loss');
     this.logInfo('\nSupported platforms:');
 

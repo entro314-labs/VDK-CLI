@@ -185,7 +185,7 @@ export class CreateCommand extends BaseCommand {
         'Maturity level (experimental, beta, stable, deprecated)',
         'beta'
       )
-      .option('-o, --output <path>', 'Output file path', './.vdk/rules')
+      .option('-o, --output <path>', 'Output file path', './.vdk/blueprints/rules')
       .option('--interactive', 'Interactive blueprint creation', false);
   }
 

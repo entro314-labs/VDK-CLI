@@ -83,9 +83,10 @@ describe('End-to-End Integration', () => {
       const config = {
         project: { name: 'test-project' },
         ide: 'claude-code-cli',
-        rulesPath: './.vdk/rules',
+        rulesPath: './.vdk/blueprints/rules',
         lastUpdated: new Date().toISOString(),
       };
+      await fs.mkdir(path.dirname(configPath), { recursive: true });
       await fs.writeFile(configPath, JSON.stringify(config, null, 2));
 
       const result2 = await runCLI(['status', '--configPath', configPath]);
@@ -164,7 +165,7 @@ describe('End-to-End Integration', () => {
         `
         import { utils } from './utils/helper.js';
         import Component from './components/Component.js';
-        
+
         const app = new Component();
         app.init();
         `
@@ -187,7 +188,7 @@ describe('End-to-End Integration', () => {
           constructor() {
             this.name = 'TestComponent';
           }
-          
+
           init() {
             console.log('Component initialized');
           }
@@ -240,17 +241,7 @@ describe('End-to-End Integration', () => {
   describe('Rule Management Workflows', () => {
     it('should handle rule validation workflow', async () => {
       const { validateBlueprint } = await import('../src/utils/schema-validator.js');
-
-      const validBlueprint = {
-        id: 'e2e-test-blueprint',
-        title: 'E2E Test Blueprint',
-        description: 'Blueprint for end-to-end testing',
-        version: '1.0.0',
-        category: 'task',
-        platforms: {
-          'claude-code-cli': { compatible: true },
-        },
-      };
+      const { validBlueprint } = await import('./helpers/test-fixtures.js');
 
       const result = await validateBlueprint(validBlueprint);
       expect(result.valid).toBe(true);
@@ -322,6 +313,7 @@ describe('End-to-End Integration', () => {
 
       // Create malformed JSON
       const configPath = path.join(tempDir, 'vdk.config.json');
+      await fs.mkdir(path.dirname(configPath), { recursive: true });
       await fs.writeFile(configPath, '{ invalid json content }');
 
       try {

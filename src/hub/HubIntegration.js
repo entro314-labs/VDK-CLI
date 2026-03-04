@@ -297,7 +297,7 @@ export class HubIntegration {
         team: options.team,
         blueprints: blueprints,
         metadata: {
-          ecosystemVersion: '2.0.0',
+          ecosystemVersion: '3.0.0',
           timestamp: new Date().toISOString(),
           cliVersion: this.getCliVersion(),
         },
@@ -545,7 +545,7 @@ export class HubIntegration {
    * Get CLI version
    */
   getCliVersion() {
-    return this.configManager?.getValue('cli.version', '2.0.0') || '2.0.0';
+    return this.configManager?.getValue('cli.version', '3.0.1') || '3.0.1';
   }
 
   /**

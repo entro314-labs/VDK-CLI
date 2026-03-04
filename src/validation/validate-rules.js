@@ -21,13 +21,13 @@ const __dirname = pathUtils.getDirname(__filename);
 // Rule repository paths
 const rulesRootDir = pathUtils.join(__dirname, '../..');
 const ruleDirectories = [
-  '.vdk/rules',
-  '.vdk/rules/assistants',
-  '.vdk/rules/languages',
-  '.vdk/rules/stacks',
-  '.vdk/rules/tasks',
-  '.vdk/rules/technologies',
-  '.vdk/rules/tools',
+  '.vdk/blueprints/rules',
+  '.vdk/blueprints/rules/assistants',
+  '.vdk/blueprints/rules/languages',
+  '.vdk/blueprints/rules/stacks',
+  '.vdk/blueprints/rules/tasks',
+  '.vdk/blueprints/rules/technologies',
+  '.vdk/blueprints/rules/tools',
 ];
 
 // Track all rule IDs to check for duplicates
