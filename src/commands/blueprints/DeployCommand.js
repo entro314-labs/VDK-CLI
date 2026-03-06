@@ -23,6 +23,12 @@ const CANONICAL_KINDS = new Set([
   'plugin-distribution',
 ]);
 
+function normalizeRepositoryIdentifier(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase();
+}
+
 export class DeployCommand extends BaseCommand {
   constructor() {
     super('deploy', 'Deploy blueprints to your project');
@@ -243,16 +249,11 @@ export class DeployCommand extends BaseCommand {
       return null;
     }
 
-    const normalize = value =>
-      String(value || '')
-        .trim()
-        .toLowerCase();
-
-    const target = normalize(requestedId);
+    const target = normalizeRepositoryIdentifier(requestedId);
 
     const directMatches = results.filter(item => {
-      const id = normalize(item?.metadata?.id);
-      const canonicalName = normalize(item?.retrieval?.canonicalName);
+      const id = normalizeRepositoryIdentifier(item?.metadata?.id);
+      const canonicalName = normalizeRepositoryIdentifier(item?.retrieval?.canonicalName);
       return id === target || canonicalName === target;
     });
 
@@ -522,14 +523,21 @@ export class DeployCommand extends BaseCommand {
   mapIntegrationToPlatformId(integrationName) {
     const mapping = {
       'Claude Code CLI': 'claude-code',
+      'Claude Desktop': 'claude-desktop',
       Cursor: 'cursor',
       Windsurf: 'windsurf',
+      'Windsurf Next': 'windsurf-next',
       'GitHub Copilot': 'github-copilot',
+      'VS Code': 'vscode',
+      'VS Code Insiders': 'vscode-insiders',
+      VSCodium: 'vscodium',
       Continue: 'continue',
       Aider: 'aider',
       'OpenAI Codex': 'openai-codex',
+      Codex: 'openai-codex',
       OpenCode: 'opencode',
       'Gemini CLI': 'gemini-cli',
+      Gemini: 'gemini-cli',
       Cline: 'cline',
       'Roo Code': 'roo-code',
       Goose: 'goose',
@@ -539,8 +547,10 @@ export class DeployCommand extends BaseCommand {
       'Mistral Vibe': 'mistral-vibe',
       Trae: 'trae',
       'JetBrains AI': 'jetbrains-ai',
+      'Zed Editor': 'zed',
       Zed: 'zed',
       Tabnine: 'tabnine',
+      ACP: 'acp',
     };
 
     return mapping[integrationName] || integrationName.toLowerCase().replace(/\s+/g, '-');

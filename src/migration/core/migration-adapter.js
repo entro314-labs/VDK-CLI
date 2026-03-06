@@ -32,6 +32,26 @@ export class MigrationAdapter {
         context: 'core',
         flows: 'task',
       },
+      'openai-codex': {
+        agents: 'assistant',
+        rules: 'core',
+      },
+      'gemini-cli': {
+        rules: 'core',
+        context: 'core',
+      },
+      opencode: {
+        agents: 'assistant',
+        rules: 'core',
+      },
+      'claude-skill': {
+        skill: 'assistant',
+        rules: 'assistant',
+      },
+      acp: {
+        context: 'core',
+        rules: 'core',
+      },
       'generic-ai': {
         default: 'core',
       },
@@ -111,6 +131,11 @@ export class MigrationAdapter {
       cursor: this.adaptCursor.bind(this),
       'github-copilot': this.adaptGitHubCopilot.bind(this),
       windsurf: this.adaptWindsurf.bind(this),
+      'openai-codex': this.adaptOpenAICodex.bind(this),
+      'gemini-cli': this.adaptGeminiCLI.bind(this),
+      opencode: this.adaptOpenCode.bind(this),
+      'claude-skill': this.adaptClaudeSkill.bind(this),
+      acp: this.adaptACP.bind(this),
       'generic-ai': this.adaptGenericAI.bind(this),
     };
 
@@ -248,6 +273,15 @@ export class MigrationAdapter {
               ? 'code-quality'
               : 'style',
         },
+        vscode: {
+          compatible: true,
+        },
+        'vscode-insiders': {
+          compatible: true,
+        },
+        vscodium: {
+          compatible: true,
+        },
         'claude-code-cli': {
           compatible: true,
           memory: true,
@@ -308,6 +342,119 @@ export class MigrationAdapter {
   }
 
   /**
+   * Adapt OpenAI Codex contexts
+   * @param {Object} context Codex context
+   * @param {Object} projectContext Project data
+   * @returns {Object} Adapted blueprint
+   */
+  async adaptOpenAICodex(context, projectContext) {
+    return {
+      category: this.inferCategory(context, projectContext),
+      content: this.organizeContent(context),
+      platforms: {
+        'openai-codex': {
+          compatible: true,
+        },
+        opencode: {
+          compatible: true,
+        },
+        goose: {
+          compatible: true,
+        },
+      },
+    };
+  }
+
+  /**
+   * Adapt Gemini contexts
+   * @param {Object} context Gemini context
+   * @param {Object} projectContext Project data
+   * @returns {Object} Adapted blueprint
+   */
+  async adaptGeminiCLI(context, projectContext) {
+    return {
+      category: this.inferCategory(context, projectContext),
+      content: this.organizeContent(context),
+      platforms: {
+        'gemini-cli': {
+          compatible: true,
+        },
+        'google-antigravity': {
+          compatible: true,
+        },
+      },
+    };
+  }
+
+  /**
+   * Adapt OpenCode contexts
+   * @param {Object} context OpenCode context
+   * @param {Object} projectContext Project data
+   * @returns {Object} Adapted blueprint
+   */
+  async adaptOpenCode(context, projectContext) {
+    return {
+      category: this.inferCategory(context, projectContext),
+      content: this.organizeContent(context),
+      platforms: {
+        opencode: {
+          compatible: true,
+        },
+        'openai-codex': {
+          compatible: true,
+        },
+      },
+    };
+  }
+
+  /**
+   * Adapt SKILL.md contexts
+   * @param {Object} context Skill context
+   * @param {Object} projectContext Project data
+   * @returns {Object} Adapted blueprint
+   */
+  async adaptClaudeSkill(context, projectContext) {
+    return {
+      category: 'assistant',
+      content: this.organizeContent(context),
+      platforms: {
+        'claude-code-cli': {
+          compatible: true,
+          memory: true,
+        },
+        cline: {
+          compatible: true,
+        },
+      },
+      tags: [...(this.extractTags(context, projectContext) || []), 'skill'],
+    };
+  }
+
+  /**
+   * Adapt ACP contexts
+   * @param {Object} context ACP context
+   * @param {Object} projectContext Project data
+   * @returns {Object} Adapted blueprint
+   */
+  async adaptACP(context, projectContext) {
+    return {
+      category: this.inferCategory(context, projectContext),
+      content: this.organizeContent(context),
+      platforms: {
+        acp: {
+          compatible: true,
+        },
+        zed: {
+          compatible: true,
+        },
+        'openai-codex': {
+          compatible: true,
+        },
+      },
+    };
+  }
+
+  /**
    * Adapt context as a command
    * @param {Object} context Context to adapt
    * @param {Object} commandOptions Command options
@@ -349,7 +496,9 @@ export class MigrationAdapter {
       .replace(/^-|-$/g, '');
 
     const sourcePrefix = context.type.split('-')[0]; // e.g., 'claude' from 'claude-code-cli'
-    return `${sourcePrefix}-${sanitized}` || `migrated-${Date.now()}`;
+    const safePrefix = sourcePrefix || 'migrated';
+    const safeName = sanitized || String(Date.now());
+    return `${safePrefix}-${safeName}`;
   }
 
   extractTitle(context) {
@@ -479,6 +628,7 @@ export class MigrationAdapter {
       cursor: 'cursor',
       'github-copilot': 'github-copilot',
       windsurf: 'windsurf',
+      acp: 'acp',
     };
 
     const originalPlatform = platformMap[context.type];

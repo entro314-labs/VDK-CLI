@@ -1330,7 +1330,9 @@ ${await this.generateExternalServices(rules, projectContext)}
    * Fetch commands from VDK-Blueprints repository
    */
   async fetchRemoteCommands(platform, projectContext) {
-    const VDK_RULES_REPO_API_URL = 'https://api.github.com/repos/vdkit/VDK-Blueprints';
+    const VDK_RULES_REPO_API_URL =
+      process.env.VDK_BLUEPRINTS_REPOSITORY_ENDPOINT ||
+      'https://api.github.com/repos/vdkit/VDK-Blueprints';
     const commands = [];
 
     try {

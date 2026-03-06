@@ -1,4 +1,8 @@
 import { createIR, trackConversionLoss } from '../../ir/types.js';
+import {
+  normalizePlatformId,
+  resolveBlueprintPlatformConfig,
+} from '../../shared/platform-resolution.js';
 
 const COMPONENT_KEY_TO_IR_TYPE = {
   main: 'main',
@@ -15,9 +19,15 @@ const COMPONENT_KEY_TO_IR_TYPE = {
 
 const PLATFORM_COMPONENT_SUPPORT = {
   'claude-code': new Set(['main', 'agent', 'rule', 'command', 'skill', 'settings']),
+  'claude-desktop': new Set(['main', 'agent', 'rule', 'command', 'skill', 'settings']),
   cursor: new Set(['main', 'rule']),
   windsurf: new Set(['rule', 'workflow']),
+  'windsurf-next': new Set(['rule', 'workflow']),
   'github-copilot': new Set(['main', 'rule']),
+  vscode: new Set(['main', 'rule', 'settings']),
+  'vscode-insiders': new Set(['main', 'rule', 'settings']),
+  'vs-code-insiders': new Set(['main', 'rule', 'settings']),
+  vscodium: new Set(['main', 'rule', 'settings']),
   continue: new Set(['settings', 'command', 'rule', 'main']),
   aider: new Set(['settings', 'main', 'rule']),
   'openai-codex': new Set(['main', 'agent', 'rule']),
@@ -26,27 +36,27 @@ const PLATFORM_COMPONENT_SUPPORT = {
   'kimi-cli': new Set(['main', 'settings', 'rule']),
   'mistral-vibe': new Set(['main', 'agent', 'settings', 'rule']),
   trae: new Set(['main', 'settings', 'rule']),
+  opencode: new Set(['main', 'rule', 'skill', 'settings']),
   'jetbrains-ai': new Set(['settings', 'rule']),
   zed: new Set(['settings', 'rule']),
   tabnine: new Set(['rule', 'settings', 'main']),
+  acp: new Set(['main', 'agent', 'rule', 'settings']),
 };
-
-function normalizePlatformId(platformId) {
-  return String(platformId || '')
-    .toLowerCase()
-    .trim();
-}
 
 export class EquivalenceEvaluator {
   evaluateBlueprintForPlatform(blueprint, targetPlatform) {
-    const platformId = normalizePlatformId(targetPlatform);
-    const platformConfig = blueprint?.platforms?.[platformId];
+    const requestedPlatform = normalizePlatformId(targetPlatform);
+    const resolution = resolveBlueprintPlatformConfig(blueprint, requestedPlatform);
+    const platformId = resolution.matchedPlatform || requestedPlatform;
+    const platformConfig = resolution.platformConfig;
 
     if (!platformConfig) {
       return {
         outcome: 'unsupported',
-        targetPlatform: platformId,
-        reason: `Blueprint has no platform config for ${platformId}`,
+        targetPlatform: requestedPlatform,
+        reason: `Blueprint has no platform config for ${requestedPlatform} (checked: ${resolution.candidates.join(', ')})`,
+        resolvedPlatform: null,
+        usedAliasFallback: false,
         supportedComponents: [],
         unsupportedComponents: [],
         lossItems: [],
@@ -58,15 +68,20 @@ export class EquivalenceEvaluator {
     if (extractedComponents.length === 0) {
       return {
         outcome: 'unsupported',
-        targetPlatform: platformId,
+        targetPlatform: requestedPlatform,
         reason: `No enabled components found for ${platformId}`,
+        resolvedPlatform: platformId,
+        usedAliasFallback: resolution.matchedViaAlias,
         supportedComponents: [],
         unsupportedComponents: [],
         lossItems: [],
       };
     }
 
-    const supportedTypes = PLATFORM_COMPONENT_SUPPORT[platformId] || null;
+    const supportedTypes =
+      PLATFORM_COMPONENT_SUPPORT[requestedPlatform] ||
+      PLATFORM_COMPONENT_SUPPORT[platformId] ||
+      null;
     const supportedComponents = [];
     const unsupportedComponents = [];
     const lossItems = [];
@@ -102,8 +117,10 @@ export class EquivalenceEvaluator {
     if (supportedComponents.length === 0) {
       return {
         outcome: 'unsupported',
-        targetPlatform: platformId,
+        targetPlatform: requestedPlatform,
         reason: `All blueprint components are unsupported on ${platformId}`,
+        resolvedPlatform: platformId,
+        usedAliasFallback: resolution.matchedViaAlias,
         supportedComponents,
         unsupportedComponents,
         lossItems,
@@ -114,9 +131,11 @@ export class EquivalenceEvaluator {
 
     return {
       outcome: hasLoss ? 'lossy' : 'lossless',
-      targetPlatform: platformId,
+      targetPlatform: requestedPlatform,
+      resolvedPlatform: platformId,
+      usedAliasFallback: resolution.matchedViaAlias,
       reason: hasLoss
-        ? `Deployable with losses (${lossItems.length} conversion loss, ${unsupportedComponents.length} unsupported component)`
+        ? `Deployable with losses (${lossItems.length} conversion loss, ${unsupportedComponents.length} unsupported component${resolution.matchedViaAlias ? `, fallback from ${requestedPlatform} to ${platformId}` : ''})`
         : 'No semantic loss detected',
       supportedComponents,
       unsupportedComponents,

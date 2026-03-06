@@ -26,13 +26,45 @@ export class RuleDetector {
         confidence: 'high',
       },
       'github-copilot': {
-        patterns: ['.github/copilot/**/*', '.copilotrc*', '.github/copilot.*'],
+        patterns: [
+          '.github/copilot/**/*',
+          '.copilotrc*',
+          '.github/copilot.*',
+          '.github/copilot-instructions.md',
+          '**/copilot-instructions.md',
+          '**/COPILOT.md',
+        ],
         indicators: ['copilot', 'github.com', 'pull_request_template', 'review'],
         confidence: 'medium',
       },
       windsurf: {
         patterns: ['.windsurf/**/*', '.windsurfrc', 'windsurf.config.*'],
         indicators: ['windsurf', 'cascade', 'codeium'],
+        confidence: 'high',
+      },
+      'openai-codex': {
+        patterns: ['AGENTS.md', '**/AGENTS.md', '.codex/**/*', '.openai/config.toml'],
+        indicators: ['agents.md', 'codex', '.codex', 'openai'],
+        confidence: 'high',
+      },
+      'gemini-cli': {
+        patterns: ['GEMINI.md', '**/GEMINI.md', '.gemini/**/*'],
+        indicators: ['gemini', '.gemini', 'google'],
+        confidence: 'high',
+      },
+      opencode: {
+        patterns: ['opencode.json', '.opencode/**/*', '**/AGENTS.md'],
+        indicators: ['opencode', '.opencode', 'agents.md'],
+        confidence: 'medium',
+      },
+      'claude-skill': {
+        patterns: ['**/SKILL.md', '**/skill.md', '.claude/skills/**/*'],
+        indicators: ['skill.md', 'name:', 'description:'],
+        confidence: 'medium',
+      },
+      acp: {
+        patterns: ['.acp/**/*', 'ACP.md', '**/ACP.md'],
+        indicators: ['.acp', 'acp', 'agent-client-protocol'],
         confidence: 'high',
       },
       'generic-ai': {
@@ -102,6 +134,25 @@ export class RuleDetector {
     const lowerFileName = fileName.toLowerCase();
     const lowerDirName = dirName.toLowerCase();
 
+    // Prioritize explicit file-name standards first
+    if (fileName === 'CLAUDE.md') return 'claude-code-cli';
+    if (fileName === 'AGENTS.md') {
+      if (lowerDirName.includes('.opencode')) return 'opencode';
+      return 'openai-codex';
+    }
+    if (fileName === 'GEMINI.md') return 'gemini-cli';
+    if (fileName === 'ACP.md' || fileName === 'acp.md') return 'acp';
+    if (fileName === 'COPILOT.md' || fileName === 'copilot-instructions.md') {
+      return 'github-copilot';
+    }
+    if (fileName === 'manifest.json' && lowerFilePath.includes('/.acp/')) return 'acp';
+    if (fileName === 'SKILL.md' || fileName === 'skill.md') return 'claude-skill';
+    if (['.cursorrules', 'cursorrules', '.cursor-rules'].includes(fileName)) return 'cursor';
+    if (fileName.startsWith('.copilotrc')) return 'github-copilot';
+    if (fileName.startsWith('.windsurfrc') || fileName.startsWith('windsurf.config')) {
+      return 'windsurf';
+    }
+
     // Check for specific patterns
     for (const [type, config] of Object.entries(this.contextPatterns)) {
       for (const indicator of config.indicators) {
@@ -115,18 +166,16 @@ export class RuleDetector {
       }
     }
 
-    // Check for specific file names
-    if (fileName === 'CLAUDE.md') return 'claude-code-cli';
-    if (['.cursorrules', 'cursorrules', '.cursor-rules'].includes(fileName)) return 'cursor';
-    if (fileName.startsWith('.copilotrc')) return 'github-copilot';
-    if (fileName.startsWith('.windsurfrc') || fileName.startsWith('windsurf.config'))
-      return 'windsurf';
-
     // Check directory-based detection
     if (lowerDirName.includes('.claude')) return 'claude-code-cli';
     if (lowerDirName.includes('.cursor')) return 'cursor';
     if (lowerDirName.includes('copilot')) return 'github-copilot';
     if (lowerDirName.includes('.windsurf')) return 'windsurf';
+    if (lowerDirName.includes('.gemini')) return 'gemini-cli';
+    if (lowerDirName.includes('.opencode')) return 'opencode';
+    if (lowerDirName.includes('.codex')) return 'openai-codex';
+    if (lowerDirName.includes('.acp')) return 'acp';
+    if (lowerDirName.includes('skills')) return 'claude-skill';
     if (lowerDirName.includes('.ai') || lowerDirName.includes('prompts')) return 'generic-ai';
 
     return null;
@@ -185,6 +234,21 @@ export class RuleDetector {
       case 'windsurf':
         analysis.windsurfSpecific = this.analyzeWindsurfContent(content);
         break;
+      case 'openai-codex':
+        analysis.codexSpecific = this.analyzeCodexContent(content);
+        break;
+      case 'gemini-cli':
+        analysis.geminiSpecific = this.analyzeGeminiContent(content);
+        break;
+      case 'opencode':
+        analysis.opencodeSpecific = this.analyzeCodexContent(content);
+        break;
+      case 'claude-skill':
+        analysis.skillSpecific = this.analyzeSkillContent(content);
+        break;
+      case 'acp':
+        analysis.acpSpecific = this.analyzeACPContent(content);
+        break;
     }
 
     return analysis;
@@ -224,6 +288,11 @@ export class RuleDetector {
       cursor: ['@', 'cursor:', 'ctrl+', 'cmd+'],
       'github-copilot': ['copilot:', 'gh ', 'github.com'],
       windsurf: ['cascade:', 'windsurf:', 'agent:'],
+      'openai-codex': ['codex', 'agents.md', 'tool', 'constraint'],
+      'gemini-cli': ['gemini', '.gemini', 'styleguide', 'settings.json'],
+      opencode: ['opencode', 'opencode.json', 'agents.md'],
+      'claude-skill': ['name:', 'description:', 'skill'],
+      acp: ['acp', '.acp', 'manifest', 'context'],
       'generic-ai': ['/command', '!', 'run:', 'execute:'],
     };
 
@@ -414,6 +483,58 @@ export class RuleDetector {
   }
 
   /**
+   * Analyze OpenAI Codex / AGENTS.md specific content
+   * @param {string} content File content
+   * @returns {Object} Codex-specific analysis
+   */
+  analyzeCodexContent(content) {
+    return {
+      hasAgentsStructure: /##\s+(project context|code standards|architecture)/i.test(content),
+      hasToolConstraints: /tool|tools|constraint|allowed/i.test(content),
+      hasBuildCommands: /build|test|lint/i.test(content),
+    };
+  }
+
+  /**
+   * Analyze Gemini-specific content
+   * @param {string} content File content
+   * @returns {Object} Gemini-specific analysis
+   */
+  analyzeGeminiContent(content) {
+    return {
+      hasGeminiImports: content.includes('@.gemini/'),
+      hasStyleGuideSections: /##\s+(code style|testing|architecture)/i.test(content),
+      hasPromptContext: /context|guideline|instruction/i.test(content),
+    };
+  }
+
+  /**
+   * Analyze SKILL.md style content
+   * @param {string} content File content
+   * @returns {Object} Skill-specific analysis
+   */
+  analyzeSkillContent(content) {
+    return {
+      hasSkillFrontmatter: content.startsWith('---') && /name:|description:/i.test(content),
+      hasUsageTriggers: /use when|trigger|when to use/i.test(content),
+      hasReferenceLinks: /references?\//i.test(content),
+    };
+  }
+
+  /**
+   * Analyze ACP-specific content
+   * @param {string} content File content
+   * @returns {Object} ACP-specific analysis
+   */
+  analyzeACPContent(content) {
+    return {
+      hasManifestFields: /protocol|schemaVersion|entries/i.test(content),
+      hasStructuredEntries: /entries|context|kind/i.test(content),
+      hasProtocolHints: /acp|agent-client-protocol/i.test(content),
+    };
+  }
+
+  /**
    * Calculate confidence score for detection
    * @param {string} contextType Context type
    * @param {string} fileName File name
@@ -438,6 +559,7 @@ export class RuleDetector {
     if (fileName === 'CLAUDE.md' && contextType === 'claude-code-cli') score += 20;
     if (['.cursorrules', 'cursorrules'].includes(fileName) && contextType === 'cursor') score += 20;
     if (fileName.startsWith('.copilotrc') && contextType === 'github-copilot') score += 15;
+    if ((fileName === 'ACP.md' || fileName === 'acp.md') && contextType === 'acp') score += 20;
 
     // Boost for content indicators
     const indicators = config.indicators || [];
@@ -468,6 +590,11 @@ export class RuleDetector {
       cursor: 'Cursor',
       'github-copilot': 'GitHub Copilot',
       windsurf: 'Windsurf',
+      'openai-codex': 'OpenAI Codex',
+      'gemini-cli': 'Gemini CLI',
+      opencode: 'OpenCode',
+      'claude-skill': 'Claude Skill',
+      acp: 'ACP (Agent Client Protocol)',
       'generic-ai': 'Generic AI',
     };
 

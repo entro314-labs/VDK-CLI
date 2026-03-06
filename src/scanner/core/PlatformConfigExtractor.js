@@ -121,6 +121,7 @@ export class PlatformConfigExtractor {
       'JetBrains IDEs': ['.idea/', '*.iml'],
       'Zed Editor': ['.zed/'],
       'Claude Code CLI': ['CLAUDE.md', '.claude/'],
+      ACP: ['.acp/manifest.json', '.acp/context/'],
     };
 
     for (const [ideName, files] of Object.entries(projectIndicators)) {
@@ -197,6 +198,13 @@ export class PlatformConfigExtractor {
       Windsurf: 'windsurf',
       'Claude Code CLI': 'claude',
       'GitHub Copilot': 'github-copilot',
+      ACP: 'acp',
+      'OpenAI Codex': 'openai-codex',
+      OpenCode: 'opencode',
+      'Gemini CLI': 'gemini-cli',
+      'Google Antigravity': 'google-antigravity',
+      'VS Code Insiders': 'vscode-insiders',
+      VSCodium: 'vscodium',
     };
 
     return mapping[integrationName] || 'generic';
@@ -226,6 +234,9 @@ export class PlatformConfigExtractor {
       case 'GitHub Copilot':
         return path.join(projectRoot, '.github', 'copilot');
 
+      case 'ACP':
+        return path.join(projectRoot, '.acp', 'context');
+
       default:
         return path.join(projectRoot, '.ai', 'rules');
     }
@@ -246,6 +257,8 @@ export class PlatformConfigExtractor {
         return 'md'; // Pure markdown for memory
       case 'GitHub Copilot':
         return 'json'; // JSON configuration
+      case 'ACP':
+        return 'markdown+json'; // ACP context + manifest
       default:
         return 'md';
     }

@@ -64,6 +64,7 @@ export class IntegrationManager {
       './openai-codex-integration.js',
       './opencode-integration.js',
       './gemini-cli-integration.js',
+      './acp-integration.js',
       './continue-integration.js',
       './aider-integration.js',
       './cline-integration.js',
@@ -557,6 +558,7 @@ export class IntegrationManager {
       'Kimi CLI',
       'Mistral Vibe',
       'Trae',
+      'ACP',
     ];
     return contextPlatforms.includes(name);
   }

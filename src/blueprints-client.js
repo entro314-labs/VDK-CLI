@@ -22,7 +22,9 @@ import { blueprintRetrievalEngine } from './blueprints/retrieval/BlueprintRetrie
 import { resolveCanonicalKind } from './shared/canonical-kind.js';
 import { validateBlueprint } from './utils/schema-validator.js';
 
-const VDK_BLUEPRINTS_BASE_URL = 'https://api.github.com/repos/vdkit/VDK-Blueprints/contents';
+const VDK_BLUEPRINTS_BASE_URL =
+  process.env.VDK_BLUEPRINTS_CONTENTS_URL ||
+  'https://api.github.com/repos/vdkit/VDK-Blueprints/contents';
 
 const CACHE_TTL_MS = 30_000;
 const cacheStore = new Map();

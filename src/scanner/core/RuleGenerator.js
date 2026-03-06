@@ -74,7 +74,19 @@ export class RuleGenerator {
     };
 
     // Default mappings
-    ['cursor', 'windsurf', 'github-copilot', 'zed', 'vscode'].forEach(ide => {
+    [
+      'cursor',
+      'windsurf',
+      'github-copilot',
+      'zed',
+      'vscode',
+      'vscode-insiders',
+      'vscodium',
+      'openai-codex',
+      'gemini-cli',
+      'opencode',
+      'acp',
+    ].forEach(ide => {
       this.ruleAdapters[ide] = this.ruleAdapter;
     });
   }

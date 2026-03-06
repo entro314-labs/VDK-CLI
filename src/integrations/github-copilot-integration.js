@@ -62,6 +62,7 @@ export class GitHubCopilotIntegration extends BaseIntegration {
         '.github',
         'copilot-instructions.md'
       ),
+      'Found COPILOT.md': path.join(this.projectPath, 'COPILOT.md'),
     };
 
     this.checkPaths(detection, projectPaths, 'high', true); // isProjectSpecific = true

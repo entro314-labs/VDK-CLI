@@ -22,6 +22,7 @@ export class GeminiCLIIntegration extends BaseIntegration {
 
   getConfigPaths() {
     return {
+      projectMainMemory: path.join(this.projectPath, 'GEMINI.md'),
       projectSettings: path.join(this.geminiConfigPath, 'settings.json'),
       projectStyleguide: path.join(this.geminiConfigPath, 'styleguide.md'),
     };
@@ -34,6 +35,7 @@ export class GeminiCLIIntegration extends BaseIntegration {
     this.checkPaths(
       detection,
       {
+        'Found GEMINI.md': paths.projectMainMemory,
         'Project has .gemini directory': this.geminiConfigPath,
         'Found .gemini/settings.json': paths.projectSettings,
         'Found .gemini/styleguide.md': paths.projectStyleguide,
@@ -132,7 +134,7 @@ ${options.description || 'Project architecture guidelines'}
 
   getComponentPaths() {
     return {
-      main: path.join(this.geminiConfigPath, 'styleguide.md'),
+      main: path.join(this.projectPath, 'GEMINI.md'),
       agents: null, // Gemini uses ReAct loop, not separate agents
       rules: path.join(this.geminiConfigPath, 'styleguide.md'), // Rules in styleguide
       commands: null,
@@ -187,15 +189,19 @@ ${options.description || 'Project architecture guidelines'}
     };
 
     try {
-      // Generate styleguide.md (merges rules and main content)
+      // Generate GEMINI.md main context file
       if (components.main || (components.rules && components.rules.length > 0)) {
         try {
           const styleguideContent = components.main?.content || '';
+          const geminiMainPath = path.join(this.projectPath, 'GEMINI.md');
           const styleguidePathFile = path.join(this.geminiConfigPath, 'styleguide.md');
+
+          await fs.promises.writeFile(geminiMainPath, styleguideContent, 'utf8');
           await fs.promises.writeFile(styleguidePathFile, styleguideContent, 'utf8');
-          result.files.push({ type: 'main', path: styleguidePathFile });
+          result.files.push({ type: 'main', path: geminiMainPath });
+          result.files.push({ type: 'rules', path: styleguidePathFile });
         } catch (error) {
-          result.errors.push(`Failed to generate styleguide.md: ${error.message}`);
+          result.errors.push(`Failed to generate GEMINI.md/styleguide.md: ${error.message}`);
         }
       }
 

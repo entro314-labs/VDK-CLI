@@ -15,7 +15,9 @@ export class BlueprintLoader {
     this.projectPath = options.projectPath || process.cwd();
     this.enableRemoteFetch = options.enableRemoteFetch !== false;
     this.repositoryEndpoint =
-      options.repositoryEndpoint || 'https://api.github.com/repos/vdkit/VDK-Blueprints';
+      process.env.VDK_BLUEPRINTS_REPOSITORY_ENDPOINT ||
+      options.repositoryEndpoint ||
+      'https://api.github.com/repos/vdkit/VDK-Blueprints';
     this.ecosystemVersion = options.ecosystemVersion || '3.0.0';
     this.schemaValidation = options.schemaValidation !== false;
     this.technologyMapper = technologyMapper;
@@ -67,7 +69,7 @@ export class BlueprintLoader {
 
     let rulesDir = null;
 
-    for (const candidate of [...new Set(candidateRuleDirs)]) {
+    for (const candidate of new Set(candidateRuleDirs)) {
       try {
         const stats = await fs.stat(candidate);
         if (stats.isDirectory()) {

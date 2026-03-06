@@ -13,10 +13,16 @@ export class ContextConverter {
   constructor() {
     // Conversion strategy mapping
     this.conversionStrategies = {
+      'claude-code-cli': this.convertClaudeCode.bind(this),
       'claude-code': this.convertClaudeCode.bind(this),
       cursor: this.convertCursor.bind(this),
       'github-copilot': this.convertGitHubCopilot.bind(this),
       windsurf: this.convertWindsurf.bind(this),
+      'openai-codex': this.convertOpenAICodex.bind(this),
+      'gemini-cli': this.convertGeminiCLI.bind(this),
+      opencode: this.convertOpenCode.bind(this),
+      'claude-skill': this.convertClaudeSkill.bind(this),
+      acp: this.convertACP.bind(this),
       'generic-ai': this.convertGenericAI.bind(this),
     };
   }
@@ -121,6 +127,15 @@ export class ContextConverter {
           priority: copilotSpecific?.hasSecurityRules ? 9 : 7,
           reviewType,
         },
+        vscode: {
+          compatible: true,
+        },
+        'vscode-insiders': {
+          compatible: true,
+        },
+        vscodium: {
+          compatible: true,
+        },
         'claude-code': {
           compatible: true,
           memory: true,
@@ -174,6 +189,133 @@ export class ContextConverter {
           activation: 'manual',
         },
       },
+    });
+  }
+
+  /**
+   * Convert OpenAI Codex / AGENTS.md contexts
+   * @param {Object} context Codex context
+   * @returns {Object} VDK blueprint
+   */
+  async convertOpenAICodex(context) {
+    const { bodyContent } = context;
+
+    return this.convertToBlueprint(context, {
+      category: this.inferCategory(bodyContent),
+      platforms: {
+        'openai-codex': {
+          compatible: true,
+          enabled: true,
+        },
+        opencode: {
+          compatible: true,
+          enabled: true,
+        },
+        goose: {
+          compatible: true,
+          enabled: true,
+        },
+      },
+    });
+  }
+
+  /**
+   * Convert Gemini contexts
+   * @param {Object} context Gemini context
+   * @returns {Object} VDK blueprint
+   */
+  async convertGeminiCLI(context) {
+    const { bodyContent } = context;
+
+    return this.convertToBlueprint(context, {
+      category: this.inferCategory(bodyContent),
+      platforms: {
+        'gemini-cli': {
+          compatible: true,
+          enabled: true,
+        },
+        'google-antigravity': {
+          compatible: true,
+          enabled: true,
+        },
+      },
+    });
+  }
+
+  /**
+   * Convert OpenCode contexts
+   * @param {Object} context OpenCode context
+   * @returns {Object} VDK blueprint
+   */
+  async convertOpenCode(context) {
+    const { bodyContent } = context;
+
+    return this.convertToBlueprint(context, {
+      category: this.inferCategory(bodyContent),
+      platforms: {
+        opencode: {
+          compatible: true,
+          enabled: true,
+        },
+        'openai-codex': {
+          compatible: true,
+          enabled: true,
+        },
+      },
+    });
+  }
+
+  /**
+   * Convert SKILL.md contexts
+   * @param {Object} context Skill context
+   * @returns {Object} VDK blueprint
+   */
+  async convertClaudeSkill(context) {
+    const { bodyContent } = context;
+
+    return this.convertToBlueprint(context, {
+      category: 'assistant',
+      subcategory: 'skill',
+      platforms: {
+        'claude-code': {
+          compatible: true,
+          enabled: true,
+        },
+        cline: {
+          compatible: true,
+          enabled: true,
+        },
+      },
+      scope: 'project',
+      complexity: this.inferComplexity(bodyContent),
+    });
+  }
+
+  /**
+   * Convert ACP contexts
+   * @param {Object} context ACP context
+   * @returns {Object} VDK blueprint
+   */
+  async convertACP(context) {
+    const { bodyContent } = context;
+
+    return this.convertToBlueprint(context, {
+      category: this.inferCategory(bodyContent),
+      platforms: {
+        acp: {
+          compatible: true,
+          enabled: true,
+        },
+        zed: {
+          compatible: true,
+          enabled: true,
+        },
+        'openai-codex': {
+          compatible: true,
+          enabled: true,
+        },
+      },
+      scope: 'project',
     });
   }
 
@@ -290,8 +432,6 @@ export class ContextConverter {
    * @returns {Object} Memory blueprint
    */
   convertToMemoryBlueprint(context) {
-    const {} = context;
-
     return this.convertToBlueprint(context, {
       category: 'core',
       scope: 'project',
@@ -844,6 +984,29 @@ export class ContextConverter {
           };
         }
         break;
+
+      case 'acp':
+        if (componentType === 'main') {
+          components.main = {
+            type: 'acp-main',
+            location: 'ACP.md',
+            enabled: true,
+          };
+        } else if (componentType === 'agent' || componentType === 'rule') {
+          components.rules = {
+            type: 'acp-context',
+            location: '.acp/context/',
+            enabled: true,
+            manifests: [
+              {
+                name: context.fileName,
+                file: `${context.fileName}.md`,
+                enabled: true,
+              },
+            ],
+          };
+        }
+        break;
     }
 
     return components;
@@ -867,7 +1030,12 @@ export class ContextConverter {
     if (fileName.includes('rule') || fileName.includes('.cursorrules')) {
       return 'rule';
     }
-    if (fileName === 'claude.md' || fileName === 'gemini.md' || fileName === 'agents.md') {
+    if (
+      fileName === 'claude.md' ||
+      fileName === 'gemini.md' ||
+      fileName === 'agents.md' ||
+      fileName === 'acp.md'
+    ) {
       return 'main';
     }
 
@@ -895,6 +1063,33 @@ export class ContextConverter {
         rules: '.windsurf/rules/',
         workflows: '.windsurf/workflows/',
       },
+      'github-copilot': {
+        rules: '.github/',
+      },
+      vscode: {
+        rules: '.vscode/ai-rules/',
+      },
+      'vscode-insiders': {
+        rules: '.vscode-insiders/ai-rules/',
+      },
+      vscodium: {
+        rules: '.vscode-oss/ai-rules/',
+      },
+      'openai-codex': {
+        rules: '.',
+      },
+      'gemini-cli': {
+        rules: '.gemini/context/',
+      },
+      opencode: {
+        rules: '.opencode/skills/',
+      },
+      acp: {
+        rules: '.acp/context/',
+        agents: '.acp/agents/',
+        commands: '.acp/commands/',
+        skills: '.acp/skills/',
+      },
     };
 
     return locations[platform]?.[componentType] || `.${platform}/${componentType}/`;
@@ -912,6 +1107,7 @@ export class ContextConverter {
       'github-copilot': '.github/copilot-instructions.md',
       'gemini-cli': 'GEMINI.md',
       'openai-codex': 'AGENTS.md',
+      acp: 'ACP.md',
     };
 
     return locations[platform] || `${platform.toUpperCase()}.md`;
@@ -924,13 +1120,18 @@ export class ContextConverter {
    */
   getCompatiblePlatforms(sourcePlatform) {
     // All platforms can convert to these
-    const universal = ['cursor', 'windsurf'];
+    const universal = ['cursor', 'windsurf', 'claude-code', 'github-copilot'];
 
     // Platform-specific additions
     const specific = {
       'claude-code': ['github-copilot'],
       cursor: ['claude-code', 'windsurf'],
       windsurf: ['claude-code', 'cursor'],
+      'github-copilot': ['vscode', 'vscode-insiders', 'vscodium'],
+      'openai-codex': ['opencode', 'goose'],
+      'gemini-cli': ['google-antigravity'],
+      opencode: ['openai-codex'],
+      acp: ['zed', 'openai-codex', 'opencode'],
     };
 
     return [...universal, ...(specific[sourcePlatform] || [])];

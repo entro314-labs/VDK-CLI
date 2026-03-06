@@ -12,6 +12,7 @@
 
 // CLI Platform Integrations (Priority 1 - HIGH)
 import { AiderIntegration } from './aider-integration.js';
+import { ACPIntegration } from './acp-integration.js';
 import { AntigravityIntegration } from './antigravity-integration.js';
 // Context Platform Integrations (Priority 1 - HIGH)
 import { ClaudeCodeCLIIntegration } from './claude-code-integration.js';
@@ -37,6 +38,7 @@ import { ZedIntegration } from './zed-integration.js';
 
 // CLI Platform Integrations (Priority 1 - HIGH)
 export { AiderIntegration } from './aider-integration.js';
+export { ACPIntegration } from './acp-integration.js';
 export { AntigravityIntegration } from './antigravity-integration.js';
 export { BaseIntegration } from './base-integration.js';
 // Context Platform Integrations (Priority 1 - HIGH)
@@ -76,6 +78,7 @@ export function createIntegrationManager(projectPath = process.cwd()) {
   manager.register(new OpenAICodexIntegration(projectPath));
   manager.register(new OpenCodeIntegration(projectPath));
   manager.register(new GeminiCLIIntegration(projectPath));
+  manager.register(new ACPIntegration(projectPath));
   manager.register(new ContinueIntegration(projectPath));
   manager.register(new AiderIntegration(projectPath));
   manager.register(new ClineIntegration(projectPath));

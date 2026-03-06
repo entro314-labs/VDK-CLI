@@ -16,6 +16,10 @@ import path from 'node:path';
 
 import chalk from 'chalk';
 import IR, { createIR } from '../../ir/index.js'; // Import VDK IR System
+import {
+  normalizePlatformId,
+  resolveBlueprintPlatformConfig,
+} from '../../shared/platform-resolution.js';
 import { generateCursorFilename } from '../../utils/filename-generator.js';
 
 export class RuleAdapter {
@@ -326,6 +330,22 @@ export class RuleAdapter {
         },
       },
 
+      acp: {
+        manifest: {
+          location: '.acp/manifest.json',
+          format: 'json',
+          schemaVersion: '1.0.0',
+        },
+        context: {
+          location: '.acp/context/',
+          format: 'markdown',
+        },
+        agents: {
+          location: '.acp/agents/',
+          format: 'markdown',
+        },
+      },
+
       tabnine: {
         guidelines: {
           location: '.tabnine/guidelines/',
@@ -449,15 +469,20 @@ export class RuleAdapter {
       throw new Error(`Blueprint must be schema v3.0, got ${blueprint.schemaVersion}`);
     }
 
-    const platformConfig = blueprint.platforms?.[targetPlatform];
+    const requestedPlatform = normalizePlatformId(targetPlatform);
+    const resolution = resolveBlueprintPlatformConfig(blueprint, requestedPlatform);
+    const platformConfig = resolution.platformConfig;
+
     if (!platformConfig) {
-      throw new Error(`No configuration for platform ${targetPlatform} in blueprint`);
+      throw new Error(
+        `No configuration for platform ${requestedPlatform} in blueprint (checked: ${resolution.candidates.join(', ')})`
+      );
     }
 
     const rules = this.extractCanonicalRulesFromComponents(platformConfig.components, blueprint);
 
     if (rules.length === 0) {
-      throw new Error(`No enabled components found for platform ${targetPlatform}`);
+      throw new Error(`No enabled components found for platform ${resolution.matchedPlatform}`);
     }
 
     // Extract project context from blueprint metadata
@@ -465,10 +490,121 @@ export class RuleAdapter {
       name: blueprint.title,
       description: blueprint.description,
       category: blueprint.category,
+      targetPlatform: requestedPlatform,
+      sourcePlatform: resolution.matchedPlatform,
       ...blueprint.metadata,
     };
 
-    return await this.adaptRules(rules, targetPlatform, projectContext, platformConfig);
+    const adapterTargetPlatform = this.resolveAdapterTargetPlatform(
+      requestedPlatform,
+      resolution.matchedPlatform
+    );
+
+    const adapted = await this.adaptRules(
+      rules,
+      adapterTargetPlatform,
+      projectContext,
+      platformConfig
+    );
+
+    if (
+      resolution.matchedViaAlias &&
+      adapterTargetPlatform === requestedPlatform &&
+      this.shouldWarnOnPlatformFallback(requestedPlatform, resolution.matchedPlatform)
+    ) {
+      adapted.warnings = [
+        ...(adapted.warnings || []),
+        `Using fallback platform config '${resolution.matchedPlatform}' for target '${requestedPlatform}'`,
+      ];
+    }
+
+    return adapted;
+  }
+
+  /**
+   * Resolve adapter execution target when a platform family fallback is used.
+   * Keeps requested platform semantics while allowing first-class family adapters
+   * (e.g., VS Code variants using Copilot instructions).
+   * @param {string} requestedPlatform
+   * @param {string|null} resolvedPlatform
+   * @returns {string}
+   */
+  resolveAdapterTargetPlatform(requestedPlatform, resolvedPlatform) {
+    const requested = normalizePlatformId(requestedPlatform);
+    const resolved = normalizePlatformId(resolvedPlatform);
+
+    const vscodeFamily = new Set(['vscode', 'vscode-insiders', 'vs-code-insiders', 'vscodium']);
+
+    if (vscodeFamily.has(requested) && resolved === 'github-copilot') {
+      return 'github-copilot';
+    }
+
+    if (requested === 'claude-desktop' && resolved === 'claude-code') {
+      return 'claude-code';
+    }
+
+    if (requested === 'windsurf-next' && resolved === 'windsurf') {
+      return 'windsurf';
+    }
+
+    if (requested === 'zed' && resolved === 'acp') {
+      return 'acp';
+    }
+
+    return requested;
+  }
+
+  /**
+   * Determine whether alias-based platform fallback should produce a warning.
+   * Some fallbacks are intentional first-class compatibility bridges.
+   * @param {string} requestedPlatform
+   * @param {string|null} resolvedPlatform
+   * @returns {boolean}
+   */
+  shouldWarnOnPlatformFallback(requestedPlatform, resolvedPlatform) {
+    const requested = normalizePlatformId(requestedPlatform);
+    const resolved = normalizePlatformId(resolvedPlatform);
+
+    if (requested === 'openai-codex') {
+      const codexCompatibleFallbacks = new Set([
+        'opencode',
+        'goose',
+        'kimi-cli',
+        'claude-code',
+        'cursor',
+        'windsurf',
+        'generic-ai',
+      ]);
+
+      return !codexCompatibleFallbacks.has(resolved);
+    }
+
+    if (requested === 'acp') {
+      const acpCompatibleFallbacks = new Set(['zed', 'openai-codex', 'generic-ai', 'opencode']);
+      return !acpCompatibleFallbacks.has(resolved);
+    }
+
+    const expectedFallbacksByPlatform = {
+      'google-antigravity': new Set(['gemini-cli', 'vscode', 'github-copilot', 'generic-ai']),
+      'gemini-cli': new Set(['google-antigravity', 'vscode', 'github-copilot', 'generic-ai']),
+      opencode: new Set(['openai-codex', 'generic-ai']),
+      goose: new Set(['openai-codex', 'generic-ai']),
+      'kimi-cli': new Set(['openai-codex', 'generic-ai']),
+      cline: new Set(['openai-codex', 'cursor', 'claude-code', 'generic-ai']),
+      'roo-code': new Set(['openai-codex', 'cursor', 'generic-ai']),
+      junie: new Set(['openai-codex', 'generic-ai']),
+      trae: new Set(['openai-codex', 'generic-ai']),
+    };
+
+    if (expectedFallbacksByPlatform[requested]) {
+      return !expectedFallbacksByPlatform[requested].has(resolved);
+    }
+
+    if (requested === 'zed' && resolved === 'acp') {
+      return false;
+    }
+
+    return true;
   }
 
   /**
@@ -562,8 +698,21 @@ export class RuleAdapter {
 
       case 'vscode':
       case 'vscode-insiders':
+      case 'vs-code-insiders':
+      case 'vscode-insider':
       case 'vscodium':
         return await this.adaptForVSCode(rules, projectContext, platformConfig);
+
+      case 'claude-desktop':
+        return await this.adaptForClaude(rules, projectContext, platformConfig);
+
+      case 'cursor-next':
+      case 'cursor-extension':
+        return await this.adaptForCursor(rules, projectContext, platformConfig);
+
+      case 'windsurf-next':
+      case 'windsurf-extension':
+        return await this.adaptForWindsurf(rules, projectContext, platformConfig);
 
       case 'jetbrains-ai':
       case 'intellij':
@@ -571,9 +720,14 @@ export class RuleAdapter {
         return await this.adaptForJetBrains(rules, projectContext, platformConfig);
 
       case 'openai-codex':
+      case 'openai-codex-cli':
+      case 'openai-codex-app':
+      case 'codex':
         return await this.adaptForCodex(rules, projectContext, platformConfig);
 
       case 'opencode':
+      case 'opencode-desktop':
+      case 'opencode-extension':
         return await this.adaptForOpenCode(rules, projectContext, platformConfig);
 
       case 'goose':
@@ -583,6 +737,7 @@ export class RuleAdapter {
         return await this.adaptForJunie(rules, projectContext, platformConfig);
 
       case 'google-antigravity':
+      case 'google-antigravity-ide':
       case 'antigravity':
         return await this.adaptForAntigravity(rules, projectContext, platformConfig);
 
@@ -599,6 +754,9 @@ export class RuleAdapter {
         return await this.adaptForTrae(rules, projectContext, platformConfig);
 
       case 'gemini-cli':
+      case 'gemini':
+      case 'gemini-extension':
+      case 'gemini-ide':
         return await this.adaptForGemini(rules, projectContext, platformConfig);
 
       case 'cline':
@@ -616,6 +774,11 @@ export class RuleAdapter {
 
       case 'tabnine':
         return await this.adaptForTabnine(rules, projectContext, platformConfig);
+
+      case 'acp':
+      case 'agent-client-protocol':
+      case 'zed-acp':
+        return await this.adaptForACP(rules, projectContext, platformConfig);
 
       default:
         throw new Error(`Unsupported target IDE for canonical adaptation: ${targetIDE}`);
@@ -1239,20 +1402,21 @@ ${cleanContent}`;
   }
 
   /**
-   * Adapt rules for GitHub Copilot's guidelines system (FIXED APPROACH)
-   * Generate setup instructions instead of files as per report findings
+   * Adapt rules for GitHub Copilot.
+   * Generates file-based copilot instructions as first-class output, with
+   * optional setup guidance for enterprise code review guidelines.
    * @param {Array} rules - Standardized rules
    * @param {Object} projectContext - Project context
-   * @returns {Object} GitHub Copilot setup instructions
+   * @returns {Object} GitHub Copilot adapted files
    */
   async adaptForGitHubCopilot(rules, _projectContext, platformConfig = {}) {
-    // Extract platform-specific settings
-    const _priority = platformConfig.priority || 8;
-    const _reviewType = platformConfig.reviewType || 'code-quality';
-    const _scope = platformConfig.scope || 'repository';
-    // Don't generate files - generate setup instructions
+    const repoLevelLocation =
+      platformConfig?.components?.['repo-level']?.location ||
+      platformConfig?.components?.rules?.location ||
+      '.github/copilot-instructions.md';
+
     const prioritizedRules = this.prioritizeRulesForCopilot(rules);
-    const selectedRules = prioritizedRules.slice(0, 6); // GitHub Copilot Enterprise limit
+    const selectedRules = prioritizedRules.slice(0, 8); // Keep focused and under size limits
 
     const guidelines = selectedRules.map((rule, index) => ({
       number: index + 1,
@@ -1260,6 +1424,21 @@ ${cleanContent}`;
       description: this.truncateToCharLimit(this.stripFrontmatter(rule.content), 600), // 600 char limit
       filePatterns: rule.frontmatter?.globs || ['**/*'],
     }));
+
+    const copilotInstructionsBody = [
+      '# Copilot Instructions',
+      '',
+      'Apply these project-specific instructions when generating, editing, and reviewing code.',
+      '',
+      ...guidelines.flatMap(guideline => [
+        `## ${guideline.number}. ${guideline.name}`,
+        guideline.description,
+        `Applies to: ${guideline.filePatterns.join(', ')}`,
+        '',
+      ]),
+    ].join('\n');
+
+    const copilotInstructionsContent = this.truncateToCharLimit(copilotInstructionsBody, 3000);
 
     const instructionsContent = `# GitHub Copilot Setup Instructions
 
@@ -1299,6 +1478,12 @@ For file-based AI rule management, consider:
     return {
       files: [
         {
+          path: path.join(this.projectPath, repoLevelLocation),
+          content: copilotInstructionsContent,
+          type: 'instructions',
+          scope: 'repository',
+        },
+        {
           path: path.join(this.projectPath, 'GITHUB_COPILOT_SETUP.md'),
           content: instructionsContent,
           type: 'instructions',
@@ -1308,10 +1493,10 @@ For file-based AI rule management, consider:
       guidelines,
       summary: {
         totalGuidelines: guidelines.length,
-        maxGuidelines: 6,
-        requiresManualSetup: true,
+        maxGuidelines: 8,
+        requiresManualSetup: false,
         enterpriseOnly: true,
-        approach: 'instructions-only',
+        approach: 'file-based-copilot-instructions',
       },
     };
   }
@@ -1381,6 +1566,176 @@ For file-based AI rule management, consider:
         totalRules: rules.length,
       },
     };
+  }
+
+  /**
+   * Adapt rules for ACP (Agent Client Protocol)
+   * Targets: .acp/manifest.json + .acp/context/*.md + ACP.md
+   */
+  async adaptForACP(rules, projectContext, _config = {}) {
+    const projectName = path.basename(this.projectPath);
+    const acpDir = path.join(this.projectPath, '.acp');
+    const contextDir = path.join(acpDir, 'context');
+    const files = [];
+    const manifestEntries = [];
+    const usedBaseNames = new Set(['project']);
+
+    const toSafeBaseName = (rule, index) => {
+      const rawBaseName = String(this.getCursorFileName(rule) || '')
+        .replace(/\.mdc?$/i, '')
+        .trim();
+
+      const normalizedBaseName = rawBaseName
+        .toLowerCase()
+        .replace(/[^a-z0-9-_]/g, '-')
+        .replace(/[-_]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+
+      const fallbackBaseName = normalizedBaseName || `context-${index + 1}`;
+
+      if (!usedBaseNames.has(fallbackBaseName)) {
+        usedBaseNames.add(fallbackBaseName);
+        return fallbackBaseName;
+      }
+
+      let dedupIndex = 2;
+      let candidateBaseName = `${fallbackBaseName}-${dedupIndex}`;
+      while (usedBaseNames.has(candidateBaseName)) {
+        dedupIndex += 1;
+        candidateBaseName = `${fallbackBaseName}-${dedupIndex}`;
+      }
+
+      usedBaseNames.add(candidateBaseName);
+      return candidateBaseName;
+    };
+
+    for (const [index, rule] of rules.entries()) {
+      const baseName = toSafeBaseName(rule, index);
+      const fileName = `${baseName}.md`;
+      const entryType = this.inferACPEntryType(rule);
+      const title =
+        rule.frontmatter?.description ||
+        rule.frontmatter?.title ||
+        rule.name ||
+        `Rule ${index + 1}`;
+      const strippedContent = this.stripFrontmatter(rule.content || '').trim();
+      const activationGlobs = Array.isArray(rule.frontmatter?.globs)
+        ? rule.frontmatter.globs
+        : rule.frontmatter?.globs
+          ? [rule.frontmatter.globs]
+          : [];
+
+      const contextContent = [
+        `# ${title}`,
+        '',
+        strippedContent || '- No content provided.',
+        '',
+        '---',
+        `Generated for ACP by VDK CLI`,
+        `Component: ${entryType}`,
+      ].join('\n');
+
+      files.push({
+        path: path.join(contextDir, fileName),
+        content: contextContent,
+        type: 'acp-context',
+        scope: 'project',
+      });
+
+      manifestEntries.push({
+        id: `acp-${baseName}`,
+        title,
+        kind: entryType,
+        file: `context/${fileName}`,
+        category: rule.frontmatter?.category || 'core',
+        priority: Number(rule.frontmatter?.priority) || 5,
+        activation: {
+          alwaysApply: rule.frontmatter?.alwaysApply === true,
+          globs: activationGlobs,
+        },
+      });
+    }
+
+    const indexContent = [
+      `# ACP Context Index: ${projectName}`,
+      '',
+      projectContext.description || 'Project context exported from VDK blueprints.',
+      '',
+      '## Context Entries',
+      ...manifestEntries.map(entry => {
+        const fileName = String(entry.file).replace(/^context\//, '');
+        return `- [${entry.title}](./${fileName}) — ${entry.kind}`;
+      }),
+    ].join('\n');
+
+    files.push({
+      path: path.join(contextDir, 'project.md'),
+      content: indexContent,
+      type: 'acp-index',
+      scope: 'project',
+    });
+
+    const manifest = {
+      protocol: 'acp',
+      schemaVersion: '1.0.0',
+      generatedBy: 'vdk-cli',
+      generatedAt: new Date().toISOString(),
+      project: {
+        name: projectName,
+      },
+      entries: manifestEntries,
+      capabilities: {
+        structuredContext: true,
+        toolHints: true,
+        multiComponent: true,
+      },
+    };
+
+    files.push({
+      path: path.join(acpDir, 'manifest.json'),
+      content: JSON.stringify(manifest, null, 2),
+      type: 'acp-manifest',
+      scope: 'project',
+    });
+
+    files.push({
+      path: path.join(this.projectPath, 'ACP.md'),
+      content: `# ACP\n\nPrimary ACP manifest: \`.acp/manifest.json\`\n\nPrimary context index: \`.acp/context/project.md\`\n`,
+      type: 'acp-main',
+      scope: 'project',
+    });
+
+    return {
+      files,
+      summary: {
+        generated: files.length,
+        entries: manifestEntries.length,
+        formats: ['.acp/manifest.json', '.acp/context/*.md', 'ACP.md'],
+      },
+    };
+  }
+
+  inferACPEntryType(rule) {
+    const component = String(rule.frontmatter?.component || '').toLowerCase();
+    const category = String(rule.frontmatter?.category || '').toLowerCase();
+
+    if (component.includes('agent') || category === 'assistant') {
+      return 'agent';
+    }
+
+    if (component.includes('command') || category === 'task') {
+      return 'command';
+    }
+
+    if (component.includes('skill') || category === 'skill') {
+      return 'skill';
+    }
+
+    if (component.includes('workflow') || category === 'workflow') {
+      return 'workflow';
+    }
+
+    return 'rule';
   }
 
   /**
@@ -1623,7 +1978,7 @@ For file-based AI rule management, consider:
    * Adapt rules for Google Antigravity
    * Targets: GEMINI.md + .agent/workflows/*.md
    */
-  async adaptForAntigravity(rules, projectContext, _config = {}) {
+  async adaptForAntigravity(rules, _projectContext, _config = {}) {
     const files = [];
     const projectName = path.basename(this.projectPath);
     const workflowsDir = path.join(this.projectPath, '.agent', 'workflows');
@@ -3028,8 +3383,8 @@ This directory contains GitHub Copilot Enterprise coding guidelines generated by
         }
         // Capture numbered lists that are guidelines
         else if (trimmed.match(/^\d+\.\s/) && this.isActionableGuideline(trimmed)) {
-          const content = trimmed.replace(/^\d+\.\s/, '');
-          relevantLines.push(`- ${content}`);
+          const listItemContent = trimmed.replace(/^\d+\.\s/, '');
+          relevantLines.push(`- ${listItemContent}`);
         }
 
         // Limit content extraction
