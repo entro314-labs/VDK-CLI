@@ -82,7 +82,7 @@ export class PluginRegistry extends EventEmitter {
           }
         }
       }
-    } catch (_err) {
+    } catch {
       // Directory might not exist, ignore
     }
   }

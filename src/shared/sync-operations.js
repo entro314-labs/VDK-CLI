@@ -78,7 +78,7 @@ export class SyncOperations {
    * Sync team configuration from Hub (team sync logic)
    */
   async syncTeamConfigFromHub(projectPath, options, spinner) {
-    const { teamId, force = false } = options;
+    const { teamId } = options;
     const finalTeamId = teamId || process.env.VDK_TEAM_ID;
 
     if (!finalTeamId) {
@@ -197,8 +197,6 @@ export class SyncOperations {
    * Sync team configuration from Git (team sync logic)
    */
   async syncTeamConfigFromGit(projectPath, options, spinner) {
-    const { force = false } = options;
-
     // Check if this is a Git repository
     try {
       execSync('git rev-parse --git-dir', { cwd: projectPath, stdio: 'ignore' });
@@ -210,7 +208,7 @@ export class SyncOperations {
     if (!options.dryRun) {
       try {
         execSync('git pull', { cwd: projectPath, stdio: 'inherit' });
-      } catch (_error) {
+      } catch {
         this.command.logWarning('⚠️  Git pull failed - continuing with local files');
       }
     }

@@ -56,7 +56,7 @@ export async function createTempDir(name = 'test-temp') {
     await fs.mkdir(tempPath, { recursive: true });
     return tempPath;
   } catch (error) {
-    throw new Error(`Failed to create temp directory: ${error.message}`);
+    throw new Error(`Failed to create temp directory: ${error.message}`, { cause: error });
   }
 }
 

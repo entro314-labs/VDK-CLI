@@ -72,7 +72,7 @@ export class TechnologyAnalyzer {
         console.error(chalk.red(`Error in technology analysis: ${error.message}`));
         console.error(chalk.gray(error.stack));
       }
-      throw new Error(`Technology analysis failed: ${error.message}`);
+      throw new Error(`Technology analysis failed: ${error.message}`, { cause: error });
     }
   }
 

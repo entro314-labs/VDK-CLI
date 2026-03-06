@@ -39,7 +39,7 @@ async function checkDuplicateRules() {
     try {
       await fs.access(dirPath);
       dirExists = true;
-    } catch (_err) {
+    } catch {
       continue;
     }
 

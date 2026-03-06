@@ -166,7 +166,7 @@ export class MigrationManager {
    * @returns {Array} Generated blueprints
    */
   async generateVDKBlueprints(adaptedContexts, options = {}) {
-    const { projectData, techData, overwrite } = options;
+    const { projectData, techData } = options;
     const _generatedRules = [];
 
     // Prepare analysis data for RuleGenerator (using existing format)
@@ -209,7 +209,7 @@ export class MigrationManager {
 
       return ruleResults;
     } catch (error) {
-      throw new Error(`Blueprint generation failed: ${error.message}`);
+      throw new Error(`Blueprint generation failed: ${error.message}`, { cause: error });
     }
   }
 

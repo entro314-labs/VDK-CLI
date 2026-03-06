@@ -154,7 +154,7 @@ export class PublishManager {
         recommendations: this.generatePublishingRecommendations(ruleValidation, projectContext),
       };
     } catch (error) {
-      throw new Error(`Preview generation failed: ${error.message}`);
+      throw new Error(`Preview generation failed: ${error.message}`, { cause: error });
     }
   }
 
@@ -471,7 +471,7 @@ export class PublishManager {
       case 'copilot-config':
         try {
           JSON.parse(content);
-        } catch (_error) {
+        } catch {
           validation.errors.push('Invalid JSON format for Copilot configuration');
         }
         break;
@@ -675,7 +675,7 @@ export class PublishManager {
           : fallbackStructure,
         hasPackageJson,
       };
-    } catch (_error) {
+    } catch {
       return {
         name: path.basename(this.projectPath || process.cwd()),
         framework: 'generic',
@@ -842,7 +842,9 @@ export class PublishManager {
 
     const extensions = projectData.files
       .map(f => path.extname((f.path || f.name || '').toLowerCase()))
-      .filter(ext => ['.js', '.jsx', '.ts', '.tsx', '.py', '.go', '.rs', '.java', '.cpp', '.c'].includes(ext));
+      .filter(ext =>
+        ['.js', '.jsx', '.ts', '.tsx', '.py', '.go', '.rs', '.java', '.cpp', '.c'].includes(ext)
+      );
 
     if (extensions.length === 0) return 'javascript';
 
@@ -864,7 +866,6 @@ export class PublishManager {
     };
 
     const tsCount = (counts['.ts'] || 0) + (counts['.tsx'] || 0);
-    const jsCount = (counts['.js'] || 0) + (counts['.jsx'] || 0);
 
     if (tsCount > 0) {
       return 'typescript';

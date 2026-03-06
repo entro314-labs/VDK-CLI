@@ -68,7 +68,7 @@ export class SchemaV3Migrator {
         }
       }
     } catch (error) {
-      throw new Error(`v3 migration failed: ${error.message}`);
+      throw new Error(`v3 migration failed: ${error.message}`, { cause: error });
     }
 
     return results;

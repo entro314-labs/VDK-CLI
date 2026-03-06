@@ -82,7 +82,7 @@ export class JetBrainsIntegration extends BaseIntegration {
           detection.confidence = 'medium';
         }
       }
-    } catch (_error) {
+    } catch {
       // Process detection failed - not critical
     }
 
@@ -165,7 +165,7 @@ export class JetBrainsIntegration extends BaseIntegration {
           return path.join(cacheDir, jetbrainsVersions[0], 'mcp');
         }
       }
-    } catch (_error) {
+    } catch {
       // Ignore errors in path detection
     }
 
@@ -193,7 +193,7 @@ export class JetBrainsIntegration extends BaseIntegration {
       }
 
       return [...new Set(jetbrainsProcesses)]; // Remove duplicates
-    } catch (_error) {
+    } catch {
       return [];
     }
   }

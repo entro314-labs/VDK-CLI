@@ -118,7 +118,7 @@ export class GenericAIIntegration extends BaseIntegration {
               }
             }
           }
-        } catch (_error) {
+        } catch {
           // Ignore file read errors
         }
       }
@@ -171,7 +171,7 @@ export class GenericAIIntegration extends BaseIntegration {
             }
           }
         }
-      } catch (_error) {
+      } catch {
         // Ignore package.json read errors
       }
     }
@@ -235,7 +235,7 @@ export class GenericAIIntegration extends BaseIntegration {
               detection.confidence = 'low';
             }
           }
-        } catch (_error) {
+        } catch {
           // Ignore directory read errors
         }
       }

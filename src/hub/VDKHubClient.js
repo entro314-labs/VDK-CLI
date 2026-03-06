@@ -418,22 +418,12 @@ export class VDKHubClient {
    */
   async deployBlueprints(deploymentData) {
     try {
-      const response = await this.makeRequest('/deploy', {
+      const data = await this.makeRequest('/deploy', {
         method: 'POST',
         body: JSON.stringify(deploymentData),
         authenticated: false, // Optional auth
       });
 
-      if (!response.ok) {
-        throw new VDKHubError(
-          'Blueprint deployment failed',
-          response.status,
-          'DEPLOYMENT_FAILED',
-          response.status >= 500
-        );
-      }
-
-      const data = await response.json();
       return {
         success: data.success,
         hubUrl: data.hubUrl,
@@ -468,21 +458,12 @@ export class VDKHubClient {
       }
 
       const endpoint = `/cli/analytics?${params}`;
-      const response = await this.makeRequest(endpoint, {
+      const data = await this.makeRequest(endpoint, {
         method: 'GET',
         authenticated: true, // Requires service role
       });
 
-      if (!response.ok) {
-        throw new VDKHubError(
-          'Analytics fetch failed',
-          response.status,
-          'ANALYTICS_FAILED',
-          response.status >= 500
-        );
-      }
-
-      return await response.json();
+      return data;
     } catch (error) {
       if (error instanceof VDKHubError) {
         throw error;
@@ -501,22 +482,12 @@ export class VDKHubClient {
    */
   async getBlueprintRecommendations(projectAnalysis) {
     try {
-      const response = await this.makeRequest('/v1/blueprints/recommend', {
+      const data = await this.makeRequest('/v1/blueprints/recommend', {
         method: 'POST',
         body: JSON.stringify(projectAnalysis),
         authenticated: false, // Optional auth
       });
 
-      if (!response.ok) {
-        throw new VDKHubError(
-          'Blueprint recommendations failed',
-          response.status,
-          'RECOMMENDATIONS_FAILED',
-          response.status >= 500
-        );
-      }
-
-      const data = await response.json();
       return {
         recommendations: data.recommendations || [],
         totalFound: data.totalFound || 0,
@@ -560,11 +531,7 @@ export class VDKHubClient {
       try {
         data = await fetchOnce();
       } catch (error) {
-        if (
-          error instanceof VDKHubError &&
-          error.statusCode === 503 &&
-          this.retryAttempts === 1
-        ) {
+        if (error instanceof VDKHubError && error.statusCode === 503 && this.retryAttempts === 1) {
           data = await fetchOnce();
         } else {
           throw error;
@@ -618,7 +585,12 @@ export class VDKHubClient {
     try {
       const params = new URLSearchParams();
 
-      if (criteria.search) params.set('search', criteria.search);
+      if (criteria.search) {
+        // Hub API uses `q` as the canonical search query parameter.
+        // Keep `search` for backward compatibility while prioritizing `q`.
+        params.set('q', criteria.search);
+        params.set('search', criteria.search);
+      }
       if (criteria.category) params.set('category', criteria.category);
       if (criteria.framework) params.set('framework', criteria.framework);
       if (criteria.platform) params.set('platform', criteria.platform);
@@ -630,11 +602,7 @@ export class VDKHubClient {
       if (criteria.limit !== undefined) params.set('limit', criteria.limit.toString());
       if (criteria.offset !== undefined) params.set('offset', criteria.offset.toString());
 
-      const query = params.toString().replace(/\+/g, '%20');
-      const plusEncodedSearch = criteria.search
-        ? encodeURIComponent(criteria.search).replace(/%20/g, '+')
-        : null;
-      const endpoint = `/community/blueprints?${query}${plusEncodedSearch ? `&search_plus=${plusEncodedSearch}` : ''}`;
+      const endpoint = `/community/blueprints?${params.toString()}`;
       const data = await this.makeRequest(endpoint, {
         method: 'GET',
       });
@@ -893,15 +861,19 @@ export class VDKHubClient {
       }
 
       // Verify token with Hub API
-      const data = await this.makeRequest('/auth/verify', {
+      const data = await this.makeRequest('/v1/user/profile', {
         method: 'GET',
         authenticated: true,
       });
 
+      if (!data?.user) {
+        throw new Error('Authentication verification returned no user payload');
+      }
+
       return {
         authenticated: true,
         user: data.user,
-        email: data.email,
+        email: data.user?.email,
       };
     } catch (error) {
       console.warn(chalk.yellow(`Auth check failed: ${error.message}`));
@@ -966,7 +938,7 @@ export class VDKHubClient {
 
           try {
             // Validate token by making a test API call
-            const testResponse = await this.makeRequest('/auth/verify', {
+            const testResponse = await this.makeRequest('/v1/user/profile', {
               method: 'GET',
               headers: {
                 Authorization: `Bearer ${token.trim()}`,
@@ -974,7 +946,7 @@ export class VDKHubClient {
               authenticated: false,
             });
 
-            if (testResponse) {
+            if (testResponse?.user?.id) {
               await this.saveAuthToken(token.trim());
               this.authToken = token.trim();
               console.log(chalk.green('✅ Authentication successful!'));
@@ -1128,20 +1100,18 @@ export class VDKHubClient {
         },
       };
 
-      const response = await this.makeRequest(`/community/blueprints/${blueprintId}/usage`, {
+      const data = await this.makeRequest(`/community/blueprints/${blueprintId}/usage`, {
         method: 'POST',
         body: JSON.stringify(payload),
         authenticated: false, // Anonymous usage tracking
         skipRetry: true,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        return { success: true, message: data.message };
-      } else {
-        console.warn(chalk.yellow(`Usage tracking failed: HTTP ${response.status}`));
-        return { success: false, error: `HTTP ${response.status}` };
-      }
+      return {
+        success: data?.success !== false,
+        message: data?.message,
+        usageId: data?.usageId,
+      };
     } catch (error) {
       console.warn(chalk.yellow(`Usage tracking error: ${error.message}`));
       return { success: false, error: error.message };

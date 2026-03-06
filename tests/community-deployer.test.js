@@ -42,23 +42,21 @@ vi.mock('chalk', () => ({
 
 // Mock project scanner and related dependencies
 vi.mock('../src/scanner/core/ProjectScanner.js', () => ({
-  ProjectScanner: class ProjectScanner {
-    constructor() {
-      this.scanProject = vi.fn();
-    }
-  },
+  ProjectScanner: vi.fn().mockImplementation(() => ({
+    scanProject: vi.fn(),
+  })),
 }));
 
 vi.mock('../src/scanner/core/RuleAdapter.js', () => ({
-  RuleAdapter: class RuleAdapter {},
+  RuleAdapter: vi.fn().mockImplementation(() => ({
+    adaptRules: vi.fn().mockResolvedValue({ files: [], warnings: [] }),
+  })),
 }));
 
 vi.mock('../src/shared/ProjectContextAnalyzer.js', () => ({
-  ProjectContextAnalyzer: class ProjectContextAnalyzer {
-    constructor() {
-      this.analyze = vi.fn();
-    }
-  },
+  ProjectContextAnalyzer: vi.fn().mockImplementation(() => ({
+    analyze: vi.fn(),
+  })),
 }));
 
 vi.mock('../src/integrations/index.js', () => ({
@@ -66,7 +64,11 @@ vi.mock('../src/integrations/index.js', () => ({
 }));
 
 vi.mock('../src/hub/VDKHubClient.js', () => ({
-  VDKHubClient: class VDKHubClient {},
+  VDKHubClient: vi.fn().mockImplementation(() => ({
+    getCommunityBlueprint: vi.fn(),
+    trackCommunityBlueprintUsage: vi.fn(),
+    sendUsageTelemetry: vi.fn(),
+  })),
 }));
 
 vi.mock('../src/blueprints-client.js', () => ({
@@ -472,7 +474,9 @@ describe('CommunityDeployer', () => {
 
       expect(communityDeployer.writeAdaptedFiles).toHaveBeenCalledWith(
         expect.arrayContaining([
-          expect.objectContaining({ content: expect.stringContaining('ADAPTED_BLUEPRINT_CONTENT') }),
+          expect.objectContaining({
+            content: expect.stringContaining('ADAPTED_BLUEPRINT_CONTENT'),
+          }),
         ])
       );
 

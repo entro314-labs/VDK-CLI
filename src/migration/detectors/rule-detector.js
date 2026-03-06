@@ -84,7 +84,7 @@ export class RuleDetector {
         lastModified: stats.mtime.toISOString(),
         ...analysis,
       };
-    } catch (_error) {
+    } catch {
       // File might not exist or be readable, skip silently
       return null;
     }
@@ -164,7 +164,7 @@ export class RuleDetector {
         const parsed = matter(content);
         analysis.metadata = parsed.data;
         analysis.bodyContent = parsed.content;
-      } catch (_error) {
+      } catch {
         analysis.bodyContent = content;
       }
     } else {

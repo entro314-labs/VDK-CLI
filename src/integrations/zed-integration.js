@@ -53,7 +53,7 @@ export class ZedIntegration extends BaseIntegration {
         indicators.push('Zed process is currently running');
         if (confidence === 'none') confidence = 'medium';
       }
-    } catch (_error) {
+    } catch {
       // Process detection failed - not critical
     }
 
@@ -118,7 +118,7 @@ export class ZedIntegration extends BaseIntegration {
       return (
         processes.toLowerCase().includes('zed') || processes.toLowerCase().includes('zed-editor')
       );
-    } catch (_error) {
+    } catch {
       return false;
     }
   }

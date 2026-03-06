@@ -105,7 +105,7 @@ export class MigrationDetector {
         content = await fs.promises.readFile(fullPath, 'utf-8');
         hasContent = content.trim().length > 0;
       }
-    } catch (_error) {
+    } catch {
       // File might not be readable, skip content analysis
       hasContent = false;
     }
@@ -301,7 +301,7 @@ export class MigrationDetector {
         const parsed = matter(content);
         analysis.frontmatter = parsed.data;
         analysis.bodyContent = parsed.content;
-      } catch (_error) {
+      } catch {
         analysis.bodyContent = content;
       }
     } else {
@@ -620,7 +620,7 @@ export class MigrationDetector {
     const priorityOrder = ['claude-code-cli', 'cursor', 'windsurf', 'github-copilot', 'generic-ai'];
     const confidenceOrder = ['high', 'medium', 'low'];
 
-    return validContexts.sort((a, b) => {
+    return validContexts.toSorted((a, b) => {
       // First sort by confidence
       const confA = confidenceOrder.indexOf(a.confidence);
       const confB = confidenceOrder.indexOf(b.confidence);

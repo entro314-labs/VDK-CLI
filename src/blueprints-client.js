@@ -104,7 +104,7 @@ function enrichMetadataWithCanonicalKind(metadata, item) {
     );
   }
 
-  const base = { ...(metadata || {}), kind: resolution.canonicalKind };
+  const base = { ...metadata, kind: resolution.canonicalKind };
 
   if (!base.id) {
     throw new Error(`Blueprint '${item?.path || item?.name || 'unknown'}' is missing metadata.id`);

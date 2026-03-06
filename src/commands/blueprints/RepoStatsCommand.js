@@ -75,7 +75,7 @@ export class RepoStatsCommand extends BaseCommand {
     if (Object.keys(stats.byCategory).length > 0) {
       console.log(`\n📂 By Category:`);
       Object.entries(stats.byCategory)
-        .sort(([, a], [, b]) => b - a)
+        .toSorted(([, a], [, b]) => b - a)
         .forEach(([category, count]) => {
           console.log(`- ${category}: ${count}`);
         });
@@ -85,7 +85,7 @@ export class RepoStatsCommand extends BaseCommand {
     if (Object.keys(stats.byComplexity).length > 0) {
       console.log(`\n⚙️ By Complexity:`);
       Object.entries(stats.byComplexity)
-        .sort(([, a], [, b]) => b - a)
+        .toSorted(([, a], [, b]) => b - a)
         .forEach(([complexity, count]) => {
           console.log(`- ${complexity}: ${count}`);
         });
@@ -95,7 +95,7 @@ export class RepoStatsCommand extends BaseCommand {
     if (Object.keys(stats.byMaturity).length > 0) {
       console.log(`\n🎯 By Maturity:`);
       Object.entries(stats.byMaturity)
-        .sort(([, a], [, b]) => b - a)
+        .toSorted(([, a], [, b]) => b - a)
         .forEach(([maturity, count]) => {
           console.log(`- ${maturity}: ${count}`);
         });
@@ -111,7 +111,7 @@ export class RepoStatsCommand extends BaseCommand {
       const topCount = verbose ? 20 : 10;
       console.log(`\n🎮 Platform Support (Top ${topCount}):`);
       Object.entries(stats.platformSupport)
-        .sort(([, a], [, b]) => b - a)
+        .toSorted(([, a], [, b]) => b - a)
         .slice(0, topCount)
         .forEach(([platform, count]) => {
           console.log(`- ${platform}: ${count}`);
@@ -143,7 +143,7 @@ export class RepoStatsCommand extends BaseCommand {
     if (stats.authorDistribution) {
       console.log(`\nTop Contributors:`);
       Object.entries(stats.authorDistribution)
-        .sort(([, a], [, b]) => b - a)
+        .toSorted(([, a], [, b]) => b - a)
         .slice(0, 10)
         .forEach(([author, count]) => {
           console.log(`- ${author}: ${count} blueprints`);
@@ -153,7 +153,7 @@ export class RepoStatsCommand extends BaseCommand {
     if (stats.tagsPopularity) {
       console.log(`\nPopular Tags:`);
       Object.entries(stats.tagsPopularity)
-        .sort(([, a], [, b]) => b - a)
+        .toSorted(([, a], [, b]) => b - a)
         .slice(0, 15)
         .forEach(([tag, count]) => {
           console.log(`- ${tag}: ${count}`);

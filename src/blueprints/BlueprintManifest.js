@@ -30,7 +30,7 @@ export class BlueprintManifest {
 
       return this.manifest;
     } catch (error) {
-      throw new Error(`Failed to load manifest: ${error.message}`);
+      throw new Error(`Failed to load manifest: ${error.message}`, { cause: error });
     }
   }
 

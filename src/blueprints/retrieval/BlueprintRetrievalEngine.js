@@ -50,7 +50,7 @@ export class BlueprintRetrievalEngine {
   constructor(options = {}) {
     this.layerBlend = {
       ...DEFAULT_LAYER_BLEND,
-      ...(options.layerBlend || {}),
+      ...options.layerBlend,
     };
   }
 
@@ -87,7 +87,7 @@ export class BlueprintRetrievalEngine {
     const filtered = enriched.filter(blueprint => this.matchesCriteria(blueprint, criteria));
     const scored = filtered
       .map(blueprint => this.attachScores(blueprint, criteria))
-      .sort((a, b) => b.retrieval.finalScore - a.retrieval.finalScore);
+      .toSorted((a, b) => b.retrieval.finalScore - a.retrieval.finalScore);
 
     const deduped = this.dedupeByCanonicalName(scored, criteria);
     const selected = this.selectByLayerBlend(deduped, criteria);
@@ -286,7 +286,7 @@ export class BlueprintRetrievalEngine {
       deduped.push(primary);
     }
 
-    return deduped.sort((a, b) => b.retrieval.finalScore - a.retrieval.finalScore);
+    return deduped.toSorted((a, b) => b.retrieval.finalScore - a.retrieval.finalScore);
   }
 
   selectByLayerBlend(blueprints, criteria = {}) {
@@ -325,12 +325,14 @@ export class BlueprintRetrievalEngine {
     if (selected.length < limit) {
       const leftovers = Object.values(layerBuckets)
         .flat()
-        .sort((a, b) => b.retrieval.finalScore - a.retrieval.finalScore);
+        .toSorted((a, b) => b.retrieval.finalScore - a.retrieval.finalScore);
 
       selected.push(...leftovers.slice(0, limit - selected.length));
     }
 
-    return selected.sort((a, b) => b.retrieval.finalScore - a.retrieval.finalScore).slice(0, limit);
+    return selected
+      .toSorted((a, b) => b.retrieval.finalScore - a.retrieval.finalScore)
+      .slice(0, limit);
   }
 
   calculateTargetCounts(limit, includeL4) {
@@ -355,7 +357,7 @@ export class BlueprintRetrievalEngine {
     }
 
     let remaining = limit - allocated;
-    const sortedByWeight = [...layers].sort((a, b) => (blend[b] || 0) - (blend[a] || 0));
+    const sortedByWeight = [...layers].toSorted((a, b) => (blend[b] || 0) - (blend[a] || 0));
     let index = 0;
 
     while (remaining > 0 && sortedByWeight.length > 0) {

@@ -52,7 +52,7 @@ export class PlatformConfigExtractor {
         const config = JSON.parse(fsSync.readFileSync(configPath, 'utf8'));
         explicitIDE = config.ide;
       }
-    } catch (_error) {
+    } catch {
       // Config file doesn't exist or is invalid, continue with detection
     }
 
@@ -97,7 +97,7 @@ export class PlatformConfigExtractor {
     console.log(chalk.gray('   • Or edit vdk.config.json: {"ide": "Your IDE Name"}'));
 
     // Default to highest confidence for now
-    const highestConfidence = integrations.sort((a, b) => {
+    const highestConfidence = integrations.toSorted((a, b) => {
       const confidenceScore = { high: 3, medium: 2, low: 1 };
       return confidenceScore[b.confidence] - confidenceScore[a.confidence];
     })[0];

@@ -20,7 +20,7 @@ export const fileSystem = {
     try {
       return await fs.readFile(filePath, encoding);
     } catch (error) {
-      throw new Error(`Failed to read file ${filePath}: ${error.message}`);
+      throw new Error(`Failed to read file ${filePath}: ${error.message}`, { cause: error });
     }
   },
 
@@ -35,7 +35,7 @@ export const fileSystem = {
 
       return await fs.writeFile(filePath, data, options);
     } catch (error) {
-      throw new Error(`Failed to write file ${filePath}: ${error.message}`);
+      throw new Error(`Failed to write file ${filePath}: ${error.message}`, { cause: error });
     }
   },
 
@@ -49,7 +49,7 @@ export const fileSystem = {
 
       return await fs.appendFile(filePath, data, options);
     } catch (error) {
-      throw new Error(`Failed to append to file ${filePath}: ${error.message}`);
+      throw new Error(`Failed to append to file ${filePath}: ${error.message}`, { cause: error });
     }
   },
 
@@ -72,7 +72,7 @@ export const fileSystem = {
     try {
       return await fs.stat(filePath);
     } catch (error) {
-      throw new Error(`Failed to get stats for ${filePath}: ${error.message}`);
+      throw new Error(`Failed to get stats for ${filePath}: ${error.message}`, { cause: error });
     }
   },
 
@@ -107,7 +107,7 @@ export const fileSystem = {
     try {
       await fs.mkdir(dirPath, { recursive: true });
     } catch (error) {
-      throw new Error(`Failed to create directory ${dirPath}: ${error.message}`);
+      throw new Error(`Failed to create directory ${dirPath}: ${error.message}`, { cause: error });
     }
   },
 
@@ -119,7 +119,7 @@ export const fileSystem = {
       await fs.unlink(filePath);
     } catch (error) {
       if (error.code !== 'ENOENT') {
-        throw new Error(`Failed to remove file ${filePath}: ${error.message}`);
+        throw new Error(`Failed to remove file ${filePath}: ${error.message}`, { cause: error });
       }
     }
   },
@@ -131,7 +131,7 @@ export const fileSystem = {
     try {
       await fs.rm(dirPath, { recursive: true, force: true });
     } catch (error) {
-      throw new Error(`Failed to remove directory ${dirPath}: ${error.message}`);
+      throw new Error(`Failed to remove directory ${dirPath}: ${error.message}`, { cause: error });
     }
   },
 
@@ -142,7 +142,7 @@ export const fileSystem = {
     try {
       return await fs.readdir(dirPath);
     } catch (error) {
-      throw new Error(`Failed to read directory ${dirPath}: ${error.message}`);
+      throw new Error(`Failed to read directory ${dirPath}: ${error.message}`, { cause: error });
     }
   },
 
@@ -156,7 +156,7 @@ export const fileSystem = {
 
       await fs.copyFile(src, dest);
     } catch (error) {
-      throw new Error(`Failed to copy ${src} to ${dest}: ${error.message}`);
+      throw new Error(`Failed to copy ${src} to ${dest}: ${error.message}`, { cause: error });
     }
   },
 
@@ -170,7 +170,7 @@ export const fileSystem = {
 
       await fs.rename(src, dest);
     } catch (error) {
-      throw new Error(`Failed to move ${src} to ${dest}: ${error.message}`);
+      throw new Error(`Failed to move ${src} to ${dest}: ${error.message}`, { cause: error });
     }
   },
 
@@ -182,7 +182,7 @@ export const fileSystem = {
       const content = await this.readFile(filePath);
       return JSON.parse(content);
     } catch (error) {
-      throw new Error(`Failed to read JSON from ${filePath}: ${error.message}`);
+      throw new Error(`Failed to read JSON from ${filePath}: ${error.message}`, { cause: error });
     }
   },
 
@@ -194,7 +194,7 @@ export const fileSystem = {
       const content = JSON.stringify(data, null, indent);
       await this.writeFile(filePath, content);
     } catch (error) {
-      throw new Error(`Failed to write JSON to ${filePath}: ${error.message}`);
+      throw new Error(`Failed to write JSON to ${filePath}: ${error.message}`, { cause: error });
     }
   },
 
@@ -225,7 +225,7 @@ export const fileSystem = {
             }
           }
         }
-      } catch (_error) {
+      } catch {
         // Skip directories we can't read
       }
     }
@@ -242,7 +242,7 @@ export const fileSystem = {
       const stats = await fs.stat(filePath);
       return stats.size;
     } catch (error) {
-      throw new Error(`Failed to get size of ${filePath}: ${error.message}`);
+      throw new Error(`Failed to get size of ${filePath}: ${error.message}`, { cause: error });
     }
   },
 
@@ -254,7 +254,9 @@ export const fileSystem = {
       const stats = await fs.stat(filePath);
       return stats.mtime;
     } catch (error) {
-      throw new Error(`Failed to get modification time of ${filePath}: ${error.message}`);
+      throw new Error(`Failed to get modification time of ${filePath}: ${error.message}`, {
+        cause: error,
+      });
     }
   },
 

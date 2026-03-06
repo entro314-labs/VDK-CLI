@@ -336,9 +336,9 @@ describe('VDKHubClient', () => {
         }),
       });
 
-      await expect(hubClient.generatePackage({ projectContext: { framework: 'react' } })).rejects.toThrow(
-        /Invalid package generation response from Hub/
-      );
+      await expect(
+        hubClient.generatePackage({ projectContext: { framework: 'react' } })
+      ).rejects.toThrow(/Invalid package generation response from Hub/);
     });
 
     it('should handle package generation errors', async () => {

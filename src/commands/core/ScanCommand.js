@@ -225,9 +225,15 @@ export class ScanCommand extends BaseCommand {
    */
   async loadVdkConfig(projectPath) {
     try {
-      const configPath = path.join(projectPath, 'vdk.config.json');
-      const configContent = await commandContext.readFile(configPath);
-      return JSON.parse(configContent);
+      const config = await commandContext.readVdkConfig(projectPath, 'vdk.config.json');
+
+      if (!config) {
+        throw new Error(
+          `VDK configuration not found at ${path.join(projectPath, 'vdk.config.json')}`
+        );
+      }
+
+      return config;
     } catch (error) {
       this.exitWithError('Failed to load existing VDK configuration', error);
     }

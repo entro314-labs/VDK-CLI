@@ -27,7 +27,7 @@ export class ContextConverter {
    * @returns {Object} VDK blueprint or command
    */
   async convertClaudeCode(context) {
-    const { fileName, bodyContent, metadata, claudeSpecific } = context;
+    const { fileName, bodyContent, claudeSpecific } = context;
 
     // Determine if it's a command or blueprint
     const isCommand = claudeSpecific?.hasSlashCommands || fileName.includes('command');
@@ -105,7 +105,7 @@ export class ContextConverter {
    * @returns {Object} VDK blueprint
    */
   async convertGitHubCopilot(context) {
-    const { bodyContent, copilotSpecific } = context;
+    const { copilotSpecific } = context;
 
     const reviewType = copilotSpecific?.hasSecurityRules
       ? 'security'
@@ -290,7 +290,7 @@ export class ContextConverter {
    * @returns {Object} Memory blueprint
    */
   convertToMemoryBlueprint(context) {
-    const { bodyContent, sections } = context;
+    const {} = context;
 
     return this.convertToBlueprint(context, {
       category: 'core',

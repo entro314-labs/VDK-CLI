@@ -99,7 +99,7 @@ function getFileHash(filePath) {
   try {
     const content = fs.readFileSync(filePath, 'utf8');
     return crypto.createHash('sha256').update(content).digest('hex').substring(0, 16);
-  } catch (_error) {
+  } catch {
     return null;
   }
 }
@@ -119,7 +119,7 @@ function getCachedFileStats(filePath) {
       if (stats.mtimeMs === cached.mtime && stats.size === cached.size) {
         return cached;
       }
-    } catch (_error) {
+    } catch {
       // File no longer exists or error reading
       fileStatsCache.delete(filePath);
       return null;
@@ -141,7 +141,7 @@ function getCachedFileStats(filePath) {
 
     fileStatsCache.set(filePath, fileStats);
     return fileStats;
-  } catch (_error) {
+  } catch {
     return null;
   }
 }

@@ -133,9 +133,7 @@ export class UniversalFormatConverter {
   async previewConversion({ content, format, projectContext = {} }) {
     const detectedFormat = format || this.detectFormat(content);
     const previewTitle =
-      this.extractTitleFromMarkdown(content) ||
-      projectContext?.name ||
-      'Publication Preview';
+      this.extractTitleFromMarkdown(content) || projectContext?.name || 'Publication Preview';
 
     return {
       title: previewTitle,
@@ -260,7 +258,7 @@ export class UniversalFormatConverter {
     if (sourcePlatform) {
       platforms[sourcePlatform] = {
         compatible: true,
-        ...(ir.platformSpecific?.[sourcePlatform] || {}),
+        ...ir.platformSpecific?.[sourcePlatform],
       };
     }
 

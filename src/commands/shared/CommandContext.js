@@ -127,7 +127,7 @@ export class CommandContext {
 
       this.initialized = true;
     } catch (error) {
-      throw new Error(`Failed to initialize CommandContext: ${error.message}`);
+      throw new Error(`Failed to initialize CommandContext: ${error.message}`, { cause: error });
     }
   }
 
@@ -196,7 +196,9 @@ export class CommandContext {
       await fileSystem.writeFile(fullConfigPath, JSON.stringify(config, null, 2));
       return fullConfigPath;
     } catch (error) {
-      throw new Error(`Failed to write VDK configuration to ${fullConfigPath}: ${error.message}`);
+      throw new Error(`Failed to write VDK configuration to ${fullConfigPath}: ${error.message}`, {
+        cause: error,
+      });
     }
   }
 
@@ -212,7 +214,9 @@ export class CommandContext {
       await fileSystem.mkdir(resolvedPath, { recursive: true });
       return resolvedPath;
     } catch (error) {
-      throw new Error(`Failed to create rules directory ${resolvedPath}: ${error.message}`);
+      throw new Error(`Failed to create rules directory ${resolvedPath}: ${error.message}`, {
+        cause: error,
+      });
     }
   }
 

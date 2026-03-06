@@ -6,6 +6,10 @@
  */
 
 import { vi } from 'vitest';
+vi.mock('../src/hub/index.js', () => ({
+  isHubAvailable: vi.fn().mockResolvedValue(false),
+  quickHubOperations: vi.fn().mockResolvedValue(null),
+}));
 
 /**
  * Mock fetch responses for different scenarios
@@ -133,11 +137,6 @@ export function setupFetchMock() {
  */
 export function setupHubMocks() {
   // Mock the hub availability check
-  vi.mock('../src/hub/index.js', () => ({
-    isHubAvailable: vi.fn().mockResolvedValue(false),
-    quickHubOperations: vi.fn().mockResolvedValue(null),
-  }));
-
   // Mock VDK Hub Client
   vi.mock('../src/hub/VDKHubClient.js', () => ({
     VDKHubClient: vi.fn().mockImplementation(() => ({

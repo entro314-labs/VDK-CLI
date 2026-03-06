@@ -239,7 +239,7 @@ function priorityTruncate(content, sections, maxLength) {
   }
 
   // Sort sections by priority
-  const sortedSections = [...sections].sort((a, b) => {
+  const sortedSections = [...sections].toSorted((a, b) => {
     const aTitle = a.title?.toLowerCase() || '';
     const bTitle = b.title?.toLowerCase() || '';
 

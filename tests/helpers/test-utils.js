@@ -121,7 +121,9 @@ export const asyncHelpers = {
       throw new Error('Expected promise to reject, but it resolved');
     } catch (error) {
       if (expectedError && !error.message.includes(expectedError)) {
-        throw new Error(`Expected error to contain "${expectedError}", but got: ${error.message}`);
+        throw new Error(`Expected error to contain "${expectedError}", but got: ${error.message}`, {
+          cause: error,
+        });
       }
       return error;
     }

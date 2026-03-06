@@ -86,7 +86,7 @@ export class PatternDetector {
         console.error(chalk.red(`Error in pattern detection: ${error.message}`));
         console.error(chalk.gray(error.stack));
       }
-      throw new Error(`Pattern detection failed: ${error.message}`);
+      throw new Error(`Pattern detection failed: ${error.message}`, { cause: error });
     }
   }
 

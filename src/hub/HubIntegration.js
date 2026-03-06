@@ -90,7 +90,7 @@ export class HubIntegration {
     } catch (error) {
       const message = `Hub connectivity error: ${error.message}`;
       if (throwOnFailure) {
-        throw new Error(message);
+        throw new Error(message, { cause: error });
       }
       console.warn(chalk.yellow(`⚠️ ${message}`));
       return { success: false, error: error.message };

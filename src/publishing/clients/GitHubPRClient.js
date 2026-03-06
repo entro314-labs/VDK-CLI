@@ -52,7 +52,7 @@ Required permissions: public_repo, read:user`);
         await api.users.getAuthenticated();
       }
     } catch (error) {
-      throw new Error(`GitHub authentication failed: ${error.message}`);
+      throw new Error(`GitHub authentication failed: ${error.message}`, { cause: error });
     }
   }
 
@@ -211,17 +211,19 @@ Required permissions: public_repo, read:user`);
       // Provide helpful error messages for common issues
       if (error.message.includes('Bad credentials')) {
         throw new Error(
-          'GitHub token is invalid. Please check your GITHUB_TOKEN environment variable.'
+          'GitHub token is invalid. Please check your GITHUB_TOKEN environment variable.',
+          { cause: error }
         );
       }
 
       if (error.message.includes('Not Found')) {
         throw new Error(
-          `Repository ${this.repoOwner}/${this.repoName} not found or not accessible.`
+          `Repository ${this.repoOwner}/${this.repoName} not found or not accessible.`,
+          { cause: error }
         );
       }
 
-      throw new Error(`GitHub PR creation failed: ${error.message}`);
+      throw new Error(`GitHub PR creation failed: ${error.message}`, { cause: error });
     }
   }
 
@@ -316,7 +318,7 @@ Required permissions: public_repo, read:user`);
         return { ref: `refs/heads/${branchName}`, existing: true };
       }
 
-      throw new Error(`Failed to create branch: ${error.message}`);
+      throw new Error(`Failed to create branch: ${error.message}`, { cause: error });
     }
   }
 
@@ -336,7 +338,7 @@ Required permissions: public_repo, read:user`);
         branch: branchName,
       });
     } catch (error) {
-      throw new Error(`Failed to create file: ${error.message}`);
+      throw new Error(`Failed to create file: ${error.message}`, { cause: error });
     }
   }
 
@@ -360,7 +362,7 @@ Required permissions: public_repo, read:user`);
 
       return pr;
     } catch (error) {
-      throw new Error(`Failed to create pull request: ${error.message}`);
+      throw new Error(`Failed to create pull request: ${error.message}`, { cause: error });
     }
   }
 

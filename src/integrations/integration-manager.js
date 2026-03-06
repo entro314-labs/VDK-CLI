@@ -493,7 +493,7 @@ export class IntegrationManager {
 
     // Sort by project-specific config first, then confidence level
     const confidenceOrder = { high: 3, medium: 2, low: 1, none: 0 };
-    const sorted = [...activeIntegrations].sort((a, b) => {
+    const sorted = [...activeIntegrations].toSorted((a, b) => {
       // First priority: Project-specific config beats global config, regardless of confidence
       const aHasProjectConfig = a.detection?.hasProjectSpecificConfig;
       const bHasProjectConfig = b.detection?.hasProjectSpecificConfig;

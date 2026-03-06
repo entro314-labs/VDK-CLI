@@ -35,7 +35,7 @@ export class McpManager {
         if (config.mcpServers) {
           this.configs.set(loc, config.mcpServers);
         }
-      } catch (_err) {
+      } catch {
         // Ignore missing files
       }
     }

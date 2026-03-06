@@ -75,7 +75,7 @@ export class MigrationBackup {
 
       return this.migrationId;
     } catch (error) {
-      throw new Error(`Failed to create migration backup: ${error.message}`);
+      throw new Error(`Failed to create migration backup: ${error.message}`, { cause: error });
     }
   }
 
@@ -137,7 +137,7 @@ export class MigrationBackup {
 
       return { success: true, restoredCount, backupId };
     } catch (error) {
-      throw new Error(`Rollback failed: ${error.message}`);
+      throw new Error(`Rollback failed: ${error.message}`, { cause: error });
     }
   }
 
@@ -175,7 +175,7 @@ export class MigrationBackup {
                 path: path.join(this.backupDir, entry.name),
               });
             }
-          } catch (_error) {
+          } catch {
             // Skip invalid backup entries
             console.warn(chalk.yellow(`Warning: Invalid backup metadata for ${entry.name}`));
           }
@@ -183,7 +183,7 @@ export class MigrationBackup {
       }
 
       // Sort by timestamp (newest first)
-      return backups.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      return backups.toSorted((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     } catch (error) {
       console.warn(chalk.yellow(`Warning: Failed to list backups: ${error.message}`));
       return [];
@@ -263,7 +263,7 @@ export class MigrationBackup {
       }
 
       return true;
-    } catch (_error) {
+    } catch {
       return false;
     }
   }

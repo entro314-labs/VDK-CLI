@@ -48,6 +48,7 @@ export class RuleGenerator {
     this.blueprintLoader = new BlueprintLoader(
       {
         verbose: this.verbose,
+        projectPath: this.projectPath,
         enableRemoteFetch: options.enableRemoteFetch,
         repositoryEndpoint: options.repositoryEndpoint,
         ecosystemVersion: this.ecosystemVersion,

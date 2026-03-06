@@ -228,7 +228,7 @@ export class ConfigManager {
       const configContent = await fs.readFile(this.configPath, 'utf8');
       return JSON.parse(configContent);
     } catch (error) {
-      throw new Error(`Failed to parse config file: ${error.message}`);
+      throw new Error(`Failed to parse config file: ${error.message}`, { cause: error });
     }
   }
 
@@ -239,7 +239,7 @@ export class ConfigManager {
     try {
       await fs.mkdir(this.configDir, { recursive: true, mode: 0o700 });
     } catch (error) {
-      throw new Error(`Failed to create config directory: ${error.message}`);
+      throw new Error(`Failed to create config directory: ${error.message}`, { cause: error });
     }
   }
 

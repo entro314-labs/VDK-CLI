@@ -147,7 +147,7 @@ class VSCodeVariantIntegration extends BaseIntegration {
           detection.confidence = 'medium';
         }
       }
-    } catch (_error) {
+    } catch {
       // Process detection failed - not critical
     }
 
@@ -189,7 +189,7 @@ class VSCodeVariantIntegration extends BaseIntegration {
 
       const names = processNames[this.variant] || ['code'];
       return names.some(name => processes.includes(name));
-    } catch (_error) {
+    } catch {
       return false;
     }
   }

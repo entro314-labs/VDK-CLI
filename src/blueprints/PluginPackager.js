@@ -101,7 +101,7 @@ export class PluginPackager {
           content,
         };
       } catch (error) {
-        throw new Error(`Failed to read file ${file.file}: ${error.message}`);
+        throw new Error(`Failed to read file ${file.file}: ${error.message}`, { cause: error });
       }
     }
 

@@ -170,7 +170,7 @@ export class GenericIDEIntegration extends BaseIntegration {
               break;
             }
           }
-        } catch (_error) {
+        } catch {
           // Ignore file read errors
         }
       }
@@ -391,7 +391,7 @@ export class GenericIDEIntegration extends BaseIntegration {
     }
 
     // Sort by confidence and return the highest
-    const sorted = [...detectedIDEs].sort((a, b) => {
+    const sorted = [...detectedIDEs].toSorted((a, b) => {
       const confidenceOrder = { high: 3, medium: 2, low: 1, none: 0 };
       return confidenceOrder[b.confidence] - confidenceOrder[a.confidence];
     });

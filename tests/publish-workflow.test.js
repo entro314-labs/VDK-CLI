@@ -55,7 +55,9 @@ describe('Publish Workflow Integration', () => {
       const result = await runCliCommand(['publish', invalidRuleFile, '--preview']);
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toMatch(/Publishing failed|Preview validation failed|Rule validation failed/);
+      expect(result.stderr).toMatch(
+        /Publishing failed|Preview validation failed|Rule validation failed/
+      );
     });
 
     it('should publish valid rule to community hub', async () => {
@@ -100,7 +102,9 @@ describe('Publish Workflow Integration', () => {
       const result = await runCliCommand(['publish', mdcFile, '--preview']);
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toMatch(/Preview validation failed|VDK Blueprint parsing failed|Blueprint/);
+      expect(result.stderr).toMatch(
+        /Preview validation failed|VDK Blueprint parsing failed|Blueprint/
+      );
     });
 
     it('should validate Cursor rules format', async () => {

@@ -58,7 +58,7 @@ async function loadSchemaDefinition(schemaName) {
     const schemaContent = await fs.readFile(schemaPath, 'utf8');
     return JSON.parse(schemaContent);
   } catch (error) {
-    throw new Error(`Failed to load schema '${schemaName}': ${error.message}`);
+    throw new Error(`Failed to load schema '${schemaName}': ${error.message}`, { cause: error });
   }
 }
 

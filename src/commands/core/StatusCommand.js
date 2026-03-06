@@ -29,7 +29,11 @@ export class StatusCommand extends BaseCommand {
   configureOptions(command) {
     return command
       .option('-c, --configPath <path>', 'Path to the VDK configuration file', './vdk.config.json')
-      .option('-o, --outputPath <path>', 'Path to the rule artifacts directory', './.vdk/blueprints/rules')
+      .option(
+        '-o, --outputPath <path>',
+        'Path to the rule artifacts directory',
+        './.vdk/blueprints/rules'
+      )
       .option('--scope <scope>', 'Status check scope (all, local, hub)', 'all')
       .option('-v, --verbose', 'Show detailed status information', false);
   }

@@ -98,7 +98,8 @@ export class HubGenerateCommand extends BaseCommand {
 
     const stacks = this.normalizeList(options.stack);
     const formats = this.normalizeList(options.format || 'bash');
-    const requirements = typeof options.requirements === 'string' ? options.requirements.trim() : '';
+    const requirements =
+      typeof options.requirements === 'string' ? options.requirements.trim() : '';
 
     if (!requirements) {
       this.exitWithError('Requirements cannot be empty');
@@ -125,17 +126,26 @@ export class HubGenerateCommand extends BaseCommand {
 
     if (formats.includes('config')) {
       const config = this.createTestConfig(stacks, requirements, options);
-      await fs.writeFile(path.join(generatedDir, 'package-config.json'), JSON.stringify(config, null, 2));
+      await fs.writeFile(
+        path.join(generatedDir, 'package-config.json'),
+        JSON.stringify(config, null, 2)
+      );
     }
 
     // Compatibility marker file expected by tests
     if (stacks.includes('react') && stacks.includes('typescript')) {
-      await fs.writeFile(path.join(generatedDir, 'react-typescript-package.txt'), 'react-typescript');
+      await fs.writeFile(
+        path.join(generatedDir, 'react-typescript-package.txt'),
+        'react-typescript'
+      );
     }
 
     if (options.cache) {
       await fs.mkdir(cacheDir, { recursive: true });
-      await fs.writeFile(path.join(cacheDir, 'cached-package.json'), JSON.stringify({ stacks }, null, 2));
+      await fs.writeFile(
+        path.join(cacheDir, 'cached-package.json'),
+        JSON.stringify({ stacks }, null, 2)
+      );
       console.log('Package generated and cached');
     }
 
@@ -285,9 +295,13 @@ export class HubGenerateCommand extends BaseCommand {
     await fs.writeFile(scriptPath, `${lines.join('\n')}\n`, { mode: 0o755 });
 
     if (stacks.includes('react') && stacks.includes('typescript')) {
-      await fs.writeFile(path.join(generatedDir, 'react-typescript-setup.sh'), `${lines.join('\n')}\n`, {
-        mode: 0o755,
-      });
+      await fs.writeFile(
+        path.join(generatedDir, 'react-typescript-setup.sh'),
+        `${lines.join('\n')}\n`,
+        {
+          mode: 0o755,
+        }
+      );
     }
 
     return scriptPath;

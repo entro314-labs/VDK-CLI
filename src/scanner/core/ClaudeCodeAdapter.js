@@ -1309,7 +1309,7 @@ ${await this.generateExternalServices(rules, projectContext)}
       }
     }
 
-    return commands.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
+    return commands.toSorted((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
   }
 
   /**
@@ -1384,7 +1384,7 @@ ${await this.generateExternalServices(rules, projectContext)}
     }
 
     // Sort by relevance score
-    return commands.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
+    return commands.toSorted((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
   }
 
   /**

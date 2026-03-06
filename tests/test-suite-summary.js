@@ -76,7 +76,7 @@ async function analyzeTestCoverage() {
   }
 
   Object.entries(srcStructure)
-    .sort(([a], [b]) => a.localeCompare(b))
+    .toSorted(([a], [b]) => a.localeCompare(b))
     .forEach(([dir, count]) => {
       console.log(`   ${dir}/: ${count} files`);
     });

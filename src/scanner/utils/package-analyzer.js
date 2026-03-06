@@ -594,8 +594,8 @@ export class PackageAnalyzer {
 
       // Extract dependencies
       const allDependencies = {
-        ...(packageJson.dependencies || {}),
-        ...(packageJson.devDependencies || {}),
+        ...packageJson.dependencies,
+        ...packageJson.devDependencies,
       };
 
       // Detect technologies based on dependencies

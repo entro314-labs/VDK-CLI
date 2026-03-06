@@ -12,6 +12,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export class BlueprintLoader {
   constructor(options = {}, technologyMapper) {
     this.verbose = options.verbose;
+    this.projectPath = options.projectPath || process.cwd();
     this.enableRemoteFetch = options.enableRemoteFetch !== false;
     this.repositoryEndpoint =
       options.repositoryEndpoint || 'https://api.github.com/repos/vdkit/VDK-Blueprints';
@@ -53,9 +54,43 @@ export class BlueprintLoader {
    * Load standardized rules from local rules directory
    */
   async loadStandardizedRules(analysisData = {}) {
-    // Assumption: local rule artifacts are in ../../../.vdk/blueprints/rules relative to this file
-    const rulesDir = path.resolve(__dirname, '../../../.vdk/blueprints/rules');
+    const candidateRuleDirs = [
+      // Project-local generated rules
+      path.resolve(this.projectPath || '', '.vdk/blueprints/rules'),
+
+      // CLI-local fallback
+      path.resolve(__dirname, '../../../.vdk/blueprints/rules'),
+
+      // Monorepo fallback: curated source library
+      path.resolve(__dirname, '../../../../VDK-Blueprints/library/rules'),
+    ].filter(Boolean);
+
+    let rulesDir = null;
+
+    for (const candidate of [...new Set(candidateRuleDirs)]) {
+      try {
+        const stats = await fs.stat(candidate);
+        if (stats.isDirectory()) {
+          rulesDir = candidate;
+          break;
+        }
+      } catch {
+        // Candidate path does not exist; continue fallback chain.
+      }
+    }
+
     const rules = [];
+
+    if (!rulesDir) {
+      if (this.verbose) {
+        console.warn(chalk.yellow('No local rule directory found in fallback chain.'));
+      }
+      return rules;
+    }
+
+    if (this.verbose) {
+      console.log(chalk.gray(`Loading standardized rules from: ${rulesDir}`));
+    }
 
     try {
       const ruleFiles = await this.findRuleFiles(rulesDir);
@@ -107,7 +142,7 @@ export class BlueprintLoader {
         const fullPath = path.join(dir, entry.name);
         if (entry.isDirectory()) {
           files.push(...(await this.findRuleFiles(fullPath)));
-        } else if (entry.name.endsWith('.mdc')) {
+        } else if (entry.name.endsWith('.mdc') || entry.name.endsWith('.md')) {
           files.push(fullPath);
         }
       }
@@ -215,12 +250,12 @@ export class BlueprintLoader {
             relevanceScore: template.relevanceScore,
             frontmatter: frontmatter,
           });
-        } catch (_err) {
+        } catch {
           // ignore
         }
       }
       return templates;
-    } catch (_error) {
+    } catch {
       return [];
     }
   }
@@ -258,7 +293,7 @@ export class BlueprintLoader {
     }
     return relevant
       .filter(t => t.relevanceScore > 0)
-      .sort((a, b) => b.relevanceScore - a.relevanceScore);
+      .toSorted((a, b) => b.relevanceScore - a.relevanceScore);
   }
 
   getFileExtensions(contentType) {

@@ -222,7 +222,7 @@ export class CopilotAdapter extends RuleAdapter {
    * @returns {Array} Prioritized rules
    */
   prioritizeRules(rules, projectContext) {
-    return [...rules].sort((a, b) => {
+    return [...rules].toSorted((a, b) => {
       // Critical/important rules first
       const priorityScore = rule => {
         let score = 0;

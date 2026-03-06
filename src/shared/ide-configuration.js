@@ -532,7 +532,7 @@ function detectSpecificJetBrainsIDEs(projectPath) {
             });
             if (hasMatch) matchCount++;
           }
-        } catch (_error) {
+        } catch {
           // Ignore directory read errors
         }
       } else if (fs.existsSync(filePath)) {
@@ -559,7 +559,7 @@ function detectSpecificJetBrainsIDEs(projectPath) {
   }
 
   // Sort by confidence (highest first)
-  return detectedIDEs.sort((a, b) => b.confidence - a.confidence);
+  return detectedIDEs.toSorted((a, b) => b.confidence - a.confidence);
 }
 
 /**

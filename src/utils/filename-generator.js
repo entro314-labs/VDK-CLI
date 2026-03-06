@@ -25,7 +25,6 @@ export function generateSafeFilename(input, options = {}) {
     extension = '',
     preserveCase = false,
     separator = '-',
-    allowedChars = /[a-z0-9-_]/,
     fallbackName = 'untitled',
   } = options;
 
